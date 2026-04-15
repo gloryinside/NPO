@@ -9,7 +9,7 @@ export default function DesignCheckPage() {
     <main className="p-8 space-y-8 max-w-2xl">
       <section>
         <h1 className="text-2xl font-bold mb-4">Design System Check</h1>
-        <p className="text-[var(--muted)] text-sm">
+        <p className="text-[var(--muted-foreground)] text-sm">
           5색 의미 토큰 + shadcn/ui 컴포넌트 스모크 테스트
         </p>
       </section>
@@ -60,7 +60,7 @@ export default function DesignCheckPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">1,250,000원</p>
-            <p className="text-sm text-[var(--muted)] mt-1">지난달 대비 +12%</p>
+            <p className="text-sm text-[var(--muted-foreground)] mt-1">지난달 대비 +12%</p>
           </CardContent>
         </Card>
       </section>
