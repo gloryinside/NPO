@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { confirmTossPayment } from "@/lib/toss/client";
 import { getOrgTossKeys } from "@/lib/toss/keys";
+import { sendDonationConfirmed } from "@/lib/email";
 
 export type ConfirmDonationInput = {
   paymentKey: string;
@@ -117,8 +118,60 @@ export async function confirmDonation(
     throw new Error(updateError?.message ?? "결제 상태 업데이트 실패");
   }
 
+  // Fire-and-forget: email notification after successful confirmation
+  void sendDonationConfirmedEmail(supabase, updated as ConfirmedPayment);
+
   return updated as ConfirmedPayment;
 }
+
+// ─── Internal helper ─────────────────────────────────────────────────────────
+
+type SupabaseClient = ReturnType<typeof createSupabaseAdminClient>;
+
+async function sendDonationConfirmedEmail(
+  supabase: SupabaseClient,
+  payment: ConfirmedPayment
+): Promise<void> {
+  try {
+    // Fetch member email + name, org name, campaign title in parallel
+    const [memberRes, orgRes, campaignRes] = await Promise.all([
+      supabase
+        .from("members")
+        .select("name, email")
+        .eq("org_id", payment.org_id)
+        .maybeSingle(),
+      supabase
+        .from("orgs")
+        .select("name")
+        .eq("id", payment.org_id)
+        .maybeSingle(),
+      payment.campaign_id
+        ? supabase
+            .from("campaigns")
+            .select("title")
+            .eq("id", payment.campaign_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    const memberEmail = memberRes.data?.email;
+    if (!memberEmail) return; // no email on file — skip
+
+    sendDonationConfirmed({
+      to: memberEmail,
+      memberName: memberRes.data?.name ?? "후원자",
+      orgName: orgRes.data?.name ?? "",
+      campaignTitle: campaignRes.data?.title ?? null,
+      amount: Number(payment.amount),
+      paymentCode: payment.payment_code,
+      approvedAt: payment.approved_at,
+    });
+  } catch (err) {
+    console.error("[email] sendDonationConfirmedEmail lookup failed:", err);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * 결제 취소/실패 시 payment 행을 cancelled 로 마킹.

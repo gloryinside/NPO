@@ -4,6 +4,9 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generateReceiptCode } from "@/lib/codes";
 import { generateReceiptPdf, type ReceiptData } from "@/lib/receipt/pdf";
+import { sendReceiptIssued } from "@/lib/email";
+
+const RECEIPT_BUCKET = "receipts";
 
 type RouteContext = { params: Promise<{ memberId: string }> };
 
@@ -73,7 +76,7 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   // 2) member 가 같은 테넌트 소속인지 확인 + 후원자 정보
   const { data: member, error: memberErr } = await supabase
     .from("members")
-    .select("id, name, phone, birth_date")
+    .select("id, name, phone, email, birth_date")
     .eq("id", memberId)
     .eq("org_id", tenant.id)
     .maybeSingle();
@@ -127,24 +130,9 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   }
   const receiptCode = generateReceiptCode(year, (existingCount ?? 0) + 1);
 
-  // 5) receipts 행 생성 (pdf_url 없이, 추적용)
   const issuedAt = new Date().toISOString();
-  const { error: insertErr } = await supabase.from("receipts").insert({
-    org_id: tenant.id,
-    receipt_code: receiptCode,
-    member_id: memberId,
-    year,
-    total_amount: totalAmount,
-    pdf_url: null,
-    issued_at: issuedAt,
-    issued_by: adminUser.id,
-  });
-  if (insertErr) {
-    // 추적 실패는 로깅만 하고 PDF 발급 자체는 계속 진행한다.
-    console.error("[receipts] failed to insert tracking row:", insertErr);
-  }
 
-  // 6) PDF 생성
+  // 5) PDF 생성
   const data: ReceiptData = {
     receiptCode,
     year,
@@ -177,8 +165,62 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
+  // 6) Supabase Storage 업로드 → 서명된 URL 획득
+  const storagePath = `${tenant.id}/${year}/${receiptCode}.pdf`;
+  let pdfUrl: string | null = null;
+
+  const { error: uploadErr } = await supabase.storage
+    .from(RECEIPT_BUCKET)
+    .upload(storagePath, pdfBuffer, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+
+  if (uploadErr) {
+    console.error("[receipts] storage upload failed:", uploadErr.message);
+    // 업로드 실패해도 PDF 다운로드는 제공하되 pdf_url 은 null 로 남긴다.
+  } else {
+    // 1년짜리 서명 URL (60 * 60 * 24 * 365 seconds)
+    const { data: signedData, error: signErr } = await supabase.storage
+      .from(RECEIPT_BUCKET)
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+    if (signErr) {
+      console.error("[receipts] createSignedUrl failed:", signErr.message);
+    } else {
+      pdfUrl = signedData.signedUrl;
+    }
+  }
+
+  // 7) receipts 행 생성 (pdf_url 포함)
+  const { error: insertErr } = await supabase.from("receipts").insert({
+    org_id: tenant.id,
+    receipt_code: receiptCode,
+    member_id: memberId,
+    year,
+    total_amount: totalAmount,
+    pdf_url: pdfUrl,
+    issued_at: issuedAt,
+    issued_by: adminUser.id,
+  });
+  if (insertErr) {
+    console.error("[receipts] failed to insert tracking row:", insertErr);
+  }
+
+  // 8) Email notification to donor (fire-and-forget)
+  const memberEmail = (member as unknown as { email?: string | null }).email;
+  if (memberEmail) {
+    sendReceiptIssued({
+      to: memberEmail,
+      memberName: member.name,
+      orgName: org.name,
+      year,
+      totalAmount,
+      receiptCode,
+      pdfUrl,
+    });
+  }
+
   // Node Buffer → ArrayBuffer slice (Next.js Response BodyInit compatible).
-  // Using ArrayBuffer avoids TypeScript's Uint8Array<ArrayBufferLike> vs BodyInit mismatch.
   const body = pdfBuffer.buffer.slice(
     pdfBuffer.byteOffset,
     pdfBuffer.byteOffset + pdfBuffer.byteLength
