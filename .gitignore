@@ -42,3 +42,20 @@ supabase/.temp/
 # Superpowers workspace
 .superpowers/
 .claude/
+
+# Yarn / pnpm
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.pnpm-debug.log*
+
+# Misc
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel
