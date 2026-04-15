@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { confirmTossPayment } from "@/lib/toss/client";
+import { getOrgTossKeys } from "@/lib/toss/keys";
 
 export type ConfirmDonationInput = {
   paymentKey: string;
@@ -62,10 +63,20 @@ export async function confirmDonation(
     throw new Error("결제 금액이 일치하지 않습니다.");
   }
 
+  // 테넌트별 Toss 키 로드 (secret 없는 기관은 실패 처리)
+  const { tossSecretKey } = await getOrgTossKeys(payment.org_id);
+  if (!tossSecretKey) {
+    throw new Error("결제 설정이 누락되었습니다.");
+  }
+
   // Toss 승인 호출
   let tossResult;
   try {
-    tossResult = await confirmTossPayment({ paymentKey, orderId, amount });
+    tossResult = await confirmTossPayment(tossSecretKey, {
+      paymentKey,
+      orderId,
+      amount,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "결제 승인 실패";
     await supabase

@@ -6,8 +6,6 @@ import type { Campaign } from "@/types/campaign";
 
 const PRESET_AMOUNTS = [10000, 30000, 50000, 100000];
 
-const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "";
-
 function formatAmount(n: number): string {
   return new Intl.NumberFormat("ko-KR").format(n);
 }
@@ -47,10 +45,6 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
       setErrorMessage("후원 금액을 선택해주세요.");
       return;
     }
-    if (!TOSS_CLIENT_KEY) {
-      setErrorMessage("결제 모듈이 초기화되지 않았습니다.");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -70,8 +64,11 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
       if (!res.ok) {
         throw new Error(data?.error ?? "결제 준비에 실패했습니다.");
       }
+      if (!data.tossClientKey) {
+        throw new Error("결제 설정이 누락되었습니다.");
+      }
 
-      const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+      const tossPayments = await loadTossPayments(data.tossClientKey);
       await tossPayments.requestPayment("카드", {
         amount: data.amount,
         orderId: data.orderId,

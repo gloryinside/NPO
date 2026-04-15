@@ -1,4 +1,4 @@
-import { TOSS_API_BASE, tossAuthHeader } from "./config";
+import { TOSS_API_BASE, buildTossAuthHeader } from "./config";
 
 export type TossConfirmRequest = {
   paymentKey: string;
@@ -20,15 +20,18 @@ export type TossPayment = {
 
 /**
  * Toss 결제 승인 API 호출.
- * 성공 시 TossPayment 객체, 실패 시 code를 포함한 Error 를 throw 한다.
+ *
+ * 멀티테넌트 — secretKey 는 호출자가 org_secrets 에서 로드해 전달한다.
+ * 성공 시 TossPayment 객체, 실패 시 code 를 포함한 Error 를 throw 한다.
  */
 export async function confirmTossPayment(
+  secretKey: string,
   req: TossConfirmRequest
 ): Promise<TossPayment> {
   const res = await fetch(`${TOSS_API_BASE}/v1/payments/confirm`, {
     method: "POST",
     headers: {
-      Authorization: tossAuthHeader(),
+      Authorization: buildTossAuthHeader(secretKey),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(req),

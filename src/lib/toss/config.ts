@@ -1,17 +1,16 @@
 /**
  * Toss Payments 설정 상수 및 헬퍼.
- * 시크릿은 서버에서만 참조한다 (NEXT_PUBLIC_* 만 클라이언트 번들 포함).
+ *
+ * 멀티테넌트 구조에서 키는 환경변수가 아닌 `org_secrets` 테이블에서
+ * 요청마다 로드한다. 이 파일은 이제 공용 상수(API base) 와 순수 헬퍼만 노출한다.
  */
-export const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "";
-export const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY ?? "";
 export const TOSS_API_BASE = "https://api.tosspayments.com";
-export const TOSS_WEBHOOK_SECRET = process.env.TOSS_WEBHOOK_SECRET ?? "";
 
 /**
- * Toss REST API Basic Auth 헤더 — "base64({secret_key}:)" 포맷.
- * 서버 사이드에서만 호출한다.
+ * Toss REST API Basic Auth 헤더 — "Basic base64({secret_key}:)" 포맷.
+ * 서버 사이드에서만 호출한다. secretKey 는 호출자가 org_secrets 에서 로드해 주입한다.
  */
-export function tossAuthHeader(): string {
-  const token = Buffer.from(`${TOSS_SECRET_KEY}:`).toString("base64");
+export function buildTossAuthHeader(secretKey: string): string {
+  const token = Buffer.from(`${secretKey}:`).toString("base64");
   return `Basic ${token}`;
 }

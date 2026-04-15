@@ -1,60 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { TOSS_WEBHOOK_SECRET } from "@/lib/toss/config";
+import { getOrgTossKeys } from "@/lib/toss/keys";
 
 /**
  * POST /api/webhooks/toss
  *
  * Toss Payments 웹훅 수신. 가상계좌 입금, 결제 상태 변경 등을 비동기 통지받는다.
  *
- * 서명 검증:
- *  - 현재는 우리 내부 `TOSS_WEBHOOK_SECRET` 기반 HMAC-SHA256 구조 (Phase 1 placeholder).
- *  - Toss 실제 서명 스펙은 Phase 2 에서 맞춰 정식 검증으로 교체 예정. (TODO)
- *  - 시크릿이 비어있으면 개발 모드로 간주, 경고만 남기고 통과.
+ * 멀티테넌트 특성상 웹훅 자체에는 tenant 컨텍스트가 없으므로
+ * (1) paymentKey/orderId 로 payments 행을 찾아 org_id 를 확정하고
+ * (2) 그 org 의 webhook secret 으로 HMAC 서명을 검증한다.
+ * 즉, 검증 이전에 DB 조회를 한다는 tradeoff 가 있다 — 대상 org 가 존재하지 않으면
+ * 서명 검증 없이도 그냥 200 으로 흘려보낸다 (Toss 재시도 방지).
  *
- * middleware 매처가 `api/webhooks` 를 제외하므로 tenant 헤더는 주입되지 않는다.
- * idempotency_key / paymentKey 만으로 payment 를 찾아 처리한다.
+ * 서명 스펙: 현재는 TOSS_WEBHOOK_SECRET 기반 HMAC-SHA256 (placeholder).
+ * Toss 실제 webhook 서명 형식은 Phase 2 에서 맞춰 교체 예정. (TODO)
  */
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
-
-  if (TOSS_WEBHOOK_SECRET) {
-    const signatureHeader =
-      req.headers.get("TossPayments-Signature") ??
-      req.headers.get("tosspayments-signature") ??
-      req.headers.get("x-toss-signature") ??
-      "";
-
-    if (!signatureHeader) {
-      return NextResponse.json(
-        { error: "Missing signature" },
-        { status: 401 }
-      );
-    }
-
-    const expected = crypto
-      .createHmac("sha256", TOSS_WEBHOOK_SECRET)
-      .update(rawBody)
-      .digest("base64");
-
-    // timingSafeEqual 은 길이가 같아야 함
-    const a = Buffer.from(expected);
-    const b = Buffer.from(signatureHeader);
-    const valid =
-      a.length === b.length && crypto.timingSafeEqual(a, b);
-
-    if (!valid) {
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
-    }
-  } else {
-    console.warn(
-      "[toss-webhook] TOSS_WEBHOOK_SECRET 미설정 — 서명 검증을 건너뜁니다."
-    );
-  }
 
   let payload: Record<string, unknown>;
   try {
@@ -91,7 +55,7 @@ export async function POST(req: NextRequest) {
   // paymentKey 우선, 없으면 orderId(idempotency_key) 로 조회
   let query = supabase
     .from("payments")
-    .select("id, pay_status, toss_payment_key, idempotency_key")
+    .select("id, org_id, pay_status, toss_payment_key, idempotency_key")
     .limit(1);
 
   if (paymentKey) {
@@ -109,6 +73,45 @@ export async function POST(req: NextRequest) {
   if (!payment) {
     // 아직 DB 에 없는 경우도 200 으로 응답 (Toss 재시도 방지)
     return NextResponse.json({ ok: true, notFound: true });
+  }
+
+  // 해당 org 의 webhook secret 으로 서명 검증
+  const { tossWebhookSecret } = await getOrgTossKeys(payment.org_id as string);
+
+  if (tossWebhookSecret) {
+    const signatureHeader =
+      req.headers.get("TossPayments-Signature") ??
+      req.headers.get("tosspayments-signature") ??
+      req.headers.get("x-toss-signature") ??
+      "";
+
+    if (!signatureHeader) {
+      return NextResponse.json(
+        { error: "Missing signature" },
+        { status: 401 }
+      );
+    }
+
+    const expected = crypto
+      .createHmac("sha256", tossWebhookSecret)
+      .update(rawBody)
+      .digest("base64");
+
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signatureHeader);
+    const valid =
+      a.length === b.length && crypto.timingSafeEqual(a, b);
+
+    if (!valid) {
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
+    }
+  } else {
+    console.warn(
+      `[toss-webhook] org ${payment.org_id} 에 webhook secret 이 없어 서명 검증을 건너뜁니다.`
+    );
   }
 
   const nowIso = new Date().toISOString();
@@ -144,7 +147,6 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", payment.id);
   }
-  // 그 외 이벤트는 무시 (로깅만 할 수도 있음)
 
   return NextResponse.json({ ok: true });
 }

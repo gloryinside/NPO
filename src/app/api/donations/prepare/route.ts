@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generatePaymentCode, generateMemberCode } from "@/lib/codes";
+import { getOrgTossKeys } from "@/lib/toss/keys";
 
 /**
  * POST /api/donations/prepare
@@ -85,6 +86,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "유효하지 않은 캠페인입니다." },
       { status: 404 }
+    );
+  }
+
+  // 1b. 테넌트별 Toss client key 로드 — 없으면 결제 진행 불가
+  const { tossClientKey } = await getOrgTossKeys(tenant.id);
+  if (!tossClientKey) {
+    return NextResponse.json(
+      { error: "이 기관은 결제 설정이 되어있지 않습니다." },
+      { status: 400 }
     );
   }
 
@@ -209,7 +219,10 @@ export async function POST(req: NextRequest) {
     paymentCode: payment.payment_code,
     amount: payment.amount,
     memberName: memberName.trim(),
+    customerName: memberName.trim(),
+    customerEmail: email,
     memberEmail: email,
     orderName: campaign.title,
+    tossClientKey,
   });
 }
