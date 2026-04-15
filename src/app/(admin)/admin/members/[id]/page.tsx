@@ -245,6 +245,18 @@ export default async function MemberDetailPage({
           {member.name}
         </h1>
         <MemberStatusBadge status={member.status} />
+        <a
+          href={`/api/admin/receipts/${member.id}?year=${new Date().getFullYear()}`}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)]"
+          style={{
+            borderColor: "var(--border)",
+            color: "var(--text)",
+            background: "var(--surface)",
+          }}
+          download
+        >
+          영수증 발급
+        </a>
       </div>
 
       <div

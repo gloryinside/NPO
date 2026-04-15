@@ -59,3 +59,7 @@ next-env.d.ts
 
 # Vercel
 .vercel
+
+# PDF fonts (too large for git, see public/fonts/README.md)
+public/fonts/*.ttf
+public/fonts/*.otf
