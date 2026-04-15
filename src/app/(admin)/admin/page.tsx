@@ -101,18 +101,28 @@ export default async function AdminDashboardPage() {
 
   let unpaidPromiseLabel = "—";
   try {
+    // pay_day 기준으로 이미 납입 예정일이 지난 약정만 미납으로 간주한다.
+    // nowKst.getUTCDate() = 오늘(KST) 일자 → pay_day ≤ today 인 약정만 포함.
+    const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayDay = nowKst.getUTCDate(); // 1~31
+
     const { data: activeRegular, error: promiseErr } = await supabase
       .from("promises")
-      .select("id")
+      .select("id, pay_day")
       .eq("org_id", tenantId)
       .eq("status", "active")
       .eq("type", "regular");
 
     if (!promiseErr) {
-      const activeIds = (activeRegular ?? []).map(
-        (p: { id: string }) => p.id
-      );
-      if (activeIds.length === 0) {
+      // 납입일(pay_day)이 오늘 이하인 약정만 미납 대상으로 본다
+      const dueIds = (activeRegular ?? [])
+        .filter(
+          (p: { id: string; pay_day: number | null }) =>
+            p.pay_day === null || p.pay_day <= todayDay
+        )
+        .map((p: { id: string }) => p.id);
+
+      if (dueIds.length === 0) {
         unpaidPromiseLabel = "0건";
       } else {
         const { data: paidThisMonth, error: payErr } = await supabase
@@ -122,14 +132,14 @@ export default async function AdminDashboardPage() {
           .eq("pay_status", "paid")
           .gte("pay_date", firstDay)
           .lt("pay_date", nextFirstDay)
-          .in("promise_id", activeIds);
+          .in("promise_id", dueIds);
         if (!payErr) {
           const paidIds = new Set(
             (paidThisMonth ?? [])
               .map((p: { promise_id: string | null }) => p.promise_id)
               .filter((id): id is string => Boolean(id))
           );
-          const unpaidCount = activeIds.filter(
+          const unpaidCount = dueIds.filter(
             (id: string) => !paidIds.has(id)
           ).length;
           unpaidPromiseLabel = `${new Intl.NumberFormat("ko-KR").format(

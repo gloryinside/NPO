@@ -6,7 +6,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 
 const SLUG_REGEX = /^[a-z0-9-]+$/;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   // requireAdminUser redirects to /admin/login if not authenticated
   await requireAdminUser();
 
@@ -17,12 +17,24 @@ export async function GET() {
     return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
   }
 
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q")?.trim() ?? "";
+  const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 100, 1), 200);
+
   const supabase = createSupabaseAdminClient();
-  const { data: campaigns, error } = await supabase
+  let query = supabase
     .from("campaigns")
     .select("*")
     .eq("org_id", tenant.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(0, limit - 1);
+
+  if (q) {
+    const escaped = q.replace(/[%,()]/g, "");
+    query = query.ilike("title", `%${escaped}%`);
+  }
+
+  const { data: campaigns, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -34,16 +34,32 @@ export default async function CampaignPublicPage({
   if (error || !campaign) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-lg" style={{ color: "var(--muted-foreground)" }}>
+        <p className="text-lg text-[var(--muted-foreground)]">
           캠페인을 찾을 수 없습니다.
         </p>
       </div>
     );
   }
 
-  const formattedGoal = campaign.goal_amount
-    ? new Intl.NumberFormat("ko-KR").format(campaign.goal_amount) + "원"
-    : null;
+  // 이 캠페인의 실제 누적 납입액 집계
+  const { data: paidRows } = await supabase
+    .from("payments")
+    .select("amount")
+    .eq("org_id", tenant.id)
+    .eq("campaign_id", campaign.id)
+    .eq("pay_status", "paid");
+
+  const raisedAmount = (paidRows ?? []).reduce(
+    (sum, row) => sum + Number(row.amount ?? 0),
+    0
+  );
+  const goalAmount = campaign.goal_amount ?? 0;
+  const progressPct =
+    goalAmount > 0 ? Math.min(Math.round((raisedAmount / goalAmount) * 100), 100) : null;
+
+  const fmt = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
+  const formattedGoal = goalAmount ? fmt(goalAmount) + "원" : null;
+  const formattedRaised = fmt(raisedAmount) + "원";
 
   const dateRange =
     campaign.started_at && campaign.ended_at
@@ -57,51 +73,57 @@ export default async function CampaignPublicPage({
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="flex items-start gap-4 mb-4">
-        <h1
-          className="text-3xl font-bold flex-1"
-          style={{ color: "var(--text)" }}
-        >
+        <h1 className="text-3xl font-bold flex-1 text-[var(--text)]">
           {campaign.title}
         </h1>
         <span
-          className="mt-1 inline-flex items-center rounded-full px-3 py-1 text-sm font-medium"
-          style={{
-            background:
-              campaign.status === "active"
-                ? "rgba(34,197,94,0.15)"
-                : "rgba(136,136,170,0.15)",
-            color:
-              campaign.status === "active"
-                ? "var(--positive)"
-                : "var(--muted-foreground)",
-          }}
+          className={`mt-1 inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+            campaign.status === "active"
+              ? "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]"
+              : "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]"
+          }`}
         >
           {campaign.status === "active" ? "진행중" : "종료"}
         </span>
       </div>
 
-      <div
-        className="flex flex-col gap-2 mb-8 text-sm"
-        style={{ color: "var(--muted-foreground)" }}
-      >
-        {formattedGoal && (
+      {/* 달성률 progress bar */}
+      {goalAmount > 0 && (
+        <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="flex justify-between text-sm mb-2">
+            <span className="font-semibold text-[var(--text)]">{formattedRaised} 모금</span>
+            <span className="text-[var(--muted-foreground)]">목표 {formattedGoal}</span>
+          </div>
+          <div className="h-2.5 rounded-full bg-[var(--surface-2)] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[var(--accent)] transition-all"
+              style={{ width: `${progressPct ?? 0}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-right text-[var(--muted-foreground)]">
+            {progressPct !== null ? `${progressPct}% 달성` : ""}
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 mb-8 text-sm text-[var(--muted-foreground)]">
+        {!goalAmount && raisedAmount > 0 && (
           <p>
-            <span className="font-medium">목표금액:</span>{" "}
-            <span style={{ color: "var(--text)" }}>{formattedGoal}</span>
+            <span className="font-medium">누적 모금액:</span>{" "}
+            <span className="text-[var(--text)]">{formattedRaised}</span>
           </p>
         )}
         {dateRange && (
           <p>
             <span className="font-medium">기간:</span>{" "}
-            <span style={{ color: "var(--text)" }}>{dateRange}</span>
+            <span className="text-[var(--text)]">{dateRange}</span>
           </p>
         )}
       </div>
 
       {campaign.description && (
         <div
-          className="prose prose-invert max-w-none mb-10"
-          style={{ color: "var(--text)" }}
+          className="prose prose-invert max-w-none mb-10 text-[var(--text)]"
           // Content is sanitized via DOMPurify (sanitizeHtml) before render
           dangerouslySetInnerHTML={{ __html: safeDescription }}
         />
@@ -109,11 +131,7 @@ export default async function CampaignPublicPage({
 
       <Link
         href={`/campaigns/${campaign.slug}/donate`}
-        className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold transition-opacity hover:opacity-90"
-        style={{
-          background: "var(--accent)",
-          color: "#ffffff",
-        }}
+        className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold transition-opacity hover:opacity-90 bg-[var(--accent)] text-white"
       >
         후원하기
       </Link>

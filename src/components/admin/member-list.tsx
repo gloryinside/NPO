@@ -11,7 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Member, MemberStatus } from "@/types/member";
 
 type Props = {
@@ -65,6 +72,194 @@ function formatDate(value: string | null) {
   }
 }
 
+type NewMemberForm = {
+  name: string;
+  phone: string;
+  email: string;
+  birthDate: string;
+  memberType: string;
+  joinPath: string;
+  note: string;
+};
+
+const EMPTY_FORM: NewMemberForm = {
+  name: "",
+  phone: "",
+  email: "",
+  birthDate: "",
+  memberType: "individual",
+  joinPath: "",
+  note: "",
+};
+
+function AddMemberDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [form, setForm] = useState<NewMemberForm>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const field =
+    (key: keyof NewMemberForm) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    };
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone || undefined,
+          email: form.email || undefined,
+          birthDate: form.birthDate || undefined,
+          memberType: form.memberType,
+          joinPath: form.joinPath || undefined,
+          note: form.note || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "등록 실패");
+      setForm(EMPTY_FORM);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls =
+    "bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)]";
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md bg-[var(--surface)] border-[var(--border)]">
+        <DialogHeader>
+          <DialogTitle className="text-[var(--text)]">후원자 등록</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="add-name" className="text-sm font-medium text-[var(--text)]">
+              이름 <span className="text-[var(--negative)]">*</span>
+            </label>
+            <Input
+              id="add-name"
+              required
+              value={form.name}
+              onChange={field("name")}
+              className={inputCls}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="add-phone" className="text-sm font-medium text-[var(--text)]">연락처</label>
+              <Input
+                id="add-phone"
+                type="tel"
+                value={form.phone}
+                onChange={field("phone")}
+                placeholder="010-0000-0000"
+                className={inputCls}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="add-email" className="text-sm font-medium text-[var(--text)]">이메일</label>
+              <Input
+                id="add-email"
+                type="email"
+                value={form.email}
+                onChange={field("email")}
+                placeholder="name@example.com"
+                className={inputCls}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="add-birth" className="text-sm font-medium text-[var(--text)]">생년월일</label>
+              <Input
+                id="add-birth"
+                type="date"
+                value={form.birthDate}
+                onChange={field("birthDate")}
+                className={inputCls}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="add-type" className="text-sm font-medium text-[var(--text)]">구분</label>
+              <select
+                id="add-type"
+                value={form.memberType}
+                onChange={field("memberType")}
+                title="후원자 구분"
+                className={`rounded-lg border px-3 py-2 text-sm outline-none ${inputCls}`}
+              >
+                <option value="individual">개인</option>
+                <option value="corporate">법인</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="add-join" className="text-sm font-medium text-[var(--text)]">가입 경로</label>
+            <Input
+              id="add-join"
+              value={form.joinPath}
+              onChange={field("joinPath")}
+              placeholder="방문, 온라인, 지인 소개 등"
+              className={inputCls}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="add-note" className="text-sm font-medium text-[var(--text)]">메모</label>
+            <textarea
+              id="add-note"
+              value={form.note}
+              onChange={field("note")}
+              rows={2}
+              placeholder="후원자 관련 메모"
+              className={`rounded-lg border px-3 py-2 text-sm outline-none resize-none ${inputCls}`}
+            />
+          </div>
+          {error && (
+            <p className="text-sm rounded-lg border px-3 py-2 text-[var(--negative)] bg-[rgba(239,68,68,0.1)] border-[rgba(239,68,68,0.4)]">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="border-[var(--border)] text-[var(--text)] bg-[var(--surface-2)]"
+            >
+              취소
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-[var(--accent)] text-white disabled:opacity-60"
+            >
+              {saving ? "등록 중..." : "등록"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function MemberList({
   members,
   total,
@@ -74,6 +269,7 @@ export function MemberList({
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const [status, setStatus] = useState(initialStatus);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
 
@@ -103,15 +299,27 @@ export function MemberList({
 
   return (
     <div>
+      <AddMemberDialog
+        open={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        onCreated={() => {
+          setShowAddDialog(false);
+          router.refresh();
+        }}
+      />
+
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-          후원자 관리
-        </h1>
-        <div
-          className="text-sm"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          총 {total.toLocaleString("ko-KR")}명
+        <h1 className="text-2xl font-bold text-[var(--text)]">후원자 관리</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[var(--muted-foreground)]">
+            총 {total.toLocaleString("ko-KR")}명
+          </span>
+          <Button
+            onClick={() => setShowAddDialog(true)}
+            className="bg-[var(--accent)] text-white text-sm px-4 py-1.5 h-auto"
+          >
+            + 후원자 등록
+          </Button>
         </div>
       </div>
 
@@ -121,11 +329,7 @@ export function MemberList({
             placeholder="이름, 연락처, 이메일로 검색"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{
-              background: "var(--surface-2)",
-              borderColor: "var(--border)",
-              color: "var(--text)",
-            }}
+            className="bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)]"
           />
         </div>
         <div className="flex gap-1">
