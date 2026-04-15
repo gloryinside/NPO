@@ -4,9 +4,9 @@
 
 **Goal:** SaaS 기반 NPO 후원관리시스템 Phase 1을 구축한다. 각 비영리단체가 독립 테넌트로 구독·운영하며, 단체 랜딩페이지·캠페인·후원·결제·영수증 기능을 제공한다.
 
-**Architecture:** Next.js 15 App Router 단일 앱 + Supabase 단일 DB에서 `org_id` 기반 RLS로 멀티테넌트 격리. 서브도메인(`{slug}.supporters.kr`)에서 middleware가 테넌트를 식별해 컨텍스트를 주입한다. Toss Payments SDK로 PG·CMS 결제를 통합 처리하고, `@react-pdf/renderer`로 기부금 영수증을 자체 생성한다.
+**Architecture:** Next.js 15 App Router 단일 앱 + Supabase 단일 DB에서 `org_id` 기반 RLS로 멀티테넌트 격리. 서브도메인(`{slug}.supporters.kr`)에서 middleware가 테넌트를 식별해 컨텍스트를 주입한다. Toss Payments SDK로 PG·CMS 결제를 통합 처리하고, `pdfmake`로 기부금 영수증을 자체 생성한다.
 
-**Tech Stack:** Next.js 15 · React 19 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Toss Payments · @react-pdf/renderer · isomorphic-dompurify · Vitest · Playwright
+**Tech Stack:** Next.js 15 · React 19 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Toss Payments · pdfmake · isomorphic-dompurify · Vitest · Playwright
 
 **Spec Reference:** `docs/superpowers/specs/2026-04-15-donation-system-design.md`
 
@@ -46,8 +46,7 @@ src/
 │   ├── campaign/                       # 캠페인 카드/폼
 │   ├── dashboard/                      # KPI 위젯
 │   ├── donors/                         # 후원자 테이블/탭
-│   ├── payments/                       # 납입 테이블
-│   └── receipt/                        # PDF 템플릿
+│   └── payments/                       # 납입 테이블
 ├── lib/
 │   ├── supabase/                       # server/client/admin
 │   ├── tenant/                         # 테넌트 리졸버/컨텍스트
@@ -86,8 +85,8 @@ npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-al
 
 Run:
 ```bash
-npm install @supabase/supabase-js @supabase/ssr @react-pdf/renderer @tosspayments/payment-sdk isomorphic-dompurify zod lucide-react
-npm install -D @types/node vitest @vitejs/plugin-react @playwright/test
+npm install @supabase/supabase-js @supabase/ssr pdfmake @tosspayments/payment-sdk isomorphic-dompurify zod lucide-react
+npm install -D @types/node @types/pdfmake vitest @vitejs/plugin-react @playwright/test
 ```
 
 - [ ] **Step 3: `.env.local.example` 작성**
@@ -2688,24 +2687,30 @@ git commit -m "feat(donor): 후원자 마이페이지 레이아웃 + 홈 (올해
 ## Task G1: PDF 영수증 템플릿
 
 **Files:**
-- Create: `src/components/receipt/receipt-pdf.tsx`, `src/lib/pdf/generate-receipt.ts`
+- Create: `src/lib/pdf/receipt-doc.ts`, `src/lib/pdf/generate-receipt.ts`
+- Create: `public/fonts/NotoSansKR-Regular.ttf`, `public/fonts/NotoSansKR-Bold.ttf` (한글 폰트)
 
-- [ ] **Step 1: PDF 템플릿**
+- [ ] **Step 0: 한글 폰트 다운로드**
 
-Create `src/components/receipt/receipt-pdf.tsx`:
-```tsx
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+Run:
+```bash
+cd /Users/gloryinside/NPO_S
+mkdir -p public/fonts
+curl -L -o public/fonts/NotoSansKR-Regular.ttf "https://github.com/google/fonts/raw/main/ofl/notosanskr/NotoSansKR%5Bwght%5D.ttf"
+```
 
-const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: "Helvetica", fontSize: 10 },
-  title: { fontSize: 18, fontWeight: "bold", textAlign: "center", marginBottom: 20 },
-  section: { marginBottom: 12 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  label: { fontWeight: "bold" },
-  table: { marginTop: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: "#000" },
-  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderColor: "#eee", padding: 6 },
-  tableCell: { flex: 1 },
-});
+For bold weight, use the same variable font (pdfmake can use it for both normal and bold via font variation):
+```bash
+cp public/fonts/NotoSansKR-Regular.ttf public/fonts/NotoSansKR-Bold.ttf
+```
+
+(향후 별도 Bold 폰트를 원하면 `NotoSansKR-Bold.ttf`를 교체.)
+
+- [ ] **Step 1: 영수증 문서 정의 생성기**
+
+Create `src/lib/pdf/receipt-doc.ts`:
+```ts
+import type { TDocumentDefinitions } from "pdfmake/interfaces";
 
 export type ReceiptData = {
   receiptCode: string;
@@ -2716,78 +2721,105 @@ export type ReceiptData = {
   payments: Array<{ pay_date: string; amount: number; campaign_title: string }>;
 };
 
-export function ReceiptPdf({ data }: { data: ReceiptData }) {
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>기부금 영수증</Text>
+export function buildReceiptDocDefinition(data: ReceiptData): TDocumentDefinitions {
+  return {
+    pageSize: "A4",
+    pageMargins: [40, 40, 40, 40],
+    defaultStyle: { font: "NotoSansKR", fontSize: 10 },
+    content: [
+      { text: "기부금 영수증", fontSize: 18, bold: true, alignment: "center", margin: [0, 0, 0, 20] },
 
-        <View style={styles.section}>
-          <View style={styles.row}>
-            <Text style={styles.label}>영수증 번호:</Text>
-            <Text>{data.receiptCode}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>귀속 연도:</Text>
-            <Text>{data.year}년</Text>
-          </View>
-        </View>
+      {
+        columns: [
+          { text: "영수증 번호:", bold: true, width: 100 },
+          { text: data.receiptCode },
+        ],
+        margin: [0, 0, 0, 4],
+      },
+      {
+        columns: [
+          { text: "귀속 연도:", bold: true, width: 100 },
+          { text: `${data.year}년` },
+        ],
+        margin: [0, 0, 0, 12],
+      },
 
-        <View style={styles.section}>
-          <Text style={styles.label}>기부자</Text>
-          <Text>성명: {data.member.name}</Text>
-          <Text>생년월일: {data.member.birth_date ?? "-"}</Text>
-        </View>
+      { text: "기부자", bold: true, margin: [0, 0, 0, 4] },
+      { text: `성명: ${data.member.name}` },
+      { text: `생년월일: ${data.member.birth_date ?? "-"}`, margin: [0, 0, 0, 12] },
 
-        <View style={styles.section}>
-          <Text style={styles.label}>기부금을 받는 단체</Text>
-          <Text>단체명: {data.org.name}</Text>
-          <Text>사업자등록번호: {data.org.business_no ?? "-"}</Text>
-        </View>
+      { text: "기부금을 받는 단체", bold: true, margin: [0, 0, 0, 4] },
+      { text: `단체명: ${data.org.name}` },
+      { text: `사업자등록번호: ${data.org.business_no ?? "-"}`, margin: [0, 0, 0, 12] },
 
-        <View style={styles.table}>
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCell, styles.label]}>기부일자</Text>
-            <Text style={[styles.tableCell, styles.label]}>캠페인</Text>
-            <Text style={[styles.tableCell, styles.label]}>금액</Text>
-          </View>
-          {data.payments.map((p, i) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{p.pay_date}</Text>
-              <Text style={styles.tableCell}>{p.campaign_title}</Text>
-              <Text style={styles.tableCell}>{p.amount.toLocaleString()}원</Text>
-            </View>
-          ))}
-        </View>
+      {
+        table: {
+          headerRows: 1,
+          widths: ["*", "*", "*"],
+          body: [
+            [
+              { text: "기부일자", bold: true },
+              { text: "캠페인", bold: true },
+              { text: "금액", bold: true },
+            ],
+            ...data.payments.map((p) => [
+              p.pay_date,
+              p.campaign_title,
+              `${p.amount.toLocaleString()}원`,
+            ]),
+          ],
+        },
+        margin: [0, 0, 0, 12],
+      },
 
-        <View style={{ marginTop: 20, alignItems: "flex-end" }}>
-          <Text style={styles.label}>총 합계: {data.totalAmount.toLocaleString()}원</Text>
-        </View>
-      </Page>
-    </Document>
-  );
+      {
+        text: `총 합계: ${data.totalAmount.toLocaleString()}원`,
+        bold: true,
+        alignment: "right",
+      },
+    ],
+  };
 }
 ```
 
-- [ ] **Step 2: 생성 함수**
+- [ ] **Step 2: PDF 생성 함수 (한글 폰트 임베딩)**
 
 Create `src/lib/pdf/generate-receipt.ts`:
 ```ts
-import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
-import { ReceiptPdf, type ReceiptData } from "@/components/receipt/receipt-pdf";
+import PdfPrinter from "pdfmake";
+import path from "node:path";
+import { buildReceiptDocDefinition, type ReceiptData } from "./receipt-doc";
+
+// 한글 렌더링을 위해 Noto Sans KR 폰트를 번들에 포함시킨다.
+// Phase 1.A에서 public/fonts/ 에 다운로드해둔 NotoSansKR-Regular.ttf / -Bold.ttf 사용.
+const FONTS_DIR = path.join(process.cwd(), "public", "fonts");
+
+const fonts = {
+  NotoSansKR: {
+    normal: path.join(FONTS_DIR, "NotoSansKR-Regular.ttf"),
+    bold: path.join(FONTS_DIR, "NotoSansKR-Bold.ttf"),
+  },
+};
 
 export async function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
-  const element = React.createElement(ReceiptPdf, { data });
-  return renderToBuffer(element);
+  const printer = new PdfPrinter(fonts);
+  const doc = printer.createPdfKitDocument(buildReceiptDocDefinition(data));
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+    doc.end();
+  });
 }
 ```
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/components/receipt/ src/lib/pdf/
-git commit -m "feat(receipt): @react-pdf/renderer 기부금 영수증 템플릿"
+git add src/lib/pdf/ public/fonts/
+git commit -m "feat(receipt): pdfmake 기부금 영수증 템플릿 + 한글 폰트"
 ```
 
 ## Task G2: 영수증 발행 API + 이력 페이지
@@ -3185,7 +3217,7 @@ Create `README.md`:
 - Tailwind v4 · shadcn/ui (5색 의미 토큰 다크 테마)
 - Supabase (Auth + Postgres + Storage + RLS)
 - Toss Payments (PG + CMS 통합)
-- @react-pdf/renderer (영수증 생성)
+- pdfmake (영수증 생성)
 
 ## 설계 문서
 
