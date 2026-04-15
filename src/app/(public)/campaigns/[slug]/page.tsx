@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -106,8 +107,8 @@ export default async function CampaignPublicPage({
         />
       )}
 
-      <a
-        href="#donate"
+      <Link
+        href={`/campaigns/${campaign.slug}/donate`}
         className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold transition-opacity hover:opacity-90"
         style={{
           background: "var(--accent)",
@@ -115,7 +116,7 @@ export default async function CampaignPublicPage({
         }}
       >
         후원하기
-      </a>
+      </Link>
     </div>
   );
 }
