@@ -5,7 +5,7 @@ import {
   type UserClientForOrg,
 } from "../helpers/auth";
 
-describe("campaign_assets RLS — org-scoped isolation", () => {
+describe("campaign_assets RLS — org-scoped isolation + admin-only writes", () => {
   const admin = createSupabaseAdminClient();
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -14,6 +14,8 @@ describe("campaign_assets RLS — org-scoped isolation", () => {
   let userA: UserClientForOrg | undefined;
   let userB: UserClientForOrg | undefined;
   const assetIds: string[] = [];
+  let orgARowId: string;
+  let orgBRowId: string;
 
   beforeAll(async () => {
     // Need two distinct orgs. Prefer the two seeded orgs; if only one
@@ -45,6 +47,39 @@ describe("campaign_assets RLS — org-scoped isolation", () => {
     userB = await createUserClientForOrg(orgBId, {
       memberCode: `RLS-B-${suffix}`,
     });
+
+    // Seed baseline fixture rows via service-role (bypasses RLS). Each
+    // test reads/writes these independently; no test depends on state
+    // set up by a prior `it` block.
+    const { data: aRow, error: aErr } = await admin
+      .from("campaign_assets")
+      .insert({
+        org_id: orgAId,
+        storage_path: `a/${suffix}.png`,
+        public_url: `https://example.test/a/${suffix}.png`,
+        mime_type: "image/png",
+        size_bytes: 1024,
+      })
+      .select("id")
+      .single();
+    expect(aErr).toBeNull();
+    orgARowId = aRow!.id;
+    assetIds.push(orgARowId);
+
+    const { data: bRow, error: bErr } = await admin
+      .from("campaign_assets")
+      .insert({
+        org_id: orgBId,
+        storage_path: `b/${suffix}.png`,
+        public_url: `https://example.test/b/${suffix}.png`,
+        mime_type: "image/png",
+        size_bytes: 2048,
+      })
+      .select("id")
+      .single();
+    expect(bErr).toBeNull();
+    orgBRowId = bRow!.id;
+    assetIds.push(orgBRowId);
   }, 30_000);
 
   afterAll(async () => {
@@ -61,43 +96,19 @@ describe("campaign_assets RLS — org-scoped isolation", () => {
       .then(() => {}, () => {});
   }, 30_000);
 
-  it("admin inserts rows in both orgs (service role bypasses RLS)", async () => {
-    const { data: aRow, error: aErr } = await admin
-      .from("campaign_assets")
-      .insert({
-        org_id: orgAId,
-        storage_path: `a/${suffix}.png`,
-        public_url: `https://example.test/a/${suffix}.png`,
-        mime_type: "image/png",
-        size_bytes: 1024,
-      })
-      .select("id")
-      .single();
-    expect(aErr).toBeNull();
-    expect(aRow?.id).toBeDefined();
-    assetIds.push(aRow!.id);
-
-    const { data: bRow, error: bErr } = await admin
-      .from("campaign_assets")
-      .insert({
-        org_id: orgBId,
-        storage_path: `b/${suffix}.png`,
-        public_url: `https://example.test/b/${suffix}.png`,
-        mime_type: "image/png",
-        size_bytes: 2048,
-      })
-      .select("id")
-      .single();
-    expect(bErr).toBeNull();
-    expect(bRow?.id).toBeDefined();
-    assetIds.push(bRow!.id);
+  it("service-role baseline: admin inserts succeed in both orgs", () => {
+    // Fixture rows seeded in beforeAll prove the service-role (admin)
+    // write path. Both IDs must be present.
+    expect(orgARowId).toBeDefined();
+    expect(orgBRowId).toBeDefined();
+    expect(assetIds.length).toBeGreaterThanOrEqual(2);
   });
 
   it("user B sees only org B rows (not org A)", async () => {
     const { data, error } = await userB!.client
       .from("campaign_assets")
       .select("id, org_id, storage_path")
-      .in("id", assetIds);
+      .in("id", [orgARowId, orgBRowId]);
     expect(error).toBeNull();
     expect(data).toBeDefined();
     // RLS must filter out orgA's row even though ids are explicitly requested.
@@ -108,7 +119,7 @@ describe("campaign_assets RLS — org-scoped isolation", () => {
     expect(data![0]!.storage_path).toBe(`b/${suffix}.png`);
   });
 
-  it("user B cannot insert a row for org A", async () => {
+  it("cross-org: user B cannot insert a row for org A", async () => {
     const { error } = await userB!.client.from("campaign_assets").insert({
       org_id: orgAId,
       storage_path: `forbidden/${suffix}.png`,
@@ -121,33 +132,47 @@ describe("campaign_assets RLS — org-scoped isolation", () => {
     expect(error?.code).toBe("42501");
   });
 
-  it("user B can insert into their own org", async () => {
-    const { data, error } = await userB!.client
-      .from("campaign_assets")
-      .insert({
-        org_id: orgBId,
-        storage_path: `b-self/${suffix}.png`,
-        public_url: `https://example.test/b-self/${suffix}.png`,
-        mime_type: "image/png",
-        size_bytes: 256,
-      })
-      .select("id")
-      .single();
-    expect(error).toBeNull();
-    expect(data?.id).toBeDefined();
-    assetIds.push(data!.id);
+  it("admin-only writes: same-org non-admin member INSERT is blocked", async () => {
+    // User B is a regular member of orgB (not admin). After the RLS
+    // hardening migration (20260417000002a), only is_org_admin() may
+    // write — member-scoped INSERT policy was dropped.
+    const { error } = await userB!.client.from("campaign_assets").insert({
+      org_id: orgBId,
+      storage_path: `b-self/${suffix}.png`,
+      public_url: `https://example.test/b-self/${suffix}.png`,
+      mime_type: "image/png",
+      size_bytes: 256,
+    });
+    expect(error).not.toBeNull();
+    expect(error?.code).toBe("42501");
   });
 
-  it("user B cannot delete org A rows", async () => {
-    const orgARowId = assetIds[0]!; // first inserted was org A
+  it("admin-only writes: same-org non-admin member DELETE is blocked (0 rows)", async () => {
+    // DELETE with no matching RLS policy: PostgREST returns success with
+    // 0 affected rows rather than 42501. Verify via admin the row is
+    // still present.
+    const { error, count } = await userB!.client
+      .from("campaign_assets")
+      .delete({ count: "exact" })
+      .eq("id", orgBRowId);
+    expect(error).toBeNull();
+    expect(count ?? 0).toBe(0);
+
+    const { data: still } = await admin
+      .from("campaign_assets")
+      .select("id")
+      .eq("id", orgBRowId)
+      .maybeSingle();
+    expect(still?.id).toBe(orgBRowId);
+  });
+
+  it("cross-org: user B cannot delete org A rows", async () => {
     const { error, count } = await userB!.client
       .from("campaign_assets")
       .delete({ count: "exact" })
       .eq("id", orgARowId);
-    // DELETE with RLS filter returns success but affects 0 rows.
     expect(error).toBeNull();
     expect(count ?? 0).toBe(0);
-    // Verify row still present via admin.
     const { data: still } = await admin
       .from("campaign_assets")
       .select("id")
