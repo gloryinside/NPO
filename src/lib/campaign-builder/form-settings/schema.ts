@@ -11,7 +11,7 @@ const DesignationSchema = z.object({
 const CustomFieldSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  type: z.enum(['text', 'select', 'checkbox']).default('text'),
+  type: z.enum(['text', 'textarea', 'select', 'checkbox']).default('text'),
   required: z.boolean().default(false),
   options: z.array(z.string()).optional(),
 });

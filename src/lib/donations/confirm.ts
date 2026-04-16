@@ -19,6 +19,7 @@ export type ConfirmedPayment = {
   pg_method: string | null;
   approved_at: string | null;
   campaign_id: string;
+  campaign_slug: string | null;
   org_id: string;
 };
 
@@ -43,7 +44,7 @@ export async function confirmDonation(
   const { data: payment, error: findError } = await supabase
     .from("payments")
     .select(
-      "id, org_id, payment_code, amount, pay_status, receipt_url, pg_method, approved_at, campaign_id"
+      "id, org_id, payment_code, amount, pay_status, receipt_url, pg_method, approved_at, campaign_id, campaigns(slug)"
     )
     .eq("idempotency_key", orderId)
     .maybeSingle();
@@ -57,7 +58,10 @@ export async function confirmDonation(
 
   // 이미 승인된 결제면 멱등 리턴
   if (payment.pay_status === "paid") {
-    return payment as ConfirmedPayment;
+    return {
+      ...(payment as unknown as ConfirmedPayment),
+      campaign_slug: (payment as unknown as { campaigns?: { slug?: string } }).campaigns?.slug ?? null,
+    };
   }
 
   // 금액 검증 — prepare 시 저장한 amount 와 클라이언트 파라미터가 일치해야 함
@@ -111,7 +115,7 @@ export async function confirmDonation(
     })
     .eq("id", payment.id)
     .select(
-      "id, org_id, payment_code, amount, pay_status, receipt_url, pg_method, approved_at, campaign_id"
+      "id, org_id, payment_code, amount, pay_status, receipt_url, pg_method, approved_at, campaign_id, campaigns(slug)"
     )
     .single();
 
@@ -120,10 +124,15 @@ export async function confirmDonation(
   }
 
   // Fire-and-forget: email + ERP webhook notifications
-  void sendDonationConfirmedEmail(supabase, updated as ConfirmedPayment);
-  void pushErpWebhookForPayment(supabase, updated as ConfirmedPayment);
+  const confirmedPayment: ConfirmedPayment = {
+    ...(updated as unknown as ConfirmedPayment),
+    campaign_slug: (updated as unknown as { campaigns?: { slug?: string } }).campaigns?.slug ?? null,
+  };
 
-  return updated as ConfirmedPayment;
+  void sendDonationConfirmedEmail(supabase, confirmedPayment);
+  void pushErpWebhookForPayment(supabase, confirmedPayment);
+
+  return confirmedPayment;
 }
 
 // ─── Internal helper ─────────────────────────────────────────────────────────
