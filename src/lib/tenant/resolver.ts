@@ -35,9 +35,19 @@ export function extractSlugFromHost(host: string): string | null {
 /**
  * 호스트를 orgs 테이블에서 조회해 활성 테넌트를 반환한다.
  * DB 쿼리를 수행하므로 middleware/서버 컴포넌트에서만 호출한다.
+ *
+ * 개발 편의: 서브도메인이 없는 순수 localhost 접근 시
+ * DEV_TENANT_SLUG 환경변수가 설정돼 있으면 해당 slug로 fallback한다.
  */
 export async function resolveTenant(host: string): Promise<Tenant | null> {
-  const slug = extractSlugFromHost(host);
+  let slug = extractSlugFromHost(host);
+
+  // DEV fallback: localhost:3000 직접 접근 시 환경변수 slug 사용
+  if (!slug && process.env.NODE_ENV !== "production") {
+    const devSlug = process.env.DEV_TENANT_SLUG;
+    if (devSlug) slug = devSlug;
+  }
+
   if (!slug) return null;
 
   const supabase = createSupabaseAdminClient();
