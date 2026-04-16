@@ -354,18 +354,32 @@ export function CampaignFormDialog({
           {/* 설명 */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="description" style={{ color: "var(--text)" }}>
-              설명
+              간단 설명 (목록용)
             </Label>
             <textarea
               id="description"
-              rows={4}
+              rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="캠페인 설명을 입력하세요."
               className="rounded-md border px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[var(--accent)]"
               style={inputStyle}
             />
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              본문은 페이지 편집기에서 작성합니다.
+            </p>
           </div>
+
+          {/* 페이지 편집기 링크 — 수정 모드에서만 표시 */}
+          {campaign?.id && (
+            <a
+              href={`/admin/campaigns/${campaign.id}/edit`}
+              className="inline-block rounded border px-3 py-2 text-sm"
+              style={{ color: "var(--text)", borderColor: "var(--border)" }}
+            >
+              페이지 편집기 열기
+            </a>
+          )}
 
           {error && (
             <p className="text-sm" style={{ color: "var(--negative)" }}>

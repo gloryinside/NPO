@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { confirmDonation } from "@/lib/donations/confirm";
 
 function formatAmount(n: number): string {
@@ -66,6 +67,11 @@ export default async function DonateSuccessPage({
         message={err instanceof Error ? err.message : "결제 승인 실패"}
       />
     );
+  }
+
+  // If the donation came from a wizard campaign, redirect back to the wizard completion step
+  if (payment.campaign_slug) {
+    redirect(`/donate/wizard?campaign=${payment.campaign_slug}&completed=1`);
   }
 
   return (

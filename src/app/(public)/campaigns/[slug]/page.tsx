@@ -3,6 +3,10 @@ import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sanitizeHtml } from "@/lib/sanitize";
 import type { Campaign } from "@/types/campaign";
+import { BlockRenderer } from "@/components/campaign-blocks/BlockRenderer";
+import { PageContentSchema } from "@/lib/campaign-builder/blocks/schema";
+
+export const revalidate = 60;
 
 export default async function CampaignPublicPage({
   params,
@@ -41,6 +45,17 @@ export default async function CampaignPublicPage({
     );
   }
 
+  // If the campaign has published builder content, render via BlockRenderer.
+  const parsedContent = PageContentSchema.safeParse(campaign.published_content);
+  if (parsedContent.success && parsedContent.data.blocks.length > 0) {
+    return (
+      <main>
+        <BlockRenderer content={parsedContent.data} slug={slug} />
+      </main>
+    );
+  }
+
+  // Legacy fallback: description-based layout for campaigns without builder content.
   // 이 캠페인의 실제 누적 납입액 집계
   const { data: paidRows } = await supabase
     .from("payments")
