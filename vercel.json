@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/process-payments",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/purge-expired-rrn",
+      "schedule": "0 2 * * *"
     }
   ]
 }
