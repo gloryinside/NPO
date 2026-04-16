@@ -31,7 +31,7 @@ export async function publishCampaign(
   // revalidateTag throws outside Next.js context — ignore failures
   try {
     const { revalidateTag } = await import('next/cache');
-    revalidateTag(`campaign:${c.slug}`);
+    revalidateTag(`campaign:${c.slug}`, 'default');
   } catch {
     // not in Next.js runtime
   }

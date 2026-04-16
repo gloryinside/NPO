@@ -120,7 +120,7 @@ export async function buildAuthedRequest(
       : {}),
   };
 
-  return new NextRequest(fullUrl, init);
+  return new NextRequest(fullUrl, init as ConstructorParameters<typeof NextRequest>[1]);
 }
 
 export async function buildAuthedFormRequest(
