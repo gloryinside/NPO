@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generateMemberCode } from "@/lib/codes";
+import { logAudit } from "@/lib/audit";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
  * 어드민이 후원자를 수동으로 등록한다.
  */
 export async function POST(req: NextRequest) {
-  await requireAdminUser();
+  const admin = await requireAdminUser();
 
   let tenant;
   try {
@@ -148,6 +149,18 @@ export async function POST(req: NextRequest) {
 
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 감사 로그
+  void logAudit({
+    orgId: tenant.id,
+    actorId: admin?.id ?? null,
+    actorEmail: admin?.email ?? null,
+    action: "member.create",
+    resourceType: "member",
+    resourceId: member.id as string,
+    summary: `후원자 수동 등록: ${member.name}`,
+    metadata: { member_code: member.member_code },
+  });
 
   return NextResponse.json({ member }, { status: 201 });
 }

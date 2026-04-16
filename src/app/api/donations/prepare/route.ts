@@ -30,7 +30,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { campaignId, amount, memberName, memberPhone, memberEmail, payMethod, donationType } = body as {
+  const {
+    campaignId,
+    amount,
+    memberName,
+    memberPhone,
+    memberEmail,
+    payMethod,
+    donationType,
+    receiptOptIn,
+    residentNo,
+    customFields,
+    designation,
+    idempotencyKey: clientIdempotencyKey,
+  } = body as {
     campaignId?: string;
     amount?: number;
     memberName?: string;
@@ -38,6 +51,11 @@ export async function POST(req: NextRequest) {
     memberEmail?: string;
     payMethod?: string;
     donationType?: string;
+    receiptOptIn?: boolean;
+    residentNo?: string;
+    customFields?: Record<string, unknown>;
+    designation?: string;
+    idempotencyKey?: string;
   };
 
   // 오프라인 결제 수단 (계좌이체·CMS는 Toss PG 불필요)
@@ -77,7 +95,7 @@ export async function POST(req: NextRequest) {
   const [{ data: campaign, error: campaignError }, { data: orgData }] = await Promise.all([
     supabase
       .from("campaigns")
-      .select("id, org_id, title, status")
+      .select("id, org_id, title, status, form_settings")
       .eq("id", campaignId)
       .eq("org_id", tenant.id)
       .eq("status", "active")
@@ -102,7 +120,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 1b. 테넌트별 Toss client key 로드 — 오프라인 결제는 Toss 불필요
+  // 1b. 결제수단 서버 사이드 검증 — form_settings.paymentMethods 에 포함돼야 함
+  if (payMethod) {
+    const fs = campaign.form_settings as { paymentMethods?: string[] } | null;
+    const allowedMethods = fs?.paymentMethods ?? [];
+    if (allowedMethods.length > 0 && !allowedMethods.includes(payMethod)) {
+      return NextResponse.json(
+        { error: "허용되지 않은 결제수단입니다." },
+        { status: 400 }
+      );
+    }
+  }
+
+  // 1c. 테넌트별 Toss client key 로드 — 오프라인 결제는 Toss 불필요
   let tossClientKey: string | null = null;
   if (!isOfflineMethod) {
     const keys = await getOrgTossKeys(tenant.id);
@@ -201,11 +231,42 @@ export async function POST(req: NextRequest) {
 
   const paymentSeq = (paymentCount ?? 0) + 1;
   const paymentCode = generatePaymentCode(year, paymentSeq);
-  const idempotencyKey = randomUUID();
+  // Use client-supplied idempotency key if provided (wizard sends one), otherwise generate
+  const idempotencyKey =
+    typeof clientIdempotencyKey === "string" && clientIdempotencyKey.trim()
+      ? clientIdempotencyKey.trim()
+      : randomUUID();
   const nowIso = new Date().toISOString();
   const payDate = nowIso.slice(0, 10);
 
-  // 5. pending payments 행 생성
+  // 5a. RRN 암호화 (기부금 영수증 신청 시)
+  // pgp_sym_encrypt를 DB RPC로 호출해 BYTEA 값을 미리 계산한다.
+  // 암호화 키는 RECEIPTS_ENCRYPTION_KEY 환경변수에서 로드.
+  let rrnPendingEncrypted: string | null = null; // base64 or null
+  const wantsReceipt = receiptOptIn === true;
+  const rawRrn = typeof residentNo === "string" ? residentNo.replace(/-/g, "").trim() : "";
+  if (wantsReceipt && rawRrn) {
+    const encKey = process.env.RECEIPTS_ENCRYPTION_KEY;
+    if (!encKey) {
+      return NextResponse.json(
+        { error: "영수증 암호화 설정이 누락되었습니다. 관리자에게 문의하세요." },
+        { status: 500 }
+      );
+    }
+    const { data: encData, error: encError } = await supabase.rpc(
+      "encrypt_rrn_pending",
+      { plaintext: rawRrn, passphrase: encKey }
+    );
+    if (encError) {
+      return NextResponse.json(
+        { error: "RRN 암호화 실패: " + encError.message },
+        { status: 500 }
+      );
+    }
+    rrnPendingEncrypted = encData as string | null;
+  }
+
+  // 5b. pending payments 행 생성
   const { data: payment, error: paymentInsertError } = await supabase
     .from("payments")
     .insert({
@@ -219,7 +280,11 @@ export async function POST(req: NextRequest) {
       income_status: "pending",
       idempotency_key: idempotencyKey,
       requested_at: nowIso,
+      receipt_opt_in: wantsReceipt,
+      ...(rrnPendingEncrypted ? { rrn_pending_encrypted: rrnPendingEncrypted } : {}),
       ...(payMethod ? { pay_method: payMethod } : {}),
+      ...(customFields ? { custom_fields: customFields } : {}),
+      ...(designation ? { designation } : {}),
     })
     .select("id, payment_code, amount, idempotency_key")
     .single();

@@ -34,10 +34,12 @@ const BLOCK_LABELS: Record<string, string> = {
 export function PropsPanel({
   block,
   campaignId,
+  allBlocks,
   onChange,
 }: {
   block: Block | null;
   campaignId: string;
+  allBlocks: Block[];
   onChange: (b: Block) => void;
 }) {
   if (!block) {
@@ -57,12 +59,55 @@ export function PropsPanel({
           {BLOCK_LABELS[block.type] ?? block.type}
         </div>
       </div>
-      <div className="p-4">
+      <div className="space-y-4 p-4">
         {Form ? (
-          <Form block={block} campaignId={campaignId} onChange={onChange} />
+          <Form block={block} campaignId={campaignId} allBlocks={allBlocks} onChange={onChange} />
         ) : (
           <p className="text-sm text-neutral-400">편집 불가</p>
         )}
+
+        {/* Common fields: anchor ID + hiddenOn — available on every block */}
+        <div className="border-t pt-4">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+            공통 설정
+          </div>
+
+          {/* Anchor ID */}
+          <label className="mb-3 block">
+            <span className="mb-1 block text-xs text-neutral-600">앵커 ID (선택)</span>
+            <input
+              className="w-full rounded border px-2 py-1 text-sm"
+              placeholder="예: donation-form"
+              value={block.anchor ?? ''}
+              onChange={(e) =>
+                onChange({ ...block, anchor: e.target.value || undefined })
+              }
+            />
+            <span className="mt-0.5 block text-[10px] text-neutral-400">
+              다른 블록의 CTA가 이 블록으로 스크롤할 때 사용됩니다.
+            </span>
+          </label>
+
+          {/* hiddenOn */}
+          <div>
+            <span className="mb-1 block text-xs text-neutral-600">숨기기</span>
+            <div className="flex gap-3 text-xs">
+              {(['mobile', 'desktop', undefined] as const).map((val) => (
+                <label key={String(val)} className="flex items-center gap-1">
+                  <input
+                    type="radio"
+                    name={`hiddenOn-${block.id}`}
+                    checked={block.hiddenOn === val}
+                    onChange={() =>
+                      onChange({ ...block, hiddenOn: val })
+                    }
+                  />
+                  {val === undefined ? '항상 표시' : val === 'mobile' ? '모바일 숨김' : '데스크탑 숨김'}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
   );

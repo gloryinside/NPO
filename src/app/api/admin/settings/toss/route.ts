@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logAudit } from "@/lib/audit";
 
 function maskSecret(value: string | null): string | null {
   if (!value) return null;
@@ -50,7 +51,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  await requireAdminUser();
+  const admin = await requireAdminUser();
 
   let tenant;
   try {
@@ -126,6 +127,17 @@ export async function PATCH(req: NextRequest) {
       (data?.toss_webhook_secret as string | null) ?? null
     ),
   };
+
+  // 감사 로그
+  void logAudit({
+    orgId: tenant.id,
+    actorId: admin.id,
+    actorEmail: admin.email ?? null,
+    action: "settings.update_toss",
+    resourceType: "org_secrets",
+    summary: "Toss 결제 설정 변경",
+    metadata: { fields_updated: Object.keys(updates) },
+  });
 
   return NextResponse.json(response);
 }

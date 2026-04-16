@@ -15,6 +15,9 @@ const HeroBlock = z.object({
     subheadline: z.string().optional(),
     ctaLabel: z.string().optional(),
     ctaUrl: z.string().optional(),
+    // Scroll-to anchor: references the `anchor` field of another block in the page.
+    // When set, the CTA button scrolls to `#<ctaAnchorBlockId>` instead of navigating.
+    ctaAnchorBlockId: z.string().optional(),
   }),
 });
 

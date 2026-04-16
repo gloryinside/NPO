@@ -481,6 +481,62 @@ export default async function StatsPage() {
         </CardContent>
       </Card>
 
+      {/* 캠페인별 성과 차트 */}
+      <Card className="bg-[var(--surface)] border-[var(--border)] mb-4">
+        <CardHeader>
+          <CardTitle className="text-sm text-[var(--muted-foreground)]">
+            캠페인별 납입 성과
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {campaignSettlement.length === 0 ? (
+            <p className="text-sm text-[var(--muted-foreground)] text-center py-8">
+              데이터가 없습니다.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {campaignSettlement.slice(0, 8).map((c) => {
+                const total = c.paidAmount + c.unpaidAmount;
+                const paidPct = total > 0 ? (c.paidAmount / total) * 100 : 0;
+                const maxAmt = Math.max(...campaignSettlement.map((x) => x.paidAmount + x.unpaidAmount), 1);
+                const barWidth = total > 0 ? (total / maxAmt) * 100 : 0;
+                return (
+                  <div key={c.campaignId ?? "__none__"}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium truncate max-w-[60%]" style={{ color: "var(--text)" }}>
+                        {c.campaignTitle}
+                      </span>
+                      <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                        {formatKRW(c.paidAmount)}
+                        {c.unpaidAmount > 0 && (
+                          <span style={{ color: "var(--negative)" }}> / {formatKRW(total)}</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="relative h-4 rounded overflow-hidden" style={{ background: "var(--surface-2)", width: "100%" }}>
+                      <div
+                        className="h-full rounded transition-all"
+                        style={{
+                          width: `${barWidth}%`,
+                          background: "rgba(239,68,68,0.2)",
+                        }}
+                      />
+                      <div
+                        className="absolute top-0 left-0 h-full rounded transition-all"
+                        style={{
+                          width: `${(paidPct / 100) * barWidth}%`,
+                          background: "var(--positive)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* 기금별 정산 */}
       <Card className="bg-[var(--surface)] border-[var(--border)] mb-8">
         <CardHeader>

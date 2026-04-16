@@ -170,7 +170,7 @@ export function Editor({
           </div>
         </main>
 
-        <PropsPanel block={selectedBlock} campaignId={campaignId} onChange={handleBlockChange} />
+        <PropsPanel block={selectedBlock} campaignId={campaignId} allBlocks={content.blocks} onChange={handleBlockChange} />
       </div>
     </div>
   );

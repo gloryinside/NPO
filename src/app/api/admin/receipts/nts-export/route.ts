@@ -145,6 +145,30 @@ export async function GET(req: NextRequest) {
   ].join("");
   lines.push(trailer);
 
+  // 4) 포맷 검증 — 모든 레코드는 정확히 100 바이트(UTF-8 ASCII 범위)여야 한다.
+  //    한글이 포함된 경우 EUC-KR 인코딩 기준이지만 여기서는 UTF-8 문자 수로 검증.
+  const EXPECTED_LINE_LENGTH = 100;
+  const formatErrors: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const len = lines[i].length;
+    if (len !== EXPECTED_LINE_LENGTH) {
+      const type = lines[i][0];
+      formatErrors.push(
+        `레코드 ${i + 1} (타입=${type}) 길이 불일치: 기대=${EXPECTED_LINE_LENGTH}, 실제=${len}`
+      );
+    }
+  }
+  if (formatErrors.length > 0) {
+    console.error("[nts-export] format validation failed:", formatErrors);
+    return NextResponse.json(
+      {
+        error: "전산매체 파일 포맷 검증 실패",
+        details: formatErrors,
+      },
+      { status: 500 }
+    );
+  }
+
   const content = lines.join("\r\n");
   const filename = `nts_donation_${year}_${submitDate}.txt`;
 
