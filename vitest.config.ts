@@ -19,9 +19,9 @@ export default defineConfig({
         resolve: sharedResolve,
         test: {
           name: "unit",
-          environment: "node",
+          environment: "jsdom",
           globals: true,
-          include: ["tests/unit/**/*.test.ts"],
+          include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
           exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
         },
       },
