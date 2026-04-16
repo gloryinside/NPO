@@ -9,6 +9,7 @@ export default defineConfig({
     // out of vitest collection to avoid the "Playwright Test did not expect
     // test.describe() to be called here" runtime error.
     exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
+    setupFiles: ["tests/integration/setup.ts"],
   },
   resolve: {
     alias: {
