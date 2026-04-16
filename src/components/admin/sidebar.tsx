@@ -29,6 +29,15 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    group: "결제관리",
+    defaultOpen: true,
+    items: [
+      { label: "미납 관리", href: "/admin/unpaid" },
+      { label: "정기 스케줄", href: "/admin/schedules" },
+      { label: "CMS 출금 오류", href: "/admin/cms-errors" },
+    ],
+  },
+  {
     group: "캠페인",
     defaultOpen: true,
     items: [{ label: "캠페인 목록", href: "/admin/campaigns" }],
@@ -39,6 +48,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: "대시보드", href: "/admin" },
       { label: "통계", href: "/admin/stats" },
+      { label: "기부금영수증", href: "/admin/receipts" },
     ],
   },
   {

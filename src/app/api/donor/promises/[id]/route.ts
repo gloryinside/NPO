@@ -33,9 +33,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   }
 
   const action = body.action;
-  if (action !== "suspend" && action !== "cancel") {
+  if (action !== "suspend" && action !== "cancel" && action !== "changeAmount") {
     return NextResponse.json(
-      { error: "action 은 suspend 또는 cancel 이어야 합니다." },
+      { error: "action 은 suspend, cancel, changeAmount 중 하나여야 합니다." },
       { status: 400 }
     );
   }
@@ -73,6 +73,37 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       { error: "진행중인 약정만 일시중지할 수 있습니다." },
       { status: 400 }
     );
+  }
+
+  // changeAmount: active 약정의 금액 변경
+  if (action === "changeAmount") {
+    const newAmount = Number(body.amount);
+    if (!Number.isFinite(newAmount) || newAmount <= 0) {
+      return NextResponse.json(
+        { error: "유효한 금액을 입력하세요." },
+        { status: 400 }
+      );
+    }
+    if (promise.status !== "active") {
+      return NextResponse.json(
+        { error: "진행중인 약정만 금액을 변경할 수 있습니다." },
+        { status: 400 }
+      );
+    }
+    const { data: updated, error: updateErr } = await supabase
+      .from("promises")
+      .update({ amount: newAmount, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("id, status, amount")
+      .single();
+
+    if (updateErr || !updated) {
+      return NextResponse.json(
+        { error: updateErr?.message ?? "업데이트 실패" },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({ promise: updated });
   }
 
   const nowIso = new Date().toISOString();

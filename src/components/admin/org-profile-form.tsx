@@ -13,6 +13,9 @@ type OrgProfile = {
   contact_phone: string | null;
   address: string | null;
   show_stats: boolean;
+  bank_name: string | null;
+  bank_account: string | null;
+  account_holder: string | null;
 };
 
 export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
@@ -25,6 +28,9 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
     contact_phone: initialData.contact_phone ?? "",
     address: initialData.address ?? "",
     show_stats: initialData.show_stats,
+    bank_name: initialData.bank_name ?? "",
+    bank_account: initialData.bank_account ?? "",
+    account_holder: initialData.account_holder ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -55,6 +61,9 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
           contact_phone: form.contact_phone || null,
           address: form.address || null,
           show_stats: form.show_stats,
+          bank_name: form.bank_name || null,
+          bank_account: form.bank_account || null,
+          account_holder: form.account_holder || null,
         }),
       });
       const data = await res.json();
@@ -166,6 +175,45 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
           placeholder="서울특별시 강남구 ..."
           style={inputStyle}
         />
+      </div>
+
+      {/* 계좌 정보 */}
+      <div>
+        <label style={{ ...labelStyle, marginBottom: "0.75rem" }}>
+          계좌 정보
+        </label>
+        <p className="text-xs mb-3" style={{ color: "var(--muted-foreground)" }}>
+          계좌이체·CMS 후원 신청 시 공개 캠페인 페이지에 안내됩니다.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label style={{ ...labelStyle, fontSize: "0.8125rem" }}>은행명</label>
+            <Input
+              value={form.bank_name}
+              onChange={field("bank_name")}
+              placeholder="국민은행"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={{ ...labelStyle, fontSize: "0.8125rem" }}>계좌번호</label>
+            <Input
+              value={form.bank_account}
+              onChange={field("bank_account")}
+              placeholder="000-0000-0000-00"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={{ ...labelStyle, fontSize: "0.8125rem" }}>예금주</label>
+            <Input
+              value={form.account_holder}
+              onChange={field("account_holder")}
+              placeholder="사단법인 ○○"
+              style={inputStyle}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

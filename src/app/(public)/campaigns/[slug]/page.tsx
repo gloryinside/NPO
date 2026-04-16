@@ -72,6 +72,17 @@ export default async function CampaignPublicPage({
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
+      {campaign.thumbnail_url && (
+        <div className="mb-6 overflow-hidden rounded-xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={campaign.thumbnail_url}
+            alt={campaign.title}
+            className="w-full object-cover max-h-72"
+          />
+        </div>
+      )}
+
       <div className="flex items-start gap-4 mb-4">
         <h1 className="text-3xl font-bold flex-1 text-[var(--text)]">
           {campaign.title}

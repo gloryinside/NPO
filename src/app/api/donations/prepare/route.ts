@@ -29,13 +29,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { campaignId, amount, memberName, memberPhone, memberEmail } = body as {
+  const { campaignId, amount, memberName, memberPhone, memberEmail, payMethod, donationType } = body as {
     campaignId?: string;
     amount?: number;
     memberName?: string;
     memberPhone?: string;
     memberEmail?: string;
+    payMethod?: string;
+    donationType?: string;
   };
+
+  // 오프라인 결제 수단 (계좌이체·CMS는 Toss PG 불필요)
+  const isOfflineMethod = payMethod === "transfer" || payMethod === "cms" || payMethod === "manual";
 
   if (!campaignId || typeof campaignId !== "string") {
     return NextResponse.json(
@@ -67,14 +72,21 @@ export async function POST(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
-  // 1. 캠페인 검증 (테넌트 + active 필수)
-  const { data: campaign, error: campaignError } = await supabase
-    .from("campaigns")
-    .select("id, org_id, title, status")
-    .eq("id", campaignId)
-    .eq("org_id", tenant.id)
-    .eq("status", "active")
-    .maybeSingle();
+  // 1. 캠페인 검증 (테넌트 + active 필수) + 기관 계좌 정보 병렬 조회
+  const [{ data: campaign, error: campaignError }, { data: orgData }] = await Promise.all([
+    supabase
+      .from("campaigns")
+      .select("id, org_id, title, status")
+      .eq("id", campaignId)
+      .eq("org_id", tenant.id)
+      .eq("status", "active")
+      .maybeSingle(),
+    supabase
+      .from("orgs")
+      .select("bank_name, bank_account, account_holder")
+      .eq("id", tenant.id)
+      .maybeSingle(),
+  ]);
 
   if (campaignError) {
     return NextResponse.json(
@@ -89,13 +101,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 1b. 테넌트별 Toss client key 로드 — 없으면 결제 진행 불가
-  const { tossClientKey } = await getOrgTossKeys(tenant.id);
-  if (!tossClientKey) {
-    return NextResponse.json(
-      { error: "이 기관은 결제 설정이 되어있지 않습니다." },
-      { status: 400 }
-    );
+  // 1b. 테넌트별 Toss client key 로드 — 오프라인 결제는 Toss 불필요
+  let tossClientKey: string | null = null;
+  if (!isOfflineMethod) {
+    const keys = await getOrgTossKeys(tenant.id);
+    tossClientKey = keys.tossClientKey;
+    if (!tossClientKey) {
+      return NextResponse.json(
+        { error: "이 기관은 결제 설정이 되어있지 않습니다." },
+        { status: 400 }
+      );
+    }
   }
 
   // 2. 기존 member 검색 — phone 우선, 없으면 email 로 매칭
@@ -202,6 +218,7 @@ export async function POST(req: NextRequest) {
       income_status: "pending",
       idempotency_key: idempotencyKey,
       requested_at: nowIso,
+      ...(payMethod ? { pay_method: payMethod } : {}),
     })
     .select("id, payment_code, amount, idempotency_key")
     .single();
@@ -211,6 +228,23 @@ export async function POST(req: NextRequest) {
       { error: paymentInsertError?.message ?? "결제 준비 실패" },
       { status: 500 }
     );
+  }
+
+  // 오프라인 결제: Toss 리디렉션 없이 계좌 안내 정보 반환
+  if (isOfflineMethod) {
+    return NextResponse.json({
+      offline: true,
+      payMethod: payMethod ?? "transfer",
+      donationType: donationType ?? "onetime",
+      paymentId: payment.id,
+      paymentCode: payment.payment_code,
+      amount: payment.amount,
+      orderName: campaign.title,
+      memberName: memberName.trim(),
+      bankName: (orgData as { bank_name?: string | null } | null)?.bank_name ?? null,
+      bankAccount: (orgData as { bank_account?: string | null } | null)?.bank_account ?? null,
+      accountHolder: (orgData as { account_holder?: string | null } | null)?.account_holder ?? null,
+    });
   }
 
   return NextResponse.json({

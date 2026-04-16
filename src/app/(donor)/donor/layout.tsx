@@ -1,5 +1,6 @@
 import { getDonorSession } from "@/lib/auth";
 import { logoutDonor } from "./actions";
+import { DonorNav } from "@/components/donor/donor-nav";
 
 export default async function DonorLayout({
   children,
@@ -30,6 +31,7 @@ export default async function DonorLayout({
         >
           후원자 마이페이지
         </a>
+        {session && <DonorNav />}
         <nav
           style={{
             marginLeft: "auto",

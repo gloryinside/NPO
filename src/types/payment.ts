@@ -6,7 +6,7 @@ export type PayStatus =
   | "refunded"
   | "pending";
 
-export type IncomeStatus = "pending" | "confirmed" | "excluded";
+export type IncomeStatus = "pending" | "processing" | "confirmed" | "excluded";
 
 export type Payment = {
   id: string;

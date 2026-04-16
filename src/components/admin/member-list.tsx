@@ -26,6 +26,8 @@ type Props = {
   total: number;
   initialQuery: string;
   initialStatus: string;
+  initialPayMethod?: string;
+  initialPromiseType?: string;
 };
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -260,23 +262,43 @@ function AddMemberDialog({
   );
 }
 
+const PAY_METHOD_OPTIONS = [
+  { value: "", label: "결제방법 전체" },
+  { value: "card", label: "카드" },
+  { value: "transfer", label: "계좌이체" },
+  { value: "cms", label: "CMS" },
+  { value: "manual", label: "수기" },
+];
+
+const PROMISE_TYPE_OPTIONS = [
+  { value: "", label: "후원유형 전체" },
+  { value: "regular", label: "정기" },
+  { value: "onetime", label: "일시" },
+];
+
 export function MemberList({
   members,
   total,
   initialQuery,
   initialStatus,
+  initialPayMethod = "",
+  initialPromiseType = "",
 }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const [status, setStatus] = useState(initialStatus);
+  const [payMethod, setPayMethod] = useState(initialPayMethod);
+  const [promiseType, setPromiseType] = useState(initialPromiseType);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
 
-  const buildUrl = (nextQuery: string, nextStatus: string) => {
+  const buildUrl = (nextQuery: string, nextStatus: string, nextPayMethod: string, nextPromiseType: string) => {
     const params = new URLSearchParams();
     if (nextQuery) params.set("q", nextQuery);
     if (nextStatus && nextStatus !== "active") params.set("status", nextStatus);
+    if (nextPayMethod) params.set("payMethod", nextPayMethod);
+    if (nextPromiseType) params.set("promiseType", nextPromiseType);
     const qs = params.toString();
     return qs ? `/admin/members?${qs}` : "/admin/members";
   };
@@ -289,13 +311,13 @@ export function MemberList({
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      router.replace(buildUrl(query, status));
+      router.replace(buildUrl(query, status, payMethod, promiseType));
     }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, status]);
+  }, [query, status, payMethod, promiseType]);
 
   return (
     <div>
@@ -314,6 +336,17 @@ export function MemberList({
           <span className="text-sm text-[var(--muted-foreground)]">
             총 {total.toLocaleString("ko-KR")}명
           </span>
+          <a
+            href={`/api/admin/export/members?${new URLSearchParams({
+              ...(query ? { q: query } : {}),
+              ...(status && status !== "active" ? { status } : {}),
+              ...(payMethod ? { payMethod } : {}),
+              ...(promiseType ? { promiseType } : {}),
+            }).toString()}`}
+            className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm transition-colors bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface)]"
+          >
+            CSV 내보내기
+          </a>
           <Button
             onClick={() => setShowAddDialog(true)}
             className="bg-[var(--accent)] text-white text-sm px-4 py-1.5 h-auto"
@@ -352,6 +385,38 @@ export function MemberList({
             );
           })}
         </div>
+        {/* 결제방법 필터 */}
+        <select
+          title="결제방법 필터"
+          value={payMethod}
+          onChange={(e) => setPayMethod(e.target.value)}
+          className="rounded-lg border px-3 py-1.5 text-sm outline-none"
+          style={{
+            background: payMethod ? "color-mix(in srgb, var(--accent) 10%, var(--surface-2))" : "var(--surface-2)",
+            borderColor: payMethod ? "var(--accent)" : "var(--border)",
+            color: payMethod ? "var(--accent)" : "var(--muted-foreground)",
+          }}
+        >
+          {PAY_METHOD_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {/* 후원유형 필터 */}
+        <select
+          title="후원유형 필터"
+          value={promiseType}
+          onChange={(e) => setPromiseType(e.target.value)}
+          className="rounded-lg border px-3 py-1.5 text-sm outline-none"
+          style={{
+            background: promiseType ? "color-mix(in srgb, var(--accent) 10%, var(--surface-2))" : "var(--surface-2)",
+            borderColor: promiseType ? "var(--accent)" : "var(--border)",
+            color: promiseType ? "var(--accent)" : "var(--muted-foreground)",
+          }}
+        >
+          {PROMISE_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
       </div>
 
       <div

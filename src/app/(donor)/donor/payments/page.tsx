@@ -9,7 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DonorPaymentsFilter } from "@/components/donor/donor-payments-filter";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
+import { Suspense } from "react";
 
 const PAY_STATUS_LABEL: Record<PayStatus, string> = {
   paid: "완료",
@@ -59,22 +61,70 @@ function formatDate(value: string | null) {
   }
 }
 
-export default async function DonorPaymentsPage() {
+type SearchParams = Promise<{ year?: string; month?: string; status?: string }>;
+
+export default async function DonorPaymentsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const { member } = await requireDonorSession();
   const supabase = createSupabaseAdminClient();
 
-  const { data, count } = await supabase
+  const { year, month, status } = await searchParams;
+
+  // Fetch all payments first to derive year list, then filter
+  // For performance on large data, we fetch filtered directly via date range
+  let query = supabase
     .from("payments")
     .select("*, campaigns(id, title)", { count: "exact" })
     .eq("org_id", member.org_id)
     .eq("member_id", member.id)
     .order("pay_date", { ascending: false, nullsFirst: false });
 
+  if (year) {
+    const y = Number(year);
+    if (month) {
+      const m = Number(month);
+      const start = `${y}-${String(m).padStart(2, "0")}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      query = query.gte("pay_date", start).lte("pay_date", end);
+    } else {
+      query = query
+        .gte("pay_date", `${y}-01-01`)
+        .lte("pay_date", `${y}-12-31`);
+    }
+  }
+
+  if (status) {
+    query = query.eq("pay_status", status);
+  }
+
+  const { data, count } = await query.range(0, 999);
   const payments = (data as unknown as PaymentWithRelations[]) ?? [];
   const total = count ?? payments.length;
   const totalPaid = payments
     .filter((p) => p.pay_status === "paid")
     .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+
+  // Derive available years from unfiltered data for the year selector
+  const { data: yearRows } = await supabase
+    .from("payments")
+    .select("pay_date")
+    .eq("org_id", member.org_id)
+    .eq("member_id", member.id)
+    .not("pay_date", "is", null);
+
+  const years = [
+    ...new Set(
+      (yearRows ?? [])
+        .map((r: { pay_date: string | null }) =>
+          r.pay_date ? new Date(r.pay_date).getFullYear() : null
+        )
+        .filter((y): y is number => y !== null)
+    ),
+  ].sort((a, b) => b - a);
 
   return (
     <div className="space-y-4">
@@ -90,6 +140,15 @@ export default async function DonorPaymentsPage() {
           {formatAmount(totalPaid)}
         </div>
       </div>
+
+      <Suspense>
+        <DonorPaymentsFilter
+          years={years}
+          selectedYear={year ?? ""}
+          selectedMonth={month ?? ""}
+          selectedStatus={status ?? ""}
+        />
+      </Suspense>
 
       <div
         className="rounded-lg border overflow-hidden"

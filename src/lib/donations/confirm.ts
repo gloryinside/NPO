@@ -2,6 +2,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { confirmTossPayment } from "@/lib/toss/client";
 import { getOrgTossKeys } from "@/lib/toss/keys";
 import { sendDonationConfirmed } from "@/lib/email";
+import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
 
 export type ConfirmDonationInput = {
   paymentKey: string;
@@ -118,8 +119,9 @@ export async function confirmDonation(
     throw new Error(updateError?.message ?? "결제 상태 업데이트 실패");
   }
 
-  // Fire-and-forget: email notification after successful confirmation
+  // Fire-and-forget: email + ERP webhook notifications
   void sendDonationConfirmedEmail(supabase, updated as ConfirmedPayment);
+  void pushErpWebhookForPayment(supabase, updated as ConfirmedPayment);
 
   return updated as ConfirmedPayment;
 }
@@ -168,6 +170,48 @@ async function sendDonationConfirmedEmail(
     });
   } catch (err) {
     console.error("[email] sendDonationConfirmedEmail lookup failed:", err);
+  }
+}
+
+async function pushErpWebhookForPayment(
+  supabase: SupabaseClient,
+  payment: ConfirmedPayment
+): Promise<void> {
+  try {
+    // member_code, payment_code, income_status 조회
+    const { data: row } = await supabase
+      .from("payments")
+      .select(
+        "payment_code, amount, pay_date, income_status, members!inner(id, name)"
+      )
+      .eq("id", payment.id)
+      .maybeSingle();
+
+    if (!row) return;
+
+    type RowType = {
+      payment_code: string;
+      amount: number | null;
+      pay_date: string | null;
+      income_status: string | null;
+      members: { id: string; name: string } | null;
+    };
+
+    const r = row as unknown as RowType;
+
+    await pushErpWebhook(payment.org_id, {
+      event: "payment.created",
+      paymentIdx: payment.id,
+      paymentCode: r.payment_code ?? "",
+      memberCode: r.members?.id ?? "",
+      memberName: r.members?.name ?? "",
+      payPrice: Number(r.amount ?? 0),
+      payDate: r.pay_date ?? null,
+      incomeStatus: toWebhookIncomeStatus(r.income_status ?? "pending"),
+      occurredAt: payment.approved_at ?? new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("[erp-webhook] pushErpWebhookForPayment failed:", err);
   }
 }
 

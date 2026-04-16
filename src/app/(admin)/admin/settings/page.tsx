@@ -3,6 +3,7 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { TossSettingsForm } from "@/components/admin/toss-settings-form";
 import { OrgProfileForm } from "@/components/admin/org-profile-form";
+import { ErpSettingsForm } from "@/components/admin/erp-settings-form";
 
 function maskSecret(value: string | null): string | null {
   if (!value) return null;
@@ -32,13 +33,13 @@ export default async function SettingsPage() {
   const [{ data: secretsData }, { data: orgData }] = await Promise.all([
     supabase
       .from("org_secrets")
-      .select("toss_client_key, toss_secret_key, toss_webhook_secret")
+      .select("toss_client_key, toss_secret_key, toss_webhook_secret, erp_api_key, erp_webhook_url")
       .eq("org_id", tenantId)
       .maybeSingle(),
     supabase
       .from("orgs")
       .select(
-        "name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats"
+        "name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats, bank_name, bank_account, account_holder"
       )
       .eq("id", tenantId)
       .single(),
@@ -65,6 +66,9 @@ export default async function SettingsPage() {
     contact_phone: (orgData?.contact_phone as string | null) ?? null,
     address: (orgData?.address as string | null) ?? null,
     show_stats: (orgData?.show_stats as boolean) ?? true,
+    bank_name: (orgData?.bank_name as string | null) ?? null,
+    bank_account: (orgData?.bank_account as string | null) ?? null,
+    account_holder: (orgData?.account_holder as string | null) ?? null,
   };
 
   return (
@@ -83,7 +87,7 @@ export default async function SettingsPage() {
 
       <hr className="border-[var(--border)] mb-10" />
 
-      <section>
+      <section className="mb-10">
         <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
           Toss Payments 결제 설정
         </h2>
@@ -92,6 +96,26 @@ export default async function SettingsPage() {
           동작합니다.
         </p>
         <TossSettingsForm initialData={initialToss} />
+      </section>
+
+      <hr className="border-[var(--border)] mb-10" />
+
+      <section>
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
+          ERP 연동 설정
+        </h2>
+        <p className="text-xs text-[var(--muted-foreground)] mb-4">
+          ERP API Key는 외부 ERP 시스템이 납입정보를 조회할 때 사용됩니다.
+          Webhook URL을 설정하면 납입 확정 시 실시간으로 ERP에 알림이 전송됩니다.
+        </p>
+        <ErpSettingsForm
+          erpApiKeyMasked={maskSecret(
+            (secretsData as { erp_api_key?: string | null } | null)?.erp_api_key ?? null
+          )}
+          erpWebhookUrl={
+            (secretsData as { erp_webhook_url?: string | null } | null)?.erp_webhook_url ?? null
+          }
+        />
       </section>
     </div>
   );

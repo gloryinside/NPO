@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PayStatus, PaymentWithRelations } from "@/types/payment";
+import type { PayStatus, IncomeStatus, PaymentWithRelations } from "@/types/payment";
 
 type Props = {
   payments: PaymentWithRelations[];
@@ -52,10 +52,32 @@ const PAY_STATUS_CLASS: Record<PayStatus, string> = {
   refunded: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
 };
 
+const INCOME_STATUS_LABEL: Record<IncomeStatus, string> = {
+  pending: "수입대기",
+  processing: "수입진행",
+  confirmed: "수입완료",
+  excluded: "수입제외",
+};
+
+const INCOME_STATUS_CLASS: Record<IncomeStatus, string> = {
+  pending: "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]",
+  processing: "bg-[rgba(59,130,246,0.15)] text-[#3b82f6]",
+  confirmed: "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]",
+  excluded: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
+};
+
 function PayStatusBadge({ status }: { status: PayStatus }) {
   return (
     <Badge className={`border-0 font-medium ${PAY_STATUS_CLASS[status]}`}>
       {PAY_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+function IncomeStatusBadge({ status }: { status: IncomeStatus }) {
+  return (
+    <Badge className={`border-0 font-medium ${INCOME_STATUS_CLASS[status]}`}>
+      {INCOME_STATUS_LABEL[status]}
     </Badge>
   );
 }
@@ -333,12 +355,55 @@ function AddPaymentDialog({
 export function PaymentList({ payments, total, initialStatus }: Props) {
   const router = useRouter();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const selectStatus = (next: string) => {
     const params = new URLSearchParams();
     if (next && next !== "all") params.set("status", next);
     const qs = params.toString();
     router.replace(qs ? `/admin/payments?${qs}` : "/admin/payments");
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === payments.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(payments.map((p) => p.id)));
+    }
+  };
+
+  const batchUpdateIncome = async (incomeStatus: IncomeStatus) => {
+    if (selected.size === 0) return;
+    setBatchLoading(true);
+    try {
+      const res = await fetch("/api/admin/payments/income-status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentIds: Array.from(selected),
+          incomeStatus,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data?.error ?? "변경 실패");
+        return;
+      }
+      setSelected(new Set());
+      router.refresh();
+    } finally {
+      setBatchLoading(false);
+    }
   };
 
   return (
@@ -355,6 +420,12 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
           <span className="text-sm text-[var(--muted-foreground)]">
             총 {total.toLocaleString("ko-KR")}건
           </span>
+          <a
+            href={`/api/admin/export/payments${initialStatus && initialStatus !== "all" ? `?status=${initialStatus}` : ""}`}
+            className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm transition-colors bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface)]"
+          >
+            CSV 내보내기
+          </a>
           <Button
             onClick={() => setShowAddDialog(true)}
             className="bg-[var(--accent)] text-white text-sm px-4 py-1.5 h-auto"
@@ -384,24 +455,63 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
         })}
       </div>
 
+      {/* 일괄 수입상태 변경 바 */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 mb-3 p-3 rounded-lg border border-[var(--accent)] bg-[rgba(99,102,241,0.05)]">
+          <span className="text-sm font-medium text-[var(--text)]">
+            {selected.size}건 선택
+          </span>
+          <span className="text-sm text-[var(--muted-foreground)]">→ 수입상태:</span>
+          {(["pending", "processing", "confirmed", "excluded"] as IncomeStatus[]).map(
+            (s) => (
+              <button
+                key={s}
+                type="button"
+                disabled={batchLoading}
+                onClick={() => batchUpdateIncome(s)}
+                className="px-2 py-1 text-xs rounded border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--muted)] disabled:opacity-50"
+              >
+                {INCOME_STATUS_LABEL[s]}
+              </button>
+            )
+          )}
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="ml-auto text-xs text-[var(--muted-foreground)] hover:text-[var(--text)]"
+          >
+            선택 해제
+          </button>
+        </div>
+      )}
+
       <div className="rounded-lg border overflow-hidden border-[var(--border)] bg-[var(--surface)]">
         <Table>
           <TableHeader>
             <TableRow className="border-[var(--border)]">
+              <TableHead className="w-10">
+                <input
+                  type="checkbox"
+                  checked={payments.length > 0 && selected.size === payments.length}
+                  onChange={toggleAll}
+                  className="rounded"
+                  aria-label="전체 선택"
+                />
+              </TableHead>
               <TableHead className="text-[var(--muted-foreground)]">결제코드</TableHead>
               <TableHead className="text-[var(--muted-foreground)]">후원자</TableHead>
               <TableHead className="text-[var(--muted-foreground)]">캠페인</TableHead>
               <TableHead className="text-[var(--muted-foreground)]">금액</TableHead>
               <TableHead className="text-[var(--muted-foreground)]">결제일</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">상태</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">결제방법</TableHead>
+              <TableHead className="text-[var(--muted-foreground)]">납부상태</TableHead>
+              <TableHead className="text-[var(--muted-foreground)]">수입상태</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center py-12 text-[var(--muted-foreground)]"
                 >
                   납입 내역이 없습니다.
@@ -411,11 +521,17 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
               payments.map((p) => (
                 <TableRow
                   key={p.id}
-                  className={`border-[var(--border)] ${p.receipt_url ? "cursor-pointer" : ""}`}
-                  onClick={() => {
-                    if (p.receipt_url) window.open(p.receipt_url, "_blank", "noopener,noreferrer");
-                  }}
+                  className={`border-[var(--border)] ${selected.has(p.id) ? "bg-[rgba(99,102,241,0.04)]" : ""}`}
                 >
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      className="rounded"
+                      aria-label={`${p.payment_code} 선택`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
                     {p.payment_code}
                   </TableCell>
@@ -434,8 +550,8 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
                   <TableCell>
                     <PayStatusBadge status={p.pay_status} />
                   </TableCell>
-                  <TableCell className="text-sm text-[var(--muted-foreground)]">
-                    {p.pg_method ?? "-"}
+                  <TableCell>
+                    <IncomeStatusBadge status={p.income_status} />
                   </TableCell>
                 </TableRow>
               ))

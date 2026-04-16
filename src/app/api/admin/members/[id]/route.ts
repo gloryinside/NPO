@@ -83,3 +83,95 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
     stats: { totalAmount, paymentCount, activePromiseCount },
   });
 }
+
+/**
+ * PATCH /api/admin/members/[id]
+ * 후원자 기본정보 업데이트
+ */
+export async function PATCH(req: NextRequest, { params }: RouteContext) {
+  await requireAdminUser();
+
+  const { id } = await params;
+
+  let tenant;
+  try {
+    tenant = await requireTenant();
+  } catch {
+    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const {
+    name,
+    phone,
+    email,
+    birthDate,
+    memberType,
+    status,
+    joinPath,
+    note,
+  } = body as {
+    name?: string;
+    phone?: string | null;
+    email?: string | null;
+    birthDate?: string | null;
+    memberType?: string;
+    status?: string;
+    joinPath?: string | null;
+    note?: string | null;
+  };
+
+  const ALLOWED_STATUS = ["active", "inactive", "deceased"];
+  const ALLOWED_TYPE = ["individual", "corporate"];
+
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (name !== undefined) {
+    if (!name.trim())
+      return NextResponse.json({ error: "이름은 필수입니다." }, { status: 400 });
+    update.name = name.trim();
+  }
+  if (phone !== undefined) update.phone = phone?.trim() || null;
+  if (email !== undefined) update.email = email?.trim() || null;
+  if (birthDate !== undefined) update.birth_date = birthDate || null;
+  if (memberType !== undefined) {
+    if (!ALLOWED_TYPE.includes(memberType))
+      return NextResponse.json({ error: "잘못된 회원 유형입니다." }, { status: 400 });
+    update.member_type = memberType;
+  }
+  if (status !== undefined) {
+    if (!ALLOWED_STATUS.includes(status))
+      return NextResponse.json({ error: "잘못된 상태값입니다." }, { status: 400 });
+    update.status = status;
+  }
+  if (joinPath !== undefined) update.join_path = joinPath?.trim() || null;
+  if (note !== undefined) update.note = note?.trim() || null;
+
+  if (Object.keys(update).length <= 1) {
+    return NextResponse.json({ error: "수정할 항목이 없습니다." }, { status: 400 });
+  }
+
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from("members")
+    .update(update)
+    .eq("id", id)
+    .eq("org_id", tenant.id)
+    .select("*")
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data)
+    return NextResponse.json({ error: "후원자를 찾을 수 없습니다." }, { status: 404 });
+
+  return NextResponse.json({ member: data });
+}

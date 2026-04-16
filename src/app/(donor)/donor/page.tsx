@@ -2,6 +2,7 @@ import { requireDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { PaymentWithRelations } from "@/types/payment";
 import type { PromiseWithRelations } from "@/types/promise";
+import { DonorProfileSection } from "@/components/donor/donor-profile-section";
 
 function formatAmount(value: number | null | undefined) {
   if (value == null) return "-";
@@ -145,6 +146,16 @@ export default async function DonorHomePage() {
           납입 내역 보기 →
         </a>
       </div>
+
+      <DonorProfileSection
+        member={{
+          id: member.id,
+          name: member.name,
+          phone: member.phone ?? null,
+          email: member.email ?? null,
+          birth_date: member.birth_date ?? null,
+        }}
+      />
 
       <section>
         <h2

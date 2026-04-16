@@ -82,6 +82,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     status,
     started_at,
     ended_at,
+    thumbnail_url,
+    donation_type,
+    preset_amounts,
+    pay_methods,
+    ga_tracking_id,
+    meta_pixel_id,
   } = body as {
     title?: string;
     slug?: string;
@@ -90,6 +96,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     status?: string;
     started_at?: string | null;
     ended_at?: string | null;
+    thumbnail_url?: string | null;
+    donation_type?: string;
+    preset_amounts?: unknown;
+    pay_methods?: string[];
+    ga_tracking_id?: string | null;
+    meta_pixel_id?: string | null;
   };
 
   if (slug !== undefined && !SLUG_REGEX.test(slug)) {
@@ -110,6 +122,41 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (status !== undefined) updateData.status = status;
   if (started_at !== undefined) updateData.started_at = started_at;
   if (ended_at !== undefined) updateData.ended_at = ended_at;
+  if (thumbnail_url !== undefined)
+    updateData.thumbnail_url = thumbnail_url?.trim() || null;
+  if (donation_type !== undefined) {
+    const ALLOWED_DONATION_TYPE = ["regular", "onetime", "both"];
+    if (!ALLOWED_DONATION_TYPE.includes(donation_type)) {
+      return NextResponse.json(
+        { error: "donation_type은 regular | onetime | both 중 하나여야 합니다." },
+        { status: 400 }
+      );
+    }
+    updateData.donation_type = donation_type;
+  }
+  if (preset_amounts !== undefined) {
+    if (preset_amounts === null) {
+      updateData.preset_amounts = null;
+    } else if (Array.isArray(preset_amounts)) {
+      const clean = preset_amounts
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      updateData.preset_amounts = clean.length > 0 ? clean : null;
+    }
+  }
+  if (pay_methods !== undefined) {
+    const ALLOWED_METHODS = ["card", "transfer", "cms", "manual"];
+    if (Array.isArray(pay_methods)) {
+      const filtered = pay_methods.filter(
+        (m): m is string => typeof m === "string" && ALLOWED_METHODS.includes(m)
+      );
+      updateData.pay_methods = filtered.length > 0 ? filtered : ["card"];
+    }
+  }
+  if (ga_tracking_id !== undefined)
+    updateData.ga_tracking_id = ga_tracking_id?.trim() || null;
+  if (meta_pixel_id !== undefined)
+    updateData.meta_pixel_id = meta_pixel_id?.trim() || null;
 
   const { data: campaign, error } = await supabase
     .from("campaigns")

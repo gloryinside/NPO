@@ -12,9 +12,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MemberConsultations } from "@/components/admin/member-consultations";
+import { MemberEditForm } from "@/components/admin/member-edit-form";
 import type { Member, MemberStatus, MemberType } from "@/types/member";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
-import type { PayStatus } from "@/types/payment";
+import type { PayStatus, IncomeStatus } from "@/types/payment";
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -24,9 +27,11 @@ type PromiseRow = {
   type: PromiseType;
   amount: number;
   pay_day: number | null;
+  pay_method: string;
   status: PromiseStatus;
   started_at: string | null;
   ended_at: string | null;
+  toss_billing_key: string | null;
   campaigns: { id: string; title: string } | null;
 };
 
@@ -36,7 +41,9 @@ type PaymentRow = {
   amount: number;
   pay_date: string | null;
   pay_status: PayStatus;
+  income_status: IncomeStatus;
   pg_method: string | null;
+  pay_method: string | null;
   campaigns: { id: string; title: string } | null;
 };
 
@@ -68,8 +75,15 @@ const PAY_STATUS_LABEL: Record<PayStatus, string> = {
   unpaid: "미납",
   failed: "실패",
   cancelled: "취소",
-  refunded: "환불",
+  refunded: "환��",
   pending: "대기",
+};
+
+const INCOME_STATUS_LABEL: Record<IncomeStatus, string> = {
+  pending: "수입대기",
+  processing: "수입진행",
+  confirmed: "수입완료",
+  excluded: "수입제외",
 };
 
 function formatAmount(value: number | null | undefined) {
@@ -89,10 +103,7 @@ function formatDate(value: string | null | undefined) {
 function MemberStatusBadge({ status }: { status: MemberStatus }) {
   const styles: Record<MemberStatus, React.CSSProperties> = {
     active: { background: "rgba(34,197,94,0.15)", color: "var(--positive)" },
-    inactive: {
-      background: "rgba(136,136,170,0.15)",
-      color: "var(--muted-foreground)",
-    },
+    inactive: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
     deceased: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
   };
   return (
@@ -107,10 +118,7 @@ function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
     active: { background: "rgba(34,197,94,0.15)", color: "var(--positive)" },
     suspended: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
     cancelled: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
-    completed: {
-      background: "rgba(136,136,170,0.15)",
-      color: "var(--muted-foreground)",
-    },
+    completed: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">
@@ -122,19 +130,10 @@ function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
 function PayStatusBadge({ status }: { status: PayStatus }) {
   const styles: Record<PayStatus, React.CSSProperties> = {
     paid: { background: "rgba(34,197,94,0.15)", color: "var(--positive)" },
-    pending: {
-      background: "rgba(136,136,170,0.15)",
-      color: "var(--muted-foreground)",
-    },
-    unpaid: {
-      background: "rgba(136,136,170,0.15)",
-      color: "var(--muted-foreground)",
-    },
+    pending: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
+    unpaid: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
     failed: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
-    cancelled: {
-      background: "rgba(239,68,68,0.15)",
-      color: "var(--negative)",
-    },
+    cancelled: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
     refunded: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
   };
   return (
@@ -168,16 +167,14 @@ export default async function MemberDetailPage({
       .eq("org_id", tenant.id)
       .maybeSingle();
 
-    if (!memberData) {
-      notFound();
-    }
+    if (!memberData) notFound();
     member = memberData as Member;
 
     const [promisesRes, paymentsRes] = await Promise.all([
       supabase
         .from("promises")
         .select(
-          "id, promise_code, type, amount, pay_day, status, started_at, ended_at, campaigns(id, title)"
+          "id, promise_code, type, amount, pay_day, pay_method, status, started_at, ended_at, toss_billing_key, campaigns(id, title)"
         )
         .eq("org_id", tenant.id)
         .eq("member_id", id)
@@ -185,7 +182,7 @@ export default async function MemberDetailPage({
       supabase
         .from("payments")
         .select(
-          "id, payment_code, amount, pay_date, pay_status, pg_method, campaigns(id, title)"
+          "id, payment_code, amount, pay_date, pay_status, income_status, pg_method, pay_method, campaigns(id, title)"
         )
         .eq("org_id", tenant.id)
         .eq("member_id", id)
@@ -198,10 +195,7 @@ export default async function MemberDetailPage({
 
     const paidPayments = payments.filter((p) => p.pay_status === "paid");
     stats = {
-      totalAmount: paidPayments.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0),
-        0
-      ),
+      totalAmount: paidPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
       paymentCount: paidPayments.length,
       activePromiseCount: promises.filter((p) => p.status === "active").length,
     };
@@ -209,301 +203,181 @@ export default async function MemberDetailPage({
     notFound();
   }
 
-  if (!member) {
-    notFound();
-  }
-
-  const infoRows: Array<{ label: string; value: React.ReactNode }> = [
-    { label: "연락처", value: member.phone ?? "-" },
-    { label: "이메일", value: member.email ?? "-" },
-    { label: "생년월일", value: formatDate(member.birth_date) },
-    { label: "회원유형", value: MEMBER_TYPE_LABEL[member.member_type] },
-    { label: "가입경로", value: member.join_path ?? "-" },
-    { label: "메모", value: member.note ?? "-" },
-  ];
+  if (!member) notFound();
 
   return (
     <div>
       <div className="mb-6">
-        <Link
-          href="/admin/members"
-          className="text-sm"
-          style={{ color: "var(--muted-foreground)" }}
-        >
+        <Link href="/admin/members" className="text-sm text-[var(--muted-foreground)]">
           ← 후원자 목록
         </Link>
       </div>
 
       <div className="flex items-center gap-3 mb-6">
-        <span
-          className="font-mono text-sm"
-          style={{ color: "var(--muted-foreground)" }}
-        >
+        <span className="font-mono text-sm text-[var(--muted-foreground)]">
           {member.member_code}
         </span>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-          {member.name}
-        </h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">{member.name}</h1>
         <MemberStatusBadge status={member.status} />
         <a
           href={`/api/admin/receipts/${member.id}?year=${new Date().getFullYear()}`}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)]"
-          style={{
-            borderColor: "var(--border)",
-            color: "var(--text)",
-            background: "var(--surface)",
-          }}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)] border-[var(--border)] text-[var(--text)] bg-[var(--surface)]"
           download
         >
           영수증 발급
         </a>
       </div>
 
-      <div
-        className="rounded-lg border p-6 mb-6"
-        style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-      >
-        <h2
-          className="text-sm font-medium mb-4"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          기본 정보
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {infoRows.map((row) => (
-            <div key={row.label} className="flex gap-4">
-              <div
-                className="w-20 text-sm"
-                style={{ color: "var(--muted-foreground)" }}
-              >
-                {row.label}
-              </div>
-              <div className="text-sm" style={{ color: "var(--text)" }}>
-                {row.value}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
+      {/* 요약 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <StatCard label="총 납입액" value={formatAmount(stats.totalAmount)} />
-        <StatCard
-          label="납입 건수"
-          value={`${stats.paymentCount.toLocaleString("ko-KR")}건`}
-        />
-        <StatCard
-          label="활성 약정 수"
-          value={`${stats.activePromiseCount.toLocaleString("ko-KR")}건`}
-        />
+        <StatCard label="납입 건수" value={`${stats.paymentCount.toLocaleString("ko-KR")}건`} />
+        <StatCard label="활성 약정 수" value={`${stats.activePromiseCount.toLocaleString("ko-KR")}건`} />
       </div>
 
-      <section className="mb-8">
-        <h2
-          className="text-lg font-semibold mb-3"
-          style={{ color: "var(--text)" }}
-        >
-          약정 내역
-        </h2>
-        <div
-          className="rounded-lg border overflow-hidden"
-          style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-        >
-          <Table>
-            <TableHeader>
-              <TableRow style={{ borderColor: "var(--border)" }}>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  약정코드
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  캠페인
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  유형
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  금액
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  납입일
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  상태
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  기간
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {promises.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="text-center py-8"
-                    style={{ color: "var(--muted-foreground)" }}
-                  >
-                    약정 내역이 없습니다.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                promises.map((p) => (
-                  <TableRow
-                    key={p.id}
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <TableCell
-                      className="font-mono text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {p.promise_code}
-                    </TableCell>
-                    <TableCell style={{ color: "var(--text)" }}>
-                      {p.campaigns?.title ?? "-"}
-                    </TableCell>
-                    <TableCell
-                      className="text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {PROMISE_TYPE_LABEL[p.type]}
-                    </TableCell>
-                    <TableCell style={{ color: "var(--text)" }}>
-                      {formatAmount(p.amount)}
-                    </TableCell>
-                    <TableCell
-                      className="text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {p.pay_day ? `매월 ${p.pay_day}일` : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <PromiseStatusBadge status={p.status} />
-                    </TableCell>
-                    <TableCell
-                      className="text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {p.started_at ? formatDate(p.started_at) : "-"}
-                      {p.ended_at ? ` ~ ${formatDate(p.ended_at)}` : " ~"}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
+      {/* 탭 구조 */}
+      <Tabs defaultValue="basic" className="w-full">
+        <TabsList className="bg-[var(--surface-2)] border border-[var(--border)]">
+          <TabsTrigger value="basic">기본정보</TabsTrigger>
+          <TabsTrigger value="payment-info">결제정보</TabsTrigger>
+          <TabsTrigger value="payments">납입이력</TabsTrigger>
+          <TabsTrigger value="consultations">상담이력</TabsTrigger>
+        </TabsList>
 
-      <section>
-        <h2
-          className="text-lg font-semibold mb-3"
-          style={{ color: "var(--text)" }}
-        >
-          최근 납입 내역
-          <span
-            className="ml-2 text-sm font-normal"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            (최대 100건)
-          </span>
-        </h2>
-        <div
-          className="rounded-lg border overflow-hidden"
-          style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-        >
-          <Table>
-            <TableHeader>
-              <TableRow style={{ borderColor: "var(--border)" }}>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  결제코드
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  캠페인
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  금액
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  결제일
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  상태
-                </TableHead>
-                <TableHead style={{ color: "var(--muted-foreground)" }}>
-                  결제수단
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payments.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-8"
-                    style={{ color: "var(--muted-foreground)" }}
-                  >
-                    납입 내역이 없습니다.
-                  </TableCell>
+        {/* 기본정보 탭 */}
+        <TabsContent value="basic">
+          <MemberEditForm member={member} />
+        </TabsContent>
+
+        {/* 결제정보 탭 (약정 목록 + 결제수단) */}
+        <TabsContent value="payment-info">
+          <div className="rounded-lg border overflow-hidden border-[var(--border)] bg-[var(--surface)]">
+            <div className="p-4 border-b border-[var(--border)]">
+              <h2 className="text-sm font-medium text-[var(--muted-foreground)]">약정 내역</h2>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-[var(--border)]">
+                  <TableHead className="text-[var(--muted-foreground)]">약정코드</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">캠페인</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">유형</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">금액</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">납입일</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">결제수단</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">상태</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">기간</TableHead>
                 </TableRow>
-              ) : (
-                payments.map((p) => (
-                  <TableRow
-                    key={p.id}
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <TableCell
-                      className="font-mono text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {p.payment_code}
-                    </TableCell>
-                    <TableCell style={{ color: "var(--text)" }}>
-                      {p.campaigns?.title ?? "-"}
-                    </TableCell>
-                    <TableCell style={{ color: "var(--text)" }}>
-                      {formatAmount(p.amount)}
-                    </TableCell>
-                    <TableCell
-                      className="text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {formatDate(p.pay_date)}
-                    </TableCell>
-                    <TableCell>
-                      <PayStatusBadge status={p.pay_status} />
-                    </TableCell>
-                    <TableCell
-                      className="text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      {p.pg_method ?? "-"}
+              </TableHeader>
+              <TableBody>
+                {promises.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-[var(--muted-foreground)]">
+                      약정 내역이 없습니다.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
+                ) : (
+                  promises.map((p) => (
+                    <TableRow key={p.id} className="border-[var(--border)]">
+                      <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
+                        {p.promise_code}
+                      </TableCell>
+                      <TableCell className="text-[var(--text)]">
+                        {p.campaigns?.title ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-sm text-[var(--muted-foreground)]">
+                        {PROMISE_TYPE_LABEL[p.type]}
+                      </TableCell>
+                      <TableCell className="text-[var(--text)]">
+                        {formatAmount(p.amount)}
+                      </TableCell>
+                      <TableCell className="text-sm text-[var(--muted-foreground)]">
+                        {p.pay_day ? `매월 ${p.pay_day}일` : "-"}
+                      </TableCell>
+                      <TableCell className="text-sm text-[var(--muted-foreground)]">
+                        {p.pay_method}
+                        {p.toss_billing_key ? " (자동)" : ""}
+                      </TableCell>
+                      <TableCell><PromiseStatusBadge status={p.status} /></TableCell>
+                      <TableCell className="text-sm text-[var(--muted-foreground)]">
+                        {p.started_at ? formatDate(p.started_at) : "-"}
+                        {p.ended_at ? ` ~ ${formatDate(p.ended_at)}` : " ~"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* 납입이력 탭 */}
+        <TabsContent value="payments">
+          <div className="rounded-lg border overflow-hidden border-[var(--border)] bg-[var(--surface)]">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-[var(--border)]">
+                  <TableHead className="text-[var(--muted-foreground)]">결제코드</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">캠페인</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">금액</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">결제일</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">납부상태</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">수입상태</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)]">결제수단</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-[var(--muted-foreground)]">
+                      납입 내역이 없습니다.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  payments.map((p) => (
+                    <TableRow key={p.id} className="border-[var(--border)]">
+                      <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
+                        {p.payment_code}
+                      </TableCell>
+                      <TableCell className="text-[var(--text)]">
+                        {p.campaigns?.title ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-[var(--text)]">
+                        {formatAmount(p.amount)}
+                      </TableCell>
+                      <TableCell className="text-sm text-[var(--muted-foreground)]">
+                        {formatDate(p.pay_date)}
+                      </TableCell>
+                      <TableCell><PayStatusBadge status={p.pay_status} /></TableCell>
+                      <TableCell>
+                        <Badge className="border-0 font-medium bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]">
+                          {INCOME_STATUS_LABEL[p.income_status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-[var(--muted-foreground)]">
+                        {p.pg_method ?? p.pay_method ?? "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* 상담이력 탭 */}
+        <TabsContent value="consultations">
+          <MemberConsultations memberId={member.id} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className="rounded-lg border p-5"
-      style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-    >
-      <div
-        className="text-sm mb-1"
-        style={{ color: "var(--muted-foreground)" }}
-      >
-        {label}
-      </div>
-      <div className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-        {value}
-      </div>
+    <div className="rounded-lg border p-5 border-[var(--border)] bg-[var(--surface)]">
+      <div className="text-sm mb-1 text-[var(--muted-foreground)]">{label}</div>
+      <div className="text-xl font-semibold text-[var(--text)]">{value}</div>
     </div>
   );
 }

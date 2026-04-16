@@ -26,6 +26,13 @@ type Props = {
   onSuccess: () => void;
 };
 
+const PAY_METHOD_CHOICES: Array<{ value: string; label: string }> = [
+  { value: "card", label: "카드" },
+  { value: "transfer", label: "계좌이체" },
+  { value: "cms", label: "CMS" },
+  { value: "manual", label: "수기" },
+];
+
 export function CampaignFormDialog({
   campaign,
   open,
@@ -42,11 +49,29 @@ export function CampaignFormDialog({
   const [goalAmount, setGoalAmount] = useState(
     campaign?.goal_amount != null ? String(campaign.goal_amount) : ""
   );
-  const [startedAt, setStartedAt] = useState(campaign?.started_at ?? "");
-  const [endedAt, setEndedAt] = useState(campaign?.ended_at ?? "");
+  const [startedAt, setStartedAt] = useState(campaign?.started_at?.slice(0, 10) ?? "");
+  const [endedAt, setEndedAt] = useState(campaign?.ended_at?.slice(0, 10) ?? "");
   const [description, setDescription] = useState(campaign?.description ?? "");
+  const [thumbnailUrl, setThumbnailUrl] = useState(campaign?.thumbnail_url ?? "");
+  const [donationType, setDonationType] = useState<Campaign["donation_type"]>(
+    campaign?.donation_type ?? "both"
+  );
+  const [presetAmountsText, setPresetAmountsText] = useState(
+    (campaign?.preset_amounts ?? []).join(", ")
+  );
+  const [payMethods, setPayMethods] = useState<string[]>(
+    campaign?.pay_methods ?? ["card"]
+  );
+  const [gaTrackingId, setGaTrackingId] = useState(campaign?.ga_tracking_id ?? "");
+  const [metaPixelId, setMetaPixelId] = useState(campaign?.meta_pixel_id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function togglePayMethod(method: string) {
+    setPayMethods((prev) =>
+      prev.includes(method) ? prev.filter((m) => m !== method) : [...prev, method]
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,6 +79,11 @@ export function CampaignFormDialog({
     setLoading(true);
 
     try {
+      const presetAmounts = presetAmountsText
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0);
+
       const body = {
         title: title.trim(),
         slug: slug.trim(),
@@ -62,6 +92,12 @@ export function CampaignFormDialog({
         started_at: startedAt || null,
         ended_at: endedAt || null,
         description: description || null,
+        thumbnail_url: thumbnailUrl || null,
+        donation_type: donationType,
+        preset_amounts: presetAmounts.length > 0 ? presetAmounts : null,
+        pay_methods: payMethods.length > 0 ? payMethods : ["card"],
+        ga_tracking_id: gaTrackingId || null,
+        meta_pixel_id: metaPixelId || null,
       };
 
       const url = isEdit
@@ -76,7 +112,7 @@ export function CampaignFormDialog({
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as { error?: string };
         setError(data.error ?? "오류가 발생했습니다.");
         return;
       }
@@ -90,11 +126,17 @@ export function CampaignFormDialog({
     }
   }
 
+  const inputStyle = {
+    background: "var(--surface-2)",
+    borderColor: "var(--border)",
+    color: "var(--text)",
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-        className="max-w-lg"
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
           <DialogTitle style={{ color: "var(--text)" }}>
@@ -103,6 +145,7 @@ export function CampaignFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
+          {/* 기본 정보 */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="title" style={{ color: "var(--text)" }}>
               제목 <span style={{ color: "var(--negative)" }}>*</span>
@@ -113,11 +156,7 @@ export function CampaignFormDialog({
               onChange={(e) => setTitle(e.target.value)}
               required
               placeholder="캠페인 제목"
-              style={{
-                background: "var(--surface-2)",
-                borderColor: "var(--border)",
-                color: "var(--text)",
-              }}
+              style={inputStyle}
             />
           </div>
 
@@ -130,47 +169,57 @@ export function CampaignFormDialog({
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               required
-              placeholder="my-campaign-2024"
-              style={{
-                background: "var(--surface-2)",
-                borderColor: "var(--border)",
-                color: "var(--text)",
-              }}
+              placeholder="my-campaign-2026"
+              style={inputStyle}
             />
             <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
               영문 소문자, 숫자, 하이픈만 사용
             </p>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="status" style={{ color: "var(--text)" }}>
-              상태
-            </Label>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as Campaign["status"])}
-            >
-              <SelectTrigger
-                style={{
-                  background: "var(--surface-2)",
-                  borderColor: "var(--border)",
-                  color: "var(--text)",
-                }}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="status" style={{ color: "var(--text)" }}>
+                상태
+              </Label>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as Campaign["status"])}
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent
-                style={{
-                  background: "var(--surface)",
-                  borderColor: "var(--border)",
-                }}
+                <SelectTrigger style={inputStyle}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent
+                  style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                >
+                  <SelectItem value="draft">draft</SelectItem>
+                  <SelectItem value="active">active</SelectItem>
+                  <SelectItem value="closed">closed</SelectItem>
+                  <SelectItem value="archived">archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="donation_type" style={{ color: "var(--text)" }}>
+                후원 유형
+              </Label>
+              <Select
+                value={donationType}
+                onValueChange={(v) => setDonationType(v as Campaign["donation_type"])}
               >
-                <SelectItem value="draft">draft</SelectItem>
-                <SelectItem value="active">active</SelectItem>
-                <SelectItem value="closed">closed</SelectItem>
-                <SelectItem value="archived">archived</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectTrigger style={inputStyle}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent
+                  style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                >
+                  <SelectItem value="both">정기+일시 모두</SelectItem>
+                  <SelectItem value="regular">정기만</SelectItem>
+                  <SelectItem value="onetime">일시만</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1">
@@ -184,49 +233,125 @@ export function CampaignFormDialog({
               value={goalAmount}
               onChange={(e) => setGoalAmount(e.target.value)}
               placeholder="1000000"
-              style={{
-                background: "var(--surface-2)",
-                borderColor: "var(--border)",
-                color: "var(--text)",
-              }}
+              style={inputStyle}
             />
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1 flex flex-col gap-1">
-              <Label htmlFor="started_at" style={{ color: "var(--text)" }}>
-                시작일
-              </Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="started_at" style={{ color: "var(--text)" }}>시작일</Label>
               <Input
                 id="started_at"
                 type="date"
                 value={startedAt}
                 onChange={(e) => setStartedAt(e.target.value)}
-                style={{
-                  background: "var(--surface-2)",
-                  borderColor: "var(--border)",
-                  color: "var(--text)",
-                }}
+                style={inputStyle}
               />
             </div>
-            <div className="flex-1 flex flex-col gap-1">
-              <Label htmlFor="ended_at" style={{ color: "var(--text)" }}>
-                종료일
-              </Label>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="ended_at" style={{ color: "var(--text)" }}>종료일</Label>
               <Input
                 id="ended_at"
                 type="date"
                 value={endedAt}
                 onChange={(e) => setEndedAt(e.target.value)}
-                style={{
-                  background: "var(--surface-2)",
-                  borderColor: "var(--border)",
-                  color: "var(--text)",
-                }}
+                style={inputStyle}
               />
             </div>
           </div>
 
+          {/* 대표 이미지 */}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="thumbnail_url" style={{ color: "var(--text)" }}>
+              대표 이미지 URL
+            </Label>
+            <Input
+              id="thumbnail_url"
+              type="url"
+              value={thumbnailUrl}
+              onChange={(e) => setThumbnailUrl(e.target.value)}
+              placeholder="https://.../image.jpg"
+              style={inputStyle}
+            />
+          </div>
+
+          {/* 금액 프리셋 */}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="preset_amounts" style={{ color: "var(--text)" }}>
+              후원 금액 프리셋 (쉼표 구분)
+            </Label>
+            <Input
+              id="preset_amounts"
+              value={presetAmountsText}
+              onChange={(e) => setPresetAmountsText(e.target.value)}
+              placeholder="10000, 30000, 50000, 100000"
+              style={inputStyle}
+            />
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              공개 페이지에서 빠른 선택 버튼으로 보여줍니다.
+            </p>
+          </div>
+
+          {/* 결제 수단 */}
+          <div className="flex flex-col gap-2">
+            <Label style={{ color: "var(--text)" }}>결제 수단</Label>
+            <div className="flex flex-wrap gap-2">
+              {PAY_METHOD_CHOICES.map((m) => {
+                const checked = payMethods.includes(m.value);
+                return (
+                  <label
+                    key={m.value}
+                    className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm cursor-pointer transition-colors"
+                    style={{
+                      background: checked
+                        ? "color-mix(in srgb, var(--accent) 15%, var(--surface-2))"
+                        : "var(--surface-2)",
+                      borderColor: checked ? "var(--accent)" : "var(--border)",
+                      color: checked ? "var(--accent)" : "var(--muted-foreground)",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => togglePayMethod(m.value)}
+                      className="h-3.5 w-3.5"
+                    />
+                    {m.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 추적 ID */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="ga_tracking_id" style={{ color: "var(--text)" }}>
+                GA 추적 ID
+              </Label>
+              <Input
+                id="ga_tracking_id"
+                value={gaTrackingId}
+                onChange={(e) => setGaTrackingId(e.target.value)}
+                placeholder="G-XXXXXXXXXX"
+                style={inputStyle}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="meta_pixel_id" style={{ color: "var(--text)" }}>
+                Meta 픽셀 ID
+              </Label>
+              <Input
+                id="meta_pixel_id"
+                value={metaPixelId}
+                onChange={(e) => setMetaPixelId(e.target.value)}
+                placeholder="000000000000000"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {/* 설명 */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="description" style={{ color: "var(--text)" }}>
               설명
@@ -238,11 +363,7 @@ export function CampaignFormDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="캠페인 설명을 입력하세요."
               className="rounded-md border px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[var(--accent)]"
-              style={{
-                background: "var(--surface-2)",
-                borderColor: "var(--border)",
-                color: "var(--text)",
-              }}
+              style={inputStyle}
             />
           </div>
 

@@ -23,6 +23,9 @@ const EDITABLE_FIELDS = [
   "contact_phone",
   "address",
   "show_stats",
+  "bank_name",
+  "bank_account",
+  "account_holder",
 ] as const;
 
 type EditableField = (typeof EDITABLE_FIELDS)[number];

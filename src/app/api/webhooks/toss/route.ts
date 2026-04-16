@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getOrgTossKeys } from "@/lib/toss/keys";
+import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
 
 /**
  * POST /api/webhooks/toss
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
     eventType === "VIRTUAL_ACCOUNT_DEPOSIT_CALLBACK" ||
     status === "DONE"
   ) {
-    await supabase
+    const { data: updatedRow } = await supabase
       .from("payments")
       .update({
         pay_status: "paid",
@@ -128,7 +129,36 @@ export async function POST(req: NextRequest) {
         updated_at: nowIso,
       })
       .eq("id", payment.id)
-      .neq("pay_status", "paid");
+      .neq("pay_status", "paid")
+      .select(
+        "id, org_id, payment_code, amount, pay_date, income_status, members!inner(id, name)"
+      )
+      .maybeSingle();
+
+    // Fire-and-forget ERP webhook push
+    if (updatedRow) {
+      type UpdatedRow = {
+        id: string;
+        org_id: string;
+        payment_code: string;
+        amount: number | null;
+        pay_date: string | null;
+        income_status: string | null;
+        members: { id: string; name: string } | null;
+      };
+      const r = updatedRow as unknown as UpdatedRow;
+      void pushErpWebhook(r.org_id, {
+        event: "payment.created",
+        paymentIdx: r.id,
+        paymentCode: r.payment_code ?? "",
+        memberCode: r.members?.id ?? "",
+        memberName: r.members?.name ?? "",
+        payPrice: Number(r.amount ?? 0),
+        payDate: r.pay_date ?? null,
+        incomeStatus: toWebhookIncomeStatus(r.income_status ?? "pending"),
+        occurredAt: nowIso,
+      });
+    }
   } else if (status === "CANCELED" || status === "ABORTED") {
     await supabase
       .from("payments")

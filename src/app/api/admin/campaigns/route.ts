@@ -68,6 +68,12 @@ export async function POST(req: NextRequest) {
     status,
     started_at,
     ended_at,
+    thumbnail_url,
+    donation_type,
+    preset_amounts,
+    pay_methods,
+    ga_tracking_id,
+    meta_pixel_id,
   } = body as {
     title?: string;
     slug?: string;
@@ -76,6 +82,12 @@ export async function POST(req: NextRequest) {
     status?: string;
     started_at?: string;
     ended_at?: string;
+    thumbnail_url?: string | null;
+    donation_type?: string;
+    preset_amounts?: unknown;
+    pay_methods?: string[];
+    ga_tracking_id?: string | null;
+    meta_pixel_id?: string | null;
   };
 
   if (!title || typeof title !== "string" || title.trim() === "") {
@@ -93,6 +105,26 @@ export async function POST(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
+  // preset_amounts: 숫자 배열만 허용
+  let presetAmountsClean: number[] | null = null;
+  if (Array.isArray(preset_amounts)) {
+    presetAmountsClean = preset_amounts
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (presetAmountsClean.length === 0) presetAmountsClean = null;
+  }
+
+  // pay_methods: 허용된 문자열 배열만
+  const ALLOWED_METHODS = ["card", "transfer", "cms", "manual"];
+  const payMethodsClean =
+    Array.isArray(pay_methods) && pay_methods.length > 0
+      ? pay_methods.filter((m): m is string => typeof m === "string" && ALLOWED_METHODS.includes(m))
+      : null;
+
+  const ALLOWED_DONATION_TYPE = ["regular", "onetime", "both"];
+  const donationTypeClean =
+    donation_type && ALLOWED_DONATION_TYPE.includes(donation_type) ? donation_type : "both";
+
   const insertData: Record<string, unknown> = {
     org_id: tenant.id,
     title: title.trim(),
@@ -102,6 +134,12 @@ export async function POST(req: NextRequest) {
     status: status ?? "draft",
     started_at: started_at ?? null,
     ended_at: ended_at ?? null,
+    thumbnail_url: thumbnail_url?.trim() || null,
+    donation_type: donationTypeClean,
+    preset_amounts: presetAmountsClean,
+    pay_methods: payMethodsClean ?? ["card"],
+    ga_tracking_id: ga_tracking_id?.trim() || null,
+    meta_pixel_id: meta_pixel_id?.trim() || null,
   };
 
   const { data: campaign, error } = await supabase
