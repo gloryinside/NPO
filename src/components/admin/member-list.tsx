@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MemberCsvImport } from "@/components/admin/member-csv-import";
 import {
   Dialog,
   DialogContent,
@@ -336,6 +337,7 @@ export function MemberList({
           <span className="text-sm text-[var(--muted-foreground)]">
             총 {total.toLocaleString("ko-KR")}명
           </span>
+          <MemberCsvImport />
           <a
             href={`/api/admin/export/members?${new URLSearchParams({
               ...(query ? { q: query } : {}),

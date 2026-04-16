@@ -4,6 +4,7 @@ import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generatePaymentCode, generateMemberCode } from "@/lib/codes";
 import { getOrgTossKeys } from "@/lib/toss/keys";
+import { sendOfflineDonationReceived } from "@/lib/email";
 
 /**
  * POST /api/donations/prepare
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle(),
     supabase
       .from("orgs")
-      .select("bank_name, bank_account, account_holder")
+      .select("name, bank_name, bank_account, account_holder")
       .eq("id", tenant.id)
       .maybeSingle(),
   ]);
@@ -232,6 +233,33 @@ export async function POST(req: NextRequest) {
 
   // 오프라인 결제: Toss 리디렉션 없이 계좌 안내 정보 반환
   if (isOfflineMethod) {
+    const org = orgData as {
+      name?: string;
+      bank_name?: string | null;
+      bank_account?: string | null;
+      account_holder?: string | null;
+    } | null;
+    const bankName = org?.bank_name ?? null;
+    const bankAccount = org?.bank_account ?? null;
+    const accountHolder = org?.account_holder ?? null;
+
+    // 접수 확인 이메일 (fire-and-forget)
+    if (email) {
+      sendOfflineDonationReceived({
+        to: email,
+        memberName: memberName.trim(),
+        orgName: org?.name ?? tenant.name,
+        campaignTitle: campaign.title,
+        amount,
+        paymentCode: payment.payment_code,
+        payMethod: (payMethod as "transfer" | "cms" | "manual") ?? "transfer",
+        donationType: (donationType as "onetime" | "regular") ?? "onetime",
+        bankName,
+        bankAccount,
+        accountHolder,
+      });
+    }
+
     return NextResponse.json({
       offline: true,
       payMethod: payMethod ?? "transfer",
@@ -241,9 +269,9 @@ export async function POST(req: NextRequest) {
       amount: payment.amount,
       orderName: campaign.title,
       memberName: memberName.trim(),
-      bankName: (orgData as { bank_name?: string | null } | null)?.bank_name ?? null,
-      bankAccount: (orgData as { bank_account?: string | null } | null)?.bank_account ?? null,
-      accountHolder: (orgData as { account_holder?: string | null } | null)?.account_holder ?? null,
+      bankName,
+      bankAccount,
+      accountHolder,
     });
   }
 

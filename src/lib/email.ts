@@ -116,6 +116,97 @@ export function sendDonationConfirmed(params: DonationConfirmedParams): void {
   });
 }
 
+export type OfflineDonationReceivedParams = {
+  to: string;
+  memberName: string;
+  orgName: string;
+  campaignTitle: string | null;
+  amount: number;
+  paymentCode: string;
+  payMethod: "transfer" | "cms" | "manual";
+  donationType: "onetime" | "regular";
+  bankName: string | null;
+  bankAccount: string | null;
+  accountHolder: string | null;
+};
+
+/**
+ * 오프라인 결제 접수 알림 — 계좌이체·CMS 신청 직후 발송.
+ * 관리자가 수동으로 납부 확인하면 이후 sendDonationConfirmed 가 발송된다.
+ * Fire-and-forget.
+ */
+export function sendOfflineDonationReceived(
+  params: OfflineDonationReceivedParams
+): void {
+  const {
+    to,
+    memberName,
+    orgName,
+    campaignTitle,
+    amount,
+    paymentCode,
+    payMethod,
+    donationType,
+    bankName,
+    bankAccount,
+    accountHolder,
+  } = params;
+
+  const methodLabel = payMethod === "cms" ? "CMS 자동이체" : "계좌이체";
+  const typeLabel = donationType === "regular" ? "정기 후원" : "일시 후원";
+  const hasBank = bankName || bankAccount;
+
+  const bankSection = hasBank
+    ? `
+    <div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:8px;padding:16px;margin:20px 0">
+      <p style="margin:0 0 10px;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:0.05em">입금 계좌 안내</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        ${bankName ? `<tr><td style="padding:4px 0;color:#666;width:30%">은행</td><td style="padding:4px 0">${bankName}</td></tr>` : ""}
+        ${bankAccount ? `<tr><td style="padding:4px 0;color:#666">계좌번호</td><td style="padding:4px 0;font-family:monospace">${bankAccount}</td></tr>` : ""}
+        ${accountHolder ? `<tr><td style="padding:4px 0;color:#666">예금주</td><td style="padding:4px 0">${accountHolder}</td></tr>` : ""}
+      </table>
+      <p style="margin:12px 0 0;font-size:12px;color:#666">입금자 명에 이름(${memberName})을 기재해 주세요.</p>
+    </div>`
+    : `<p style="font-size:13px;color:#666;margin:20px 0">담당자가 연락하여 입금 안내를 드릴 예정입니다.</p>`;
+
+  const cmsNote =
+    payMethod === "cms"
+      ? `<p style="font-size:13px;color:#666;margin:12px 0">CMS 자동이체는 신청 접수 후 담당자가 이체 동의서를 안내해 드립니다.</p>`
+      : "";
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>후원 신청 접수</title></head>
+<body style="font-family:sans-serif;color:#111;max-width:480px;margin:0 auto;padding:24px">
+  <h2 style="margin-bottom:4px">${orgName}</h2>
+  <p style="color:#666;margin-top:0">${methodLabel} 신청이 접수되었습니다.</p>
+  <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+  <table style="width:100%;border-collapse:collapse;font-size:14px">
+    <tr><td style="padding:6px 0;color:#666;width:40%">후원자</td><td style="padding:6px 0">${memberName}</td></tr>
+    <tr><td style="padding:6px 0;color:#666">캠페인</td><td style="padding:6px 0">${campaignTitle ?? "일반 후원"}</td></tr>
+    <tr><td style="padding:6px 0;color:#666">후원 유형</td><td style="padding:6px 0">${typeLabel}</td></tr>
+    <tr><td style="padding:6px 0;color:#666">결제 수단</td><td style="padding:6px 0">${methodLabel}</td></tr>
+    <tr><td style="padding:6px 0;color:#666">신청 금액</td><td style="padding:6px 0;font-weight:600">${fmt(amount)}</td></tr>
+    <tr><td style="padding:6px 0;color:#666">접수번호</td><td style="padding:6px 0;font-family:monospace;font-size:12px">${paymentCode}</td></tr>
+  </table>
+  ${bankSection}
+  ${cmsNote}
+  <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+  <p style="font-size:12px;color:#999">입금 확인 후 후원 완료 메일이 추가로 발송됩니다.</p>
+</body>
+</html>`;
+
+  sendEmail({
+    from: fromAddress(orgName),
+    to,
+    subject: `[${orgName}] ${methodLabel} 후원 신청이 접수되었습니다`,
+    html,
+  }).catch((err) => {
+    console.error("[email] sendOfflineDonationReceived failed:", err);
+  });
+}
+
 export type ReceiptIssuedParams = {
   to: string;
   memberName: string;

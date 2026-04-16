@@ -36,3 +36,61 @@ export function csvHeaders(filename: string): HeadersInit {
     "Cache-Control": "no-store",
   };
 }
+
+/**
+ * CSV 텍스트를 2차원 배열로 파싱. RFC 4180 기본 규칙 지원:
+ * - 따옴표로 감싼 필드 안의 `""` → `"`
+ * - 따옴표 필드 안의 쉼표·개행 허용
+ * - UTF-8 BOM 자동 제거
+ *
+ * 엑셀 호환 입력을 전제로 한 최소 구현. 이스케이프·복잡 스키마는 미지원.
+ */
+export function parseCsv(text: string): string[][] {
+  // Strip UTF-8 BOM
+  const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  const rows: string[][] = [];
+  let field = "";
+  let row: string[] = [];
+  let inQuotes = false;
+
+  for (let i = 0; i < normalized.length; i++) {
+    const ch = normalized[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        if (normalized[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += ch;
+    }
+  }
+
+  // flush 마지막 셀/행
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  // 완전 빈 행 제거
+  return rows.filter((r) => r.some((c) => c.trim() !== ""));
+}

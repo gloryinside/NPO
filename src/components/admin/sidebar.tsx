@@ -57,6 +57,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: "기관 설정", href: "/admin/settings" },
       { label: "사용자 관리", href: "/admin/users" },
+      { label: "감사 로그", href: "/admin/audit-logs" },
     ],
   },
 ];

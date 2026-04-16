@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logAudit, type AuditAction } from "@/lib/audit";
 
 /**
  * PATCH /api/admin/promises/[id]
@@ -15,7 +16,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireAdminUser();
+  const user = await requireAdminUser();
   const tenant = await requireTenant();
   const { id } = await params;
 
@@ -102,6 +103,38 @@ export async function PATCH(
       { error: "약정을 찾을 수 없습니다." },
       { status: 404 }
     );
+
+  // 감사 로그 — 상태 변경만 기록 (amount 단일 변경은 noise)
+  if (status) {
+    const actionMap: Record<string, AuditAction> = {
+      suspended: "promise.suspend",
+      active: "promise.resume",
+      cancelled: "promise.cancel",
+      completed: "promise.cancel",
+    };
+    const action = actionMap[status];
+    if (action) {
+      const summary =
+        status === "cancelled"
+          ? `약정 해지${cancelReason ? ` (${cancelReason})` : ""}`
+          : status === "suspended"
+          ? `약정 일시중지${suspendedUntil ? ` (~${suspendedUntil})` : ""}`
+          : status === "active"
+          ? "약정 재개"
+          : "약정 완료";
+
+      await logAudit({
+        orgId: tenant.id,
+        actorId: user.id,
+        actorEmail: user.email ?? null,
+        action,
+        resourceType: "promise",
+        resourceId: id,
+        summary,
+        metadata: { status, cancelReason, suspendedUntil },
+      });
+    }
+  }
 
   return NextResponse.json({ promise: data });
 }

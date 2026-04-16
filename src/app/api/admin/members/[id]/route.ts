@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -89,7 +90,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
  * 후원자 기본정보 업데이트
  */
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  await requireAdminUser();
+  const user = await requireAdminUser();
 
   const { id } = await params;
 
@@ -172,6 +173,20 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data)
     return NextResponse.json({ error: "후원자를 찾을 수 없습니다." }, { status: 404 });
+
+  // 감사 로그 — 상태 변경 시만 (일반 필드 수정은 noise)
+  if (status !== undefined) {
+    await logAudit({
+      orgId: tenant.id,
+      actorId: user.id,
+      actorEmail: user.email ?? null,
+      action: "member.update",
+      resourceType: "member",
+      resourceId: id,
+      summary: `후원자 상태 변경: ${status}`,
+      metadata: { status, name: data.name },
+    });
+  }
 
   return NextResponse.json({ member: data });
 }

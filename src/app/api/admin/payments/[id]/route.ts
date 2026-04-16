@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logAudit } from "@/lib/audit";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 const ALLOWED_PAY_STATUS = ["paid", "unpaid", "failed", "cancelled", "refunded", "pending"] as const;
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  await requireAdminUser();
+  const user = await requireAdminUser();
 
   const { id } = await params;
 
@@ -87,6 +88,40 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // 감사 로그 — 상태 전환만 기록
+  if (pay_status === "paid") {
+    await logAudit({
+      orgId: tenant.id,
+      actorId: user.id,
+      actorEmail: user.email ?? null,
+      action: "payment.mark_paid",
+      resourceType: "payment",
+      resourceId: id,
+      summary: "수기 납부완료 처리",
+      metadata: { deposit_date: update.deposit_date },
+    });
+  } else if (pay_status === "unpaid") {
+    await logAudit({
+      orgId: tenant.id,
+      actorId: user.id,
+      actorEmail: user.email ?? null,
+      action: "payment.retry_cms",
+      resourceType: "payment",
+      resourceId: id,
+      summary: "CMS 재출금 예약 (unpaid 초기화)",
+    });
+  } else if (income_status === "confirmed") {
+    await logAudit({
+      orgId: tenant.id,
+      actorId: user.id,
+      actorEmail: user.email ?? null,
+      action: "payment.confirm_income",
+      resourceType: "payment",
+      resourceId: id,
+      summary: "수입 확정 처리",
+    });
   }
 
   return NextResponse.json({ payment });
