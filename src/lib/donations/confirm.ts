@@ -157,11 +157,14 @@ async function sendDonationConfirmedEmail(
   try {
     // Fetch member email + name, org name, campaign title in parallel
     const [memberRes, orgRes, campaignRes] = await Promise.all([
-      supabase
-        .from("members")
-        .select("name, email")
-        .eq("org_id", payment.org_id)
-        .maybeSingle(),
+      payment.member_id
+        ? supabase
+            .from("members")
+            .select("name, email")
+            .eq("org_id", payment.org_id)
+            .eq("id", payment.member_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
       supabase
         .from("orgs")
         .select("name")

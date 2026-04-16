@@ -246,6 +246,13 @@ export async function POST(req: NextRequest) {
   const wantsReceipt = receiptOptIn === true;
   const rawRrn = typeof residentNo === "string" ? residentNo.replace(/-/g, "").trim() : "";
   if (wantsReceipt && rawRrn) {
+    // 주민등록번호 형식 검증: 정확히 13자리 숫자
+    if (!/^\d{13}$/.test(rawRrn)) {
+      return NextResponse.json(
+        { error: "주민등록번호는 13자리 숫자여야 합니다." },
+        { status: 400 }
+      );
+    }
     const encKey = process.env.RECEIPTS_ENCRYPTION_KEY;
     if (!encKey) {
       return NextResponse.json(

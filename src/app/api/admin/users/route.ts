@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
+import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -36,6 +37,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   await requireAdminUser();
 
+  let tenant;
+  try {
+    tenant = await requireTenant();
+  } catch {
+    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -49,9 +57,9 @@ export async function POST(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
-  // inviteUserByEmail: 이메일로 초대 링크 발송 + user_metadata.role='admin' 설정
+  // inviteUserByEmail: 이메일로 초대 링크 발송 + user_metadata에 role='admin' + org_id 설정
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { role: "admin" },
+    data: { role: "admin", org_id: tenant.id },
   });
 
   if (error) {

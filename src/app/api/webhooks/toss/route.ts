@@ -109,9 +109,15 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+  } else if (process.env.NODE_ENV === "production") {
+    // 프로덕션에서 webhook secret 미설정 시 거부 (보안 강화)
+    return NextResponse.json(
+      { error: "Webhook secret not configured" },
+      { status: 401 }
+    );
   } else {
     console.warn(
-      `[toss-webhook] org ${payment.org_id} 에 webhook secret 이 없어 서명 검증을 건너뜁니다.`
+      `[toss-webhook] org ${payment.org_id} 에 webhook secret 이 없어 서명 검증을 건너뜁니다 (개발 환경).`
     );
   }
 
