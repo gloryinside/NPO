@@ -15,8 +15,14 @@ import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
  * 즉, 검증 이전에 DB 조회를 한다는 tradeoff 가 있다 — 대상 org 가 존재하지 않으면
  * 서명 검증 없이도 그냥 200 으로 흘려보낸다 (Toss 재시도 방지).
  *
- * 서명 스펙: 현재는 TOSS_WEBHOOK_SECRET 기반 HMAC-SHA256 (placeholder).
- * Toss 실제 webhook 서명 형식은 Phase 2 에서 맞춰 교체 예정. (TODO)
+ * 서명 스펙: org_secrets.toss_webhook_secret 기반 HMAC-SHA256.
+ *   - 헤더 이름: TossPayments-Signature / tosspayments-signature / x-toss-signature
+ *   - 값 형식: base64(hmac_sha256(rawBody, secret)) 또는 "sha256=<hex>"
+ *   - 비교: timingSafeEqual
+ *   - secret 미설정 시: 프로덕션은 401 거부 / 개발은 경고 후 통과
+ *
+ * 주의: Toss 공식 Webhook은 현재 서명 헤더를 제공하지 않고 IP 화이트리스트를 권장.
+ * 본 구현은 자체 proxy/relay를 통과하는 webhook을 HMAC 으로 보호하는 용도.
  */
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -93,15 +99,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const expected = crypto
+    // 허용 형식 1: base64(hmac_sha256)
+    // 허용 형식 2: "sha256=<hex>" (GitHub/Stripe 스타일)
+    const digestBuffer = crypto
       .createHmac("sha256", tossWebhookSecret)
       .update(rawBody)
-      .digest("base64");
+      .digest();
+    const expectedBase64 = digestBuffer.toString("base64");
+    const expectedHex = digestBuffer.toString("hex");
 
-    const a = Buffer.from(expected);
-    const b = Buffer.from(signatureHeader);
-    const valid =
-      a.length === b.length && crypto.timingSafeEqual(a, b);
+    const normalized = signatureHeader.startsWith("sha256=")
+      ? signatureHeader.slice(7)
+      : signatureHeader;
+
+    const candidates = [expectedBase64, expectedHex];
+    const receivedBuf = Buffer.from(normalized);
+    const valid = candidates.some((expected) => {
+      const expBuf = Buffer.from(expected);
+      return (
+        expBuf.length === receivedBuf.length &&
+        crypto.timingSafeEqual(expBuf, receivedBuf)
+      );
+    });
 
     if (!valid) {
       return NextResponse.json(

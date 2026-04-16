@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generatePaymentCode, generateMemberCode } from "@/lib/codes";
 import { getOrgTossKeys } from "@/lib/toss/keys";
 import { sendOfflineDonationReceived } from "@/lib/email";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/donations/prepare
@@ -18,6 +19,21 @@ import { sendOfflineDonationReceived } from "@/lib/email";
  * 동시 요청에서 경쟁 조건이 있을 수 있다. Phase 1 용 수준으로 허용.
  */
 export async function POST(req: NextRequest) {
+  // Rate limit: IP 당 분당 10회
+  const ip = getClientIp(req.headers);
+  const limit = rateLimit(`donations:prepare:${ip}`, 10, 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)),
+        },
+      }
+    );
+  }
+
   const tenant = await getTenant();
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
@@ -92,7 +108,10 @@ export async function POST(req: NextRequest) {
   const supabase = createSupabaseAdminClient();
 
   // 1. 캠페인 검증 (테넌트 + active 필수) + 기관 계좌 정보 병렬 조회
-  const [{ data: campaign, error: campaignError }, { data: orgData }] = await Promise.all([
+  const [
+    { data: campaign, error: campaignError },
+    { data: orgData, error: orgError },
+  ] = await Promise.all([
     supabase
       .from("campaigns")
       .select("id, org_id, title, status, form_settings")
@@ -108,8 +127,16 @@ export async function POST(req: NextRequest) {
   ]);
 
   if (campaignError) {
+    console.error("[donations/prepare] campaign lookup failed:", campaignError.message);
     return NextResponse.json(
-      { error: campaignError.message },
+      { error: "캠페인 정보를 조회할 수 없습니다." },
+      { status: 500 }
+    );
+  }
+  if (orgError) {
+    console.error("[donations/prepare] org lookup failed:", orgError.message);
+    return NextResponse.json(
+      { error: "기관 정보를 조회할 수 없습니다." },
       { status: 500 }
     );
   }
@@ -181,8 +208,9 @@ export async function POST(req: NextRequest) {
       .eq("org_id", tenant.id);
 
     if (memberCountError) {
+      console.error("[donations/prepare] member count:", memberCountError.message);
       return NextResponse.json(
-        { error: memberCountError.message },
+        { error: "후원자 정보 조회 실패" },
         { status: 500 }
       );
     }
@@ -203,8 +231,9 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (memberInsertError || !newMember) {
+      console.error("[donations/prepare] member insert:", memberInsertError?.message);
       return NextResponse.json(
-        { error: memberInsertError?.message ?? "후원자 생성 실패" },
+        { error: "후원자 생성 실패" },
         { status: 500 }
       );
     }
@@ -223,8 +252,9 @@ export async function POST(req: NextRequest) {
     .lt("created_at", yearEnd);
 
   if (paymentCountError) {
+    console.error("[donations/prepare] payment count:", paymentCountError.message);
     return NextResponse.json(
-      { error: paymentCountError.message },
+      { error: "결제 정보 조회 실패" },
       { status: 500 }
     );
   }
@@ -297,8 +327,9 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (paymentInsertError || !payment) {
+    console.error("[donations/prepare] payment insert:", paymentInsertError?.message);
     return NextResponse.json(
-      { error: paymentInsertError?.message ?? "결제 준비 실패" },
+      { error: "결제 준비 실패" },
       { status: 500 }
     );
   }

@@ -1,32 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRequestClient } from '@/lib/supabase/request-client';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { requireAdminOrgForBuilder } from '@/lib/auth/builder-guard';
 
 type RouteContext = { params: Promise<{ id: string; assetId: string }> };
 
 export async function DELETE(req: NextRequest, { params }: RouteContext) {
   const { id, assetId } = await params;
-  const sb = createRequestClient(req);
-
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  const { data: member } = await sb
-    .from('members')
-    .select('org_id')
-    .eq('supabase_uid', user.id)
-    .single();
-  if (!member) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  const guard = await requireAdminOrgForBuilder(req, { campaignId: id });
+  if (!guard.ok) return guard.response;
 
   const admin = createSupabaseAdminClient();
 
   const { data: campaign } = await admin
     .from('campaigns')
-    .select('org_id, page_content, published_content')
+    .select('page_content, published_content')
     .eq('id', id)
     .single();
-  if (!campaign || campaign.org_id !== member.org_id) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!campaign) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
   // Guard: check if assetId is referenced in page_content or published_content

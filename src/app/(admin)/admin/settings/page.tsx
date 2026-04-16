@@ -1,14 +1,13 @@
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { decryptSecret, maskPlaintext } from "@/lib/secrets/crypto";
 import { TossSettingsForm } from "@/components/admin/toss-settings-form";
 import { OrgProfileForm } from "@/components/admin/org-profile-form";
 import { ErpSettingsForm } from "@/components/admin/erp-settings-form";
 
 function maskSecret(value: string | null): string | null {
-  if (!value) return null;
-  if (value.length <= 8) return "••••";
-  return value.slice(0, 8) + "••••" + value.slice(-4);
+  return value ? maskPlaintext(value) : null;
 }
 
 export default async function SettingsPage() {
@@ -33,7 +32,9 @@ export default async function SettingsPage() {
   const [{ data: secretsData }, { data: orgData }] = await Promise.all([
     supabase
       .from("org_secrets")
-      .select("toss_client_key, toss_secret_key, toss_webhook_secret, erp_api_key, erp_webhook_url")
+      .select(
+        "toss_client_key_enc, toss_secret_key_enc, toss_webhook_secret_enc, erp_api_key_enc, erp_webhook_url"
+      )
       .eq("org_id", tenantId)
       .maybeSingle(),
     supabase
@@ -45,14 +46,28 @@ export default async function SettingsPage() {
       .single(),
   ]);
 
+  const secretsRow = secretsData as
+    | {
+        toss_client_key_enc?: string | null;
+        toss_secret_key_enc?: string | null;
+        toss_webhook_secret_enc?: string | null;
+        erp_api_key_enc?: string | null;
+        erp_webhook_url?: string | null;
+      }
+    | null;
+
+  const [tossClientPlain, tossSecretPlain, tossWebhookPlain, erpApiPlain] =
+    await Promise.all([
+      decryptSecret(secretsRow?.toss_client_key_enc ?? null),
+      decryptSecret(secretsRow?.toss_secret_key_enc ?? null),
+      decryptSecret(secretsRow?.toss_webhook_secret_enc ?? null),
+      decryptSecret(secretsRow?.erp_api_key_enc ?? null),
+    ]);
+
   const initialToss = {
-    tossClientKey: (secretsData?.toss_client_key as string | null) ?? null,
-    tossSecretKeyMasked: maskSecret(
-      (secretsData?.toss_secret_key as string | null) ?? null
-    ),
-    tossWebhookSecretMasked: maskSecret(
-      (secretsData?.toss_webhook_secret as string | null) ?? null
-    ),
+    tossClientKey: tossClientPlain,
+    tossSecretKeyMasked: maskSecret(tossSecretPlain),
+    tossWebhookSecretMasked: maskSecret(tossWebhookPlain),
   };
 
   const initialOrg = {
@@ -109,12 +124,8 @@ export default async function SettingsPage() {
           Webhook URL을 설정하면 납입 확정 시 실시간으로 ERP에 알림이 전송됩니다.
         </p>
         <ErpSettingsForm
-          erpApiKeyMasked={maskSecret(
-            (secretsData as { erp_api_key?: string | null } | null)?.erp_api_key ?? null
-          )}
-          erpWebhookUrl={
-            (secretsData as { erp_webhook_url?: string | null } | null)?.erp_webhook_url ?? null
-          }
+          erpApiKeyMasked={maskSecret(erpApiPlain)}
+          erpWebhookUrl={secretsRow?.erp_webhook_url ?? null}
         />
       </section>
     </div>

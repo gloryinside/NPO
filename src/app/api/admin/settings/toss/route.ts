@@ -3,18 +3,43 @@ import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
-
-function maskSecret(value: string | null): string | null {
-  if (!value) return null;
-  if (value.length <= 8) return "••••";
-  return value.slice(0, 8) + "••••" + value.slice(-4);
-}
+import { decryptSecret, encryptSecret, maskPlaintext } from "@/lib/secrets/crypto";
 
 type TossSettingsResponse = {
   tossClientKey: string | null;
   tossSecretKeyMasked: string | null;
   tossWebhookSecretMasked: string | null;
 };
+
+type SecretsRow = {
+  toss_client_key_enc: string | null;
+  toss_secret_key_enc: string | null;
+  toss_webhook_secret_enc: string | null;
+};
+
+async function loadResponse(orgId: string): Promise<TossSettingsResponse | { error: string }> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("org_secrets")
+    .select("toss_client_key_enc, toss_secret_key_enc, toss_webhook_secret_enc")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (error) return { error: error.message };
+
+  const row = data as SecretsRow | null;
+  const [clientKey, secretKey, webhookSecret] = await Promise.all([
+    decryptSecret(row?.toss_client_key_enc ?? null),
+    decryptSecret(row?.toss_secret_key_enc ?? null),
+    decryptSecret(row?.toss_webhook_secret_enc ?? null),
+  ]);
+
+  return {
+    tossClientKey: clientKey,
+    tossSecretKeyMasked: secretKey ? maskPlaintext(secretKey) : null,
+    tossWebhookSecretMasked: webhookSecret ? maskPlaintext(webhookSecret) : null,
+  };
+}
 
 export async function GET() {
   await requireAdminUser();
@@ -26,28 +51,11 @@ export async function GET() {
     return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("org_secrets")
-    .select("toss_client_key, toss_secret_key, toss_webhook_secret")
-    .eq("org_id", tenant.id)
-    .maybeSingle();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const result = await loadResponse(tenant.id);
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
-
-  const response: TossSettingsResponse = {
-    tossClientKey: (data?.toss_client_key as string | null) ?? null,
-    tossSecretKeyMasked: maskSecret(
-      (data?.toss_secret_key as string | null) ?? null
-    ),
-    tossWebhookSecretMasked: maskSecret(
-      (data?.toss_webhook_secret as string | null) ?? null
-    ),
-  };
-
-  return NextResponse.json(response);
+  return NextResponse.json(result);
 }
 
 export async function PATCH(req: NextRequest) {
@@ -67,38 +75,46 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const updates: Record<string, string | null> = {};
-
   function normalize(value: unknown): string | null {
     if (value === null) return null;
     if (typeof value !== "string") return null;
-    // Empty string → clear (null). Otherwise trim and store.
     const trimmed = value.trim();
     if (trimmed === "") return null;
     return trimmed;
   }
 
-  if ("tossClientKey" in body) {
-    updates.toss_client_key = normalize(body.tossClientKey);
-  }
-  if ("tossSecretKey" in body) {
-    updates.toss_secret_key = normalize(body.tossSecretKey);
-  }
-  if ("tossWebhookSecret" in body) {
-    updates.toss_webhook_secret = normalize(body.tossWebhookSecret);
+  // 암호화 대상 필드를 순회하며 *_enc 컬럼으로 변환
+  const updates: Record<string, string | null> = {};
+  const fieldMap: Array<[string, keyof SecretsRow]> = [
+    ["tossClientKey", "toss_client_key_enc"],
+    ["tossSecretKey", "toss_secret_key_enc"],
+    ["tossWebhookSecret", "toss_webhook_secret_enc"],
+  ];
+
+  for (const [bodyKey, dbColumn] of fieldMap) {
+    if (!(bodyKey in body)) continue;
+    const plain = normalize(body[bodyKey]);
+    if (plain === null) {
+      updates[dbColumn] = null;
+    } else {
+      try {
+        updates[dbColumn] = await encryptSecret(plain);
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error:
+              err instanceof Error ? err.message : "시크릿 암호화에 실패했습니다.",
+          },
+          { status: 500 }
+        );
+      }
+    }
   }
 
   const supabase = createSupabaseAdminClient();
-
-  // Upsert so the first save inserts the row and subsequent saves update it.
-  const upsertPayload = {
-    org_id: tenant.id,
-    ...updates,
-  };
-
   const { error: upsertError } = await supabase
     .from("org_secrets")
-    .upsert(upsertPayload, { onConflict: "org_id" });
+    .upsert({ org_id: tenant.id, ...updates }, { onConflict: "org_id" });
 
   if (upsertError) {
     return NextResponse.json(
@@ -106,27 +122,6 @@ export async function PATCH(req: NextRequest) {
       { status: 500 }
     );
   }
-
-  // Read back the current row so the response is always in sync with DB.
-  const { data, error: readError } = await supabase
-    .from("org_secrets")
-    .select("toss_client_key, toss_secret_key, toss_webhook_secret")
-    .eq("org_id", tenant.id)
-    .maybeSingle();
-
-  if (readError) {
-    return NextResponse.json({ error: readError.message }, { status: 500 });
-  }
-
-  const response: TossSettingsResponse = {
-    tossClientKey: (data?.toss_client_key as string | null) ?? null,
-    tossSecretKeyMasked: maskSecret(
-      (data?.toss_secret_key as string | null) ?? null
-    ),
-    tossWebhookSecretMasked: maskSecret(
-      (data?.toss_webhook_secret as string | null) ?? null
-    ),
-  };
 
   // 감사 로그
   void logAudit({
@@ -139,5 +134,9 @@ export async function PATCH(req: NextRequest) {
     metadata: { fields_updated: Object.keys(updates) },
   });
 
-  return NextResponse.json(response);
+  const result = await loadResponse(tenant.id);
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
+  }
+  return NextResponse.json(result);
 }

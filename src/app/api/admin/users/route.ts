@@ -14,15 +14,26 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export async function GET() {
   await requireAdminUser();
 
+  let tenant;
+  try {
+    tenant = await requireTenant();
+  } catch {
+    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+  }
+
   const supabase = createSupabaseAdminClient();
 
-  // Supabase Admin API로 전체 유저 조회 후 role=admin 필터
+  // Supabase Admin API로 전체 유저 조회 후 role=admin 이면서 현재 테넌트 소속만 필터
   const { data, error } = await supabase.auth.admin.listUsers();
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
 
   const admins = (data.users ?? [])
-    .filter((u) => u.user_metadata?.role === "admin")
+    .filter(
+      (u) =>
+        u.user_metadata?.role === "admin" &&
+        u.user_metadata?.org_id === tenant.id
+    )
     .map((u) => ({
       id: u.id,
       email: u.email,
@@ -83,12 +94,32 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   await requireAdminUser();
 
+  let tenant;
+  try {
+    tenant = await requireTenant();
+  } catch {
+    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+  }
+
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId)
     return NextResponse.json({ error: "userId 필수" }, { status: 400 });
 
   const supabase = createSupabaseAdminClient();
+
+  // 삭제 전 해당 유저가 현재 테넌트 소속인지 확인
+  const { data: targetUser } = await supabase.auth.admin.getUserById(userId);
+  if (
+    !targetUser?.user ||
+    targetUser.user.user_metadata?.org_id !== tenant.id
+  ) {
+    return NextResponse.json(
+      { error: "해당 사용자는 이 기관에 속하지 않습니다." },
+      { status: 403 }
+    );
+  }
+
   const { error } = await supabase.auth.admin.deleteUser(userId);
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });

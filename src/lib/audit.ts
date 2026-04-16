@@ -12,6 +12,7 @@ export type AuditAction =
   // 후원자
   | "member.create"
   | "member.update"
+  | "member.update_id_number"
   | "member.delete"
   // 약정
   | "promise.create"
@@ -39,6 +40,25 @@ export type AuditAction =
   | "user.invite"
   | "user.delete";
 
+/**
+ * action별 metadata 필드 권장 스키마 (런타임 강제는 안 함, 조회 시 참조).
+ *
+ * - member.create / member.update:  { name?, status? }
+ * - member.update_id_number:         { id_number_updated: true, name? }
+ * - member.delete:                   { name, reason? }
+ * - promise.create / update:         { amount?, type?, status? }
+ * - promise.suspend / resume:        { previous_status, reason? }
+ * - promise.cancel:                  { reason, cancelled_at }
+ * - payment.mark_paid / mark_unpaid: { amount?, payment_code? }
+ * - payment.retry_cms:               { attempt_count, failure_reason }
+ * - payment.confirm_income:          { income_status }
+ * - campaign.create / update / delete: { title?, changes? }
+ * - receipt.issue:                   { receipt_code, year, total_amount }
+ * - receipt.nts_export:              { memberId?, year? }
+ * - settings.update_toss / update_erp / update_org: { fields_updated: string[] }
+ * - user.invite:                     { email }
+ * - user.delete:                     { email, reason? }
+ */
 export type AuditLogInput = {
   orgId: string;
   actorId?: string | null;

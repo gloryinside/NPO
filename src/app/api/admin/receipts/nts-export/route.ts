@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import iconv from "iconv-lite";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -15,6 +16,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  *  T (트레일러): 1건 — 합계
  *
  * ⚠️ 실제 국세청 제출 전 관할 세무서/홈택스 기술명세 최종 확인 필요.
+ *   - 귀속연도별 명세 변경 가능성 (매년 확인)
+ *   - 기부자 관계(배우자/부양가족) 필드 추가 여부
+ *   - 지정/비지정 기부금 구분 코드
+ *   - 사업자번호/주민번호 체크섬 검증
+ *   - 현재 구현은 2024년 기준 100바이트 H/D/T 레코드로 최소 필드만 포함.
  */
 export async function GET(req: NextRequest) {
   await requireAdminUser();
@@ -58,7 +64,7 @@ export async function GET(req: NextRequest) {
     .from("receipts")
     .select(
       `id, receipt_code, year, total_amount, issued_at,
-       members!inner(id, name, id_number, phone)`
+       members!inner(id, name, id_number_encrypted, phone)`
     )
     .eq("org_id", tenant.id)
     .eq("year", year)
@@ -77,12 +83,21 @@ export async function GET(req: NextRequest) {
     members: {
       id: string;
       name: string;
-      id_number: string | null;
+      id_number_encrypted: string | null;
       phone: string | null;
     } | null;
   };
 
   const receipts = (receiptsRaw as unknown as ReceiptRow[]) ?? [];
+
+  // 주민번호 복호화 키
+  const encKey = process.env.RECEIPTS_ENCRYPTION_KEY;
+  if (!encKey) {
+    return NextResponse.json(
+      { error: "주민번호 복호화 키(RECEIPTS_ENCRYPTION_KEY)가 설정되지 않았습니다." },
+      { status: 500 }
+    );
+  }
 
   // 3) 전산파일 생성
   const lines: string[] = [];
@@ -110,8 +125,20 @@ export async function GET(req: NextRequest) {
     const member = r.members;
     if (!member) continue;
 
-    // 주민번호 없으면 건너뜀 (국세청 제출 불가)
-    const idNumber = (member.id_number ?? "").replace(/-/g, "");
+    // 암호화된 주민번호 복호화 (없으면 건너뜀 — 국세청 제출 불가)
+    if (!member.id_number_encrypted) continue;
+    const { data: decrypted, error: decErr } = await supabase.rpc(
+      "decrypt_id_number",
+      { ciphertext: member.id_number_encrypted, passphrase: encKey }
+    );
+    if (decErr) {
+      console.error(
+        `[nts-export] decrypt_id_number failed for member ${member.id}:`,
+        decErr.message
+      );
+      continue;
+    }
+    const idNumber = ((decrypted as string | null) ?? "").replace(/-/g, "");
     if (!idNumber || idNumber.length !== 13) continue;
 
     const donorName = padEndKr(member.name ?? "", 20);
@@ -145,16 +172,15 @@ export async function GET(req: NextRequest) {
   ].join("");
   lines.push(trailer);
 
-  // 4) 포맷 검증 — 모든 레코드는 정확히 100 바이트(UTF-8 ASCII 범위)여야 한다.
-  //    한글이 포함된 경우 EUC-KR 인코딩 기준이지만 여기서는 UTF-8 문자 수로 검증.
+  // 4) 포맷 검증 — 모든 레코드는 정확히 100 바이트(EUC-KR) 여야 한다.
   const EXPECTED_LINE_LENGTH = 100;
   const formatErrors: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const len = lines[i].length;
+    const len = eucKrByteLength(lines[i]);
     if (len !== EXPECTED_LINE_LENGTH) {
       const type = lines[i][0];
       formatErrors.push(
-        `레코드 ${i + 1} (타입=${type}) 길이 불일치: 기대=${EXPECTED_LINE_LENGTH}, 실제=${len}`
+        `레코드 ${i + 1} (타입=${type}) 길이 불일치: 기대=${EXPECTED_LINE_LENGTH}바이트, 실제=${len}바이트`
       );
     }
   }
@@ -169,13 +195,15 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const content = lines.join("\r\n");
+  // EUC-KR 인코딩으로 최종 출력 (국세청 명세 준수)
+  const text = lines.join("\r\n");
+  const eucKrBuffer = iconv.encode(text, "euc-kr");
   const filename = `nts_donation_${year}_${submitDate}.txt`;
 
-  return new NextResponse(content, {
+  return new NextResponse(new Uint8Array(eucKrBuffer), {
     status: 200,
     headers: {
-      "Content-Type": "text/plain; charset=utf-8",
+      "Content-Type": "text/plain; charset=euc-kr",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
       "X-NTS-Year": String(year),
@@ -196,11 +224,26 @@ function toDateStr(d: Date): string {
 }
 
 /**
- * 한글 포함 문자열을 바이트 기준이 아닌 문자 수 기준으로 우측 패딩.
- * 실제 EUC-KR 고정길이 파일에선 바이트 단위 패딩이 필요하지만
- * 여기서는 UTF-8 텍스트 반환이므로 문자 수 기준으로 처리.
+ * 국세청 전산매체 명세에 맞춰 EUC-KR 바이트 기준 우측 공백 패딩.
+ * 한글 한 글자 = 2바이트(EUC-KR). 길이 초과 시 바이트 단위 절단.
  */
-function padEndKr(str: string, len: number): string {
-  if (str.length >= len) return str.slice(0, len);
-  return str + " ".repeat(len - str.length);
+function padEndKr(str: string, byteLen: number): string {
+  const encoded = iconv.encode(str, "euc-kr");
+  if (encoded.length >= byteLen) {
+    // 정확히 byteLen 바이트로 절단. 한글 중간에 잘리면 마지막 바이트를 공백으로 치환.
+    const truncated = encoded.subarray(0, byteLen);
+    // 한글이 중간에 잘렸는지 확인: 마지막 바이트가 EUC-KR 고위 영역(0xA1-0xFE)이면
+    // 짝이 안 맞을 수 있으므로 재디코딩 후 재인코딩.
+    const reDecoded = iconv.decode(truncated, "euc-kr");
+    const reEncoded = iconv.encode(reDecoded, "euc-kr");
+    if (reEncoded.length === byteLen) return reDecoded;
+    // 1바이트 부족하면 공백으로 패딩
+    return reDecoded + " ".repeat(byteLen - reEncoded.length);
+  }
+  return str + " ".repeat(byteLen - encoded.length);
+}
+
+/** EUC-KR 바이트 길이 계산. */
+function eucKrByteLength(str: string): number {
+  return iconv.encode(str, "euc-kr").length;
 }

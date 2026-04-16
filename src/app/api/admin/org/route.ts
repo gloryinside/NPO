@@ -78,6 +78,21 @@ export async function PATCH(req: NextRequest) {
   if ("name" in update && (typeof update.name !== "string" || !update.name.trim()))
     return NextResponse.json({ error: "기관명은 필수입니다." }, { status: 400 });
 
+  // business_no 형식 검증: "-" 제거 후 10자리 숫자
+  if ("business_no" in update && update.business_no !== null && update.business_no !== "") {
+    const raw =
+      typeof update.business_no === "string"
+        ? update.business_no.replace(/-/g, "").trim()
+        : "";
+    if (!/^\d{10}$/.test(raw)) {
+      return NextResponse.json(
+        { error: "사업자등록번호는 10자리 숫자여야 합니다." },
+        { status: 400 }
+      );
+    }
+    update.business_no = raw;
+  }
+
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("orgs")

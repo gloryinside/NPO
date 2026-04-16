@@ -117,6 +117,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     status,
     joinPath,
     note,
+    idNumber,
   } = body as {
     name?: string;
     phone?: string | null;
@@ -126,6 +127,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     status?: string;
     joinPath?: string | null;
     note?: string | null;
+    idNumber?: string | null;
   };
 
   const ALLOWED_STATUS = ["active", "inactive", "deceased"];
@@ -156,11 +158,44 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (joinPath !== undefined) update.join_path = joinPath?.trim() || null;
   if (note !== undefined) update.note = note?.trim() || null;
 
-  if (Object.keys(update).length <= 1) {
+  if (Object.keys(update).length <= 1 && idNumber === undefined) {
     return NextResponse.json({ error: "수정할 항목이 없습니다." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdminClient();
+
+  // 주민등록번호 암호화 처리 (선택 필드)
+  if (idNumber !== undefined) {
+    if (idNumber === null || idNumber.trim() === "") {
+      update.id_number_encrypted = null;
+    } else {
+      const raw = idNumber.replace(/-/g, "").trim();
+      if (!/^\d{13}$/.test(raw)) {
+        return NextResponse.json(
+          { error: "주민등록번호는 13자리 숫자여야 합니다." },
+          { status: 400 }
+        );
+      }
+      const encKey = process.env.RECEIPTS_ENCRYPTION_KEY;
+      if (!encKey) {
+        return NextResponse.json(
+          { error: "RRN 암호화 키(RECEIPTS_ENCRYPTION_KEY)가 설정되지 않았습니다." },
+          { status: 500 }
+        );
+      }
+      const { data: enc, error: encErr } = await supabase.rpc(
+        "encrypt_id_number",
+        { plaintext: raw, passphrase: encKey }
+      );
+      if (encErr) {
+        return NextResponse.json(
+          { error: "주민등록번호 암호화 실패: " + encErr.message },
+          { status: 500 }
+        );
+      }
+      update.id_number_encrypted = enc;
+    }
+  }
 
   const { data, error } = await supabase
     .from("members")
@@ -174,17 +209,21 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (!data)
     return NextResponse.json({ error: "후원자를 찾을 수 없습니다." }, { status: 404 });
 
-  // 감사 로그 — 상태 변경 시만 (일반 필드 수정은 noise)
-  if (status !== undefined) {
+  // 감사 로그 — 상태 변경 또는 id_number 변경 시 (일반 필드 수정은 noise)
+  if (status !== undefined || idNumber !== undefined) {
     await logAudit({
       orgId: tenant.id,
       actorId: user.id,
       actorEmail: user.email ?? null,
-      action: "member.update",
+      action:
+        idNumber !== undefined ? "member.update_id_number" : "member.update",
       resourceType: "member",
       resourceId: id,
-      summary: `후원자 상태 변경: ${status}`,
-      metadata: { status, name: data.name },
+      summary:
+        idNumber !== undefined
+          ? `후원자 주민등록번호 ${idNumber ? "설정/변경" : "삭제"}`
+          : `후원자 상태 변경: ${status}`,
+      metadata: { status, name: data.name, id_number_updated: idNumber !== undefined },
     });
   }
 

@@ -94,7 +94,20 @@ export async function POST(req: NextRequest) {
   }
 
   const text = await file.text();
-  const rows = parseCsv(text);
+  let rows: string[][];
+  try {
+    rows = parseCsv(text);
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error: `CSV 파싱 실패: ${
+          err instanceof Error ? err.message : String(err)
+        }. 첫 5줄을 확인하세요.`,
+        preview: text.split("\n").slice(0, 5),
+      },
+      { status: 400 }
+    );
+  }
 
   if (rows.length < 2) {
     return NextResponse.json({ error: "CSV 에 데이터 행이 없습니다." }, { status: 400 });

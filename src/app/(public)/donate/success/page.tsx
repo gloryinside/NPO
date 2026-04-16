@@ -123,7 +123,7 @@ export default async function DonateSuccessPage({
 
         <div className="flex items-center justify-center gap-3">
           <Link
-            href="/"
+            href={payment.campaign_slug ? `/campaigns/${payment.campaign_slug}` : "/"}
             className="inline-flex items-center justify-center rounded-lg px-6 py-2 text-sm font-semibold"
             style={{
               background: "var(--accent)",

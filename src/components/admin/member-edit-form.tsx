@@ -19,6 +19,8 @@ type EditForm = {
   status: string;
   joinPath: string;
   note: string;
+  /** "" = 변경 없음, "CLEAR" = 삭제, 그 외 = 새 13자리 값 */
+  idNumber: string;
 };
 
 function toForm(m: Member): EditForm {
@@ -31,6 +33,7 @@ function toForm(m: Member): EditForm {
     status: m.status,
     joinPath: m.join_path ?? "",
     note: m.note ?? "",
+    idNumber: "",
   };
 }
 
@@ -69,19 +72,27 @@ export function MemberEditForm({ member }: Props) {
     setError(null);
     setSuccess(false);
     try {
+      const payload: Record<string, unknown> = {
+        name: form.name,
+        phone: form.phone || null,
+        email: form.email || null,
+        birthDate: form.birthDate || null,
+        memberType: form.memberType,
+        status: form.status,
+        joinPath: form.joinPath || null,
+        note: form.note || null,
+      };
+      // idNumber: "" = 변경 없음 (전송 안 함), "CLEAR" = 삭제, 그 외 = 값 설정
+      if (form.idNumber === "CLEAR") {
+        payload.idNumber = null;
+      } else if (form.idNumber.trim()) {
+        payload.idNumber = form.idNumber.replace(/-/g, "").trim();
+      }
+
       const res = await fetch(`/api/admin/members/${member.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          phone: form.phone || null,
-          email: form.email || null,
-          birthDate: form.birthDate || null,
-          memberType: form.memberType,
-          status: form.status,
-          joinPath: form.joinPath || null,
-          note: form.note || null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "저장 실패");
@@ -114,6 +125,14 @@ export function MemberEditForm({ member }: Props) {
       },
       { label: "가입경로", value: member.join_path ?? "-" },
       { label: "메모", value: member.note ?? "-" },
+      {
+        label: "주민등록번호",
+        value: member.id_number_encrypted ? (
+          <span style={{ color: "var(--positive)" }}>설정됨 (암호화)</span>
+        ) : (
+          <span style={{ color: "var(--muted-foreground)" }}>미설정</span>
+        ),
+      },
     ];
 
     return (
@@ -272,6 +291,52 @@ export function MemberEditForm({ member }: Props) {
             placeholder="방문, 온라인, 지인 소개 등"
             className={inputCls}
           />
+        </div>
+
+        {/* 주민등록번호 (기부금 영수증용, 암호화 저장) */}
+        <div className="flex flex-col gap-1">
+          <label htmlFor="edit-idnumber" className="text-sm font-medium" style={{ color: "var(--text)" }}>
+            주민등록번호
+            <span className="ml-2 text-xs font-normal" style={{ color: "var(--muted-foreground)" }}>
+              (기부금 영수증 발급용, 서버에 AES 암호화 저장)
+            </span>
+          </label>
+          <Input
+            id="edit-idnumber"
+            type="text"
+            inputMode="numeric"
+            maxLength={14}
+            value={form.idNumber === "CLEAR" ? "" : form.idNumber}
+            onChange={field("idNumber")}
+            placeholder={
+              member.id_number_encrypted
+                ? "••••••-•••••••  (새 값 입력 시 덮어씀)"
+                : "13자리 숫자 (- 생략 가능)"
+            }
+            className={inputCls}
+          />
+          {member.id_number_encrypted && (
+            <button
+              type="button"
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  idNumber: prev.idNumber === "CLEAR" ? "" : "CLEAR",
+                }))
+              }
+              className="self-start text-xs underline mt-1"
+              style={{
+                color:
+                  form.idNumber === "CLEAR"
+                    ? "var(--negative)"
+                    : "var(--muted-foreground)",
+              }}
+            >
+              {form.idNumber === "CLEAR"
+                ? "삭제 취소"
+                : "저장된 주민등록번호 삭제"}
+            </button>
+          )}
         </div>
 
         {/* 메모 */}

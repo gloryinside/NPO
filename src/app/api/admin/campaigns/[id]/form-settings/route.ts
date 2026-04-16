@@ -2,31 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FormSettingsSchema } from '@/lib/campaign-builder/form-settings/schema';
 import { logAudit } from '@/lib/audit';
 import { createRequestClient } from '@/lib/supabase/request-client';
+import { requireAdminOrgForBuilder } from '@/lib/auth/builder-guard';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const { id } = await params;
+  const guard = await requireAdminOrgForBuilder(req, { campaignId: id });
+  if (!guard.ok) return guard.response;
   const sb = createRequestClient(req);
-
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  const { data: member } = await sb
-    .from('members')
-    .select('org_id, id')
-    .eq('supabase_uid', user.id)
-    .single();
-  if (!member) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-
-  const { data: campaign } = await sb
-    .from('campaigns')
-    .select('org_id')
-    .eq('id', id)
-    .single();
-  if (!campaign || campaign.org_id !== member.org_id) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  }
 
   let body: unknown;
   try {
@@ -50,9 +34,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await logAudit({
-    orgId: member.org_id,
-    actorId: user.id,
-    actorEmail: user.email ?? null,
+    orgId: guard.orgId,
+    actorId: guard.userId,
+    actorEmail: guard.userEmail,
     action: 'campaign.update',
     resourceType: 'campaign',
     resourceId: id,

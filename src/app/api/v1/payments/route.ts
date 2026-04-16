@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { hashApiKey } from "@/lib/secrets/crypto";
 
 /**
  * GET /api/v1/payments — ERP 연동 API: 납입정보 조회
@@ -136,11 +137,14 @@ async function authenticateErp(
     return { error: "Empty token", status: 401 };
   }
 
+  // SHA-256 hash 비교 — 평문 eq()로 찾으면 DB가 내부적으로 수행하는 비교가
+  // 타이밍 공격에 취약할 수 있으므로, 사전에 해싱된 값을 인덱스로 조회한다.
+  const tokenHash = hashApiKey(token);
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("org_secrets")
     .select("org_id")
-    .eq("erp_api_key", token)
+    .eq("erp_api_key_hash", tokenHash)
     .maybeSingle();
 
   if (error || !data) {

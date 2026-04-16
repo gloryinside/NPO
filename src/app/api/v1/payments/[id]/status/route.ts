@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { hashApiKey } from "@/lib/secrets/crypto";
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -26,11 +27,12 @@ export async function PATCH(
   }
   const token = auth.slice(7).trim();
 
+  const tokenHash = hashApiKey(token);
   const supabase = createSupabaseAdminClient();
   const { data: secret } = await supabase
     .from("org_secrets")
     .select("org_id")
-    .eq("erp_api_key", token)
+    .eq("erp_api_key_hash", tokenHash)
     .maybeSingle();
 
   if (!secret) {

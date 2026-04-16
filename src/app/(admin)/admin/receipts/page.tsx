@@ -37,7 +37,7 @@ export default async function AdminReceiptsPage({
   // 1) 해당 연도 paid 납입이 있는 회원 목록 집계
   const { data: paymentsRaw } = await supabase
     .from("payments")
-    .select("member_id, amount, members!inner(id, name, id_number)")
+    .select("member_id, amount, members!inner(id, name, id_number_encrypted)")
     .eq("org_id", tenant.id)
     .eq("pay_status", "paid")
     .gte("pay_date", yearStart)
@@ -46,7 +46,7 @@ export default async function AdminReceiptsPage({
   type PayRow = {
     member_id: string;
     amount: number | null;
-    members: { id: string; name: string; id_number: string | null } | null;
+    members: { id: string; name: string; id_number_encrypted: string | null } | null;
   };
 
   const pays = (paymentsRaw as unknown as PayRow[]) ?? [];
@@ -60,7 +60,7 @@ export default async function AdminReceiptsPage({
     if (!p.member_id || !p.members) continue;
     const cur = memberMap.get(p.member_id) ?? {
       name: p.members.name,
-      idSet: !!p.members.id_number,
+      idSet: !!p.members.id_number_encrypted,
       count: 0,
       total: 0,
     };

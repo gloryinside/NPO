@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { decryptSecret } from "@/lib/secrets/crypto";
 
 type WebhookPayload = {
   event: "payment.created" | "payment.updated";
@@ -26,13 +27,15 @@ export async function pushErpWebhook(
 
   const { data: secrets } = await supabase
     .from("org_secrets")
-    .select("erp_webhook_url, erp_api_key")
+    .select("erp_webhook_url, erp_api_key_enc")
     .eq("org_id", orgId)
     .maybeSingle();
 
-  const webhookUrl = (secrets as { erp_webhook_url?: string | null } | null)
-    ?.erp_webhook_url;
+  const row = secrets as
+    | { erp_webhook_url?: string | null; erp_api_key_enc?: string | null }
+    | null;
 
+  const webhookUrl = row?.erp_webhook_url;
   if (!webhookUrl) return;
 
   try {
@@ -40,8 +43,7 @@ export async function pushErpWebhook(
       "Content-Type": "application/json",
     };
 
-    const apiKey = (secrets as { erp_api_key?: string | null } | null)
-      ?.erp_api_key;
+    const apiKey = await decryptSecret(row?.erp_api_key_enc ?? null);
     if (apiKey) {
       headers["X-Api-Key"] = apiKey;
     }

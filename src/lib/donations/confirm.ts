@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { confirmTossPayment } from "@/lib/toss/client";
 import { getOrgTossKeys } from "@/lib/toss/keys";
@@ -45,7 +46,7 @@ export async function confirmDonation(
   const { data: payment, error: findError } = await supabase
     .from("payments")
     .select(
-      "id, org_id, payment_code, amount, pay_status, receipt_url, pg_method, approved_at, campaign_id, campaigns(slug)"
+      "id, org_id, payment_code, amount, pay_status, pay_method, receipt_url, pg_method, approved_at, campaign_id, campaigns(slug)"
     )
     .eq("idempotency_key", orderId)
     .maybeSingle();
@@ -63,6 +64,21 @@ export async function confirmDonation(
       ...(payment as unknown as ConfirmedPayment),
       campaign_slug: (payment as unknown as { campaigns?: { slug?: string } }).campaigns?.slug ?? null,
     };
+  }
+
+  // pay_status 가 pending 이 아니면 (failed/cancelled) 승인 거부
+  if (payment.pay_status !== "pending") {
+    throw new Error(
+      `결제를 승인할 수 없는 상태입니다. (status=${payment.pay_status})`
+    );
+  }
+
+  // 오프라인 결제 수단(계좌이체·CMS·수기)은 Toss confirm을 거치지 않으므로
+  // 본 엔드포인트로 승인 요청이 들어왔다면 변조 시도로 간주.
+  const offlineMethods = ["transfer", "cms", "manual"];
+  const paymentMethod = (payment as { pay_method?: string | null }).pay_method;
+  if (paymentMethod && offlineMethods.includes(paymentMethod)) {
+    throw new Error("오프라인 결제는 관리자 화면에서 확정해야 합니다.");
   }
 
   // 금액 검증 — prepare 시 저장한 amount 와 클라이언트 파라미터가 일치해야 함
@@ -115,6 +131,7 @@ export async function confirmDonation(
       updated_at: new Date().toISOString(),
     })
     .eq("id", payment.id)
+    .neq("pay_status", "paid") // race condition 방지: 이미 paid 면 update 0 행
     .select(
       "id, org_id, payment_code, amount, pay_status, receipt_url, pg_method, approved_at, campaign_id, receipt_opt_in, rrn_pending_encrypted, member_id, campaigns(slug)"
     )
@@ -132,6 +149,15 @@ export async function confirmDonation(
 
   void sendDonationConfirmedEmail(supabase, confirmedPayment);
   void pushErpWebhookForPayment(supabase, confirmedPayment);
+
+  // 캠페인 progress ISR 캐시 즉시 무효화
+  if (confirmedPayment.campaign_slug) {
+    try {
+      revalidateTag(`campaign:${confirmedPayment.campaign_slug}`, "default");
+    } catch (err) {
+      console.error("[cache] revalidateTag failed:", err);
+    }
+  }
 
   // 기부금 영수증 신청 + RRN이 있으면 receipts 행 생성 (fire-and-forget)
   const updatedRow = updated as unknown as {
