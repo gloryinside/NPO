@@ -25,6 +25,18 @@ export function Editor({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [previewToken, setPreviewToken] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
+
+  // Load preview token on mount
+  useEffect(() => {
+    fetch(`/api/admin/campaigns/${campaignId}/preview-token`, { method: 'POST' })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((d) => setPreviewToken(d.token))
+      .catch(() => setPreviewError(true));
+  }, [campaignId]);
+
   // Autosave: 2-second debounce on content changes
   useEffect(() => {
     if (isFirstRender.current) {
@@ -42,6 +54,7 @@ export function Editor({
           body: JSON.stringify(content),
         });
         setSaveStatus('saved');
+        iframeRef.current?.contentWindow?.location.reload();
       } catch {
         setSaveStatus('unsaved');
       }
@@ -101,45 +114,44 @@ export function Editor({
     alert(res.ok ? '게시되었습니다.' : '게시 실패');
   }
 
-  const saveLabel = saveStatus === 'saving' ? '저장 중…' : saveStatus === 'unsaved' ? '미저장' : '저장됨';
-
   return (
     <div className="flex h-screen flex-col">
       {/* Header */}
-      <header className="flex shrink-0 items-center justify-between border-b bg-white px-4 py-2">
+      <header className="flex shrink-0 items-center justify-between border-b px-4 py-2"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-neutral-700">캠페인 편집기</span>
-          <span
-            className={`text-xs ${saveStatus === 'unsaved' ? 'text-amber-500' : saveStatus === 'saving' ? 'text-neutral-400' : 'text-green-600'}`}
+          <a
+            href="/admin/campaigns"
+            className="text-xs transition-colors hover:opacity-80"
+            style={{ color: 'var(--muted-foreground)' }}
           >
-            {saveLabel}
+            ← 목록
+          </a>
+          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            캠페인 편집기
+          </span>
+          <span
+            className="text-xs"
+            style={{
+              color: saveStatus === 'unsaved' ? 'var(--warning)' :
+                     saveStatus === 'saving' ? 'var(--muted-foreground)' : 'var(--positive)',
+            }}
+          >
+            {saveStatus === 'saving' ? '저장 중…' : saveStatus === 'unsaved' ? '미저장' : '저장됨'}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Viewport toggle */}
-          <div className="flex rounded border text-xs">
-            <button
-              className={`px-2 py-1 ${viewport === 'desktop' ? 'bg-neutral-100 font-semibold' : ''}`}
-              onClick={() => setViewport('desktop')}
-            >
-              데스크탑
-            </button>
-            <button
-              className={`px-2 py-1 ${viewport === 'mobile' ? 'bg-neutral-100 font-semibold' : ''}`}
-              onClick={() => setViewport('mobile')}
-            >
-              모바일
-            </button>
-          </div>
           <button
             onClick={handlePreview}
-            className="rounded border px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-50"
+            className="rounded border px-3 py-1 text-xs transition-colors hover:opacity-80"
+            style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)', background: 'transparent' }}
           >
-            미리보기
+            새 탭 미리보기
           </button>
           <button
             onClick={handlePublish}
-            className="rounded bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+            className="rounded px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)' }}
           >
             게시하기
           </button>
@@ -154,21 +166,79 @@ export function Editor({
           onAdd={handleAddBlock}
         />
 
-        {/* Canvas area */}
-        <main
-          className={`flex flex-1 flex-col overflow-auto bg-neutral-100 p-4 ${viewport === 'mobile' ? 'items-center' : ''}`}
-        >
-          <div className={viewport === 'mobile' ? 'w-[390px]' : 'w-full'}>
-            <Canvas
-              blocks={content.blocks}
-              selectedId={selectedBlock?.id ?? null}
-              onSelect={setSelectedBlock}
-              onReorder={handleReorder}
-              onDelete={handleDelete}
-              onDuplicate={handleDuplicate}
-            />
-          </div>
+        {/* Canvas — fixed width */}
+        <main className="flex w-72 shrink-0 flex-col overflow-auto border-r p-3"
+          style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}>
+          <p className="mb-2 text-center text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>
+            블록 구성
+          </p>
+          <Canvas
+            blocks={content.blocks}
+            selectedId={selectedBlock?.id ?? null}
+            onSelect={setSelectedBlock}
+            onReorder={handleReorder}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+          />
         </main>
+
+        {/* Preview iframe — flex-1 */}
+        <div className="relative flex flex-1 flex-col overflow-hidden"
+          style={{ background: 'var(--bg)' }}>
+          <div className="flex shrink-0 items-center justify-between border-b px-3 py-1.5"
+            style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+            <span className="text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>
+              미리보기
+            </span>
+            <div className="flex rounded border text-xs" style={{ borderColor: 'var(--border)' }}>
+              <button
+                className={`px-2 py-0.5 transition-colors ${viewport === 'desktop' ? 'font-semibold' : ''}`}
+                style={{
+                  background: viewport === 'desktop' ? 'var(--accent-soft)' : 'transparent',
+                  color: viewport === 'desktop' ? 'var(--accent)' : 'var(--muted-foreground)',
+                }}
+                onClick={() => setViewport('desktop')}
+              >
+                데스크탑
+              </button>
+              <button
+                className={`px-2 py-0.5 transition-colors ${viewport === 'mobile' ? 'font-semibold' : ''}`}
+                style={{
+                  background: viewport === 'mobile' ? 'var(--accent-soft)' : 'transparent',
+                  color: viewport === 'mobile' ? 'var(--accent)' : 'var(--muted-foreground)',
+                }}
+                onClick={() => setViewport('mobile')}
+              >
+                모바일
+              </button>
+            </div>
+          </div>
+          <div className={`flex flex-1 overflow-auto ${viewport === 'mobile' ? 'justify-center bg-[var(--surface-2)] py-4' : ''}`}>
+            {previewError ? (
+              <div className="flex flex-1 items-center justify-center text-sm"
+                style={{ color: 'var(--muted-foreground)' }}>
+                미리보기를 불러올 수 없습니다
+              </div>
+            ) : !previewToken ? (
+              <div className="flex flex-1 items-center justify-center text-sm"
+                style={{ color: 'var(--muted-foreground)' }}>
+                미리보기 로딩 중…
+              </div>
+            ) : (
+              <iframe
+                ref={iframeRef}
+                src={`/campaigns/${campaignSlug}/preview?token=${previewToken}`}
+                className="border-0"
+                style={{
+                  width: viewport === 'mobile' ? '390px' : '100%',
+                  height: viewport === 'mobile' ? '844px' : '100%',
+                  background: 'white',
+                }}
+                title="캠페인 미리보기"
+              />
+            )}
+          </div>
+        </div>
 
         <PropsPanel block={selectedBlock} campaignId={campaignId} allBlocks={content.blocks} onChange={handleBlockChange} />
       </div>

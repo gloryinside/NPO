@@ -14,17 +14,28 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Block } from '@/lib/campaign-builder/blocks/schema';
 import { BlockToolbar } from './BlockToolbar';
 
+const BLOCK_ICONS: Record<string, string> = {
+  hero: '🖼',
+  richText: '✏️',
+  imageSingle: '🖼',
+  impactStats: '📊',
+  fundraisingProgress: '📈',
+  faq: '❓',
+  donationQuickForm: '💜',
+  snsShare: '🔗',
+};
+
 // Client-side preview for each block type — plain text/icon stubs
 // (full server components can't be used inside the editor canvas)
 const PREVIEW_LABELS: Record<string, string> = {
-  hero: '[ Hero 배너 ]',
-  richText: '[ 텍스트 블록 ]',
-  imageSingle: '[ 이미지 ]',
-  impactStats: '[ 임팩트 통계 ]',
-  fundraisingProgress: '[ 모금 현황 ]',
-  faq: '[ FAQ ]',
-  donationQuickForm: '[ 퀵 후원 폼 ]',
-  snsShare: '[ SNS 공유 ]',
+  hero: 'Hero 배너',
+  richText: '텍스트 블록',
+  imageSingle: '이미지',
+  impactStats: '임팩트 통계',
+  fundraisingProgress: '모금 현황',
+  faq: 'FAQ',
+  donationQuickForm: '퀵 후원 폼',
+  snsShare: 'SNS 공유',
 };
 
 export function Canvas({
@@ -59,8 +70,10 @@ export function Canvas({
 
   if (blocks.length === 0) {
     return (
-      <div className="flex h-40 items-center justify-center text-sm text-neutral-400">
-        왼쪽 패널에서 블록을 추가하세요
+      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-12 text-center"
+        style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}>
+        <span className="text-2xl">＋</span>
+        <p className="text-xs">왼쪽에서 블록을 추가하세요</p>
       </div>
     );
   }
@@ -118,10 +131,16 @@ function SortableBlock({
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        background: selected ? 'var(--accent-soft)' : 'var(--surface)',
+      }}
       onClick={onSelect}
-      className={`group relative cursor-pointer border-2 py-4 transition-colors ${
-        selected ? 'border-rose-500' : 'border-transparent hover:border-rose-200'
+      className={`group relative mb-1 cursor-pointer rounded-lg border transition-all ${
+        selected
+          ? 'border-[var(--accent)] shadow-[0_0_0_2px_var(--accent-soft)]'
+          : 'border-[var(--border)] hover:border-[var(--accent)]'
       }`}
     >
       <BlockToolbar
@@ -133,8 +152,12 @@ function SortableBlock({
         onDup={onDuplicate}
         onDel={onRemove}
       />
-      <div className="px-4 text-center text-sm text-neutral-500">
-        {PREVIEW_LABELS[block.type] ?? `[ ${block.type} ]`}
+      <div
+        className="px-3 py-3 text-xs font-medium"
+        style={{ color: selected ? 'var(--accent)' : 'var(--text)' }}
+      >
+        {BLOCK_ICONS[block.type] ?? '▪'}{' '}
+        {PREVIEW_LABELS[block.type] ?? block.type}
       </div>
     </div>
   );
