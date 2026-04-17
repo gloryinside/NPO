@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/purge-expired-rrn",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/retry-billing",
+      "schedule": "0 1 * * *"
     }
   ]
 }

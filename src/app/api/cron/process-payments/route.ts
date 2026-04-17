@@ -121,9 +121,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 빌링키 자동결제 실행
+  const { processMonthlyCharges } = await import('@/lib/billing/charge-service');
+  const orgIds = [...new Set(promises.map(p => p.org_id as string))];
+  let totalCharged = 0;
+  let totalFailed = 0;
+
+  for (const oid of orgIds) {
+    const result = await processMonthlyCharges(oid);
+    totalCharged += result.charged;
+    totalFailed += result.failed;
+  }
+
   console.log(
-    `[cron/process-payments] day=${todayDay} processed=${processed} skipped=${skipped} errors=${errors}`
+    `[cron/process-payments] day=${todayDay} processed=${processed} skipped=${skipped} errors=${errors} charged=${totalCharged} billingFailed=${totalFailed}`
   );
 
-  return NextResponse.json({ processed, skipped, errors });
+  return NextResponse.json({ processed, skipped, errors, charged: totalCharged, billingFailed: totalFailed });
 }
