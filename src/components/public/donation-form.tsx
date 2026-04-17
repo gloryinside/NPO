@@ -3,15 +3,11 @@
 import { useState } from "react";
 import { loadTossPayments } from "@tosspayments/payment-sdk";
 import type { Campaign } from "@/types/campaign";
+import { DonationTypeToggle } from "@/components/public/donation/DonationTypeToggle";
+import { PayMethodSelector } from "@/components/public/donation/PayMethodSelector";
 
 const DEFAULT_PRESET_AMOUNTS = [10000, 30000, 50000, 100000];
 
-const PAY_METHOD_LABEL: Record<string, string> = {
-  card: "카드",
-  transfer: "계좌이체",
-  cms: "CMS",
-  manual: "수기",
-};
 
 function formatAmount(n: number): string {
   return new Intl.NumberFormat("ko-KR").format(n);
@@ -351,49 +347,19 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
 
       {/* 후원 유형 탭 */}
       {showTypeTabs && (
-        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "var(--border)" }}>
-          {(["onetime", "regular"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setDonationType(t)}
-              className="flex-1 py-2 text-sm font-medium transition-colors"
-              style={{
-                background: donationType === t ? "var(--accent)" : "var(--surface-2)",
-                color: donationType === t ? "#fff" : "var(--muted-foreground)",
-              }}
-            >
-              {t === "onetime" ? "일시 후원" : "정기 후원"}
-            </button>
-          ))}
-        </div>
+        <DonationTypeToggle
+          value={donationType}
+          available={["onetime", "regular"]}
+          onChange={setDonationType}
+        />
       )}
 
       {/* 결제 수단 */}
-      {availableMethods.length > 1 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
-            결제 수단
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {availableMethods.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setPayMethod(m)}
-                className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
-                style={{
-                  background: payMethod === m ? "var(--accent)" : "var(--surface-2)",
-                  borderColor: payMethod === m ? "var(--accent)" : "var(--border)",
-                  color: payMethod === m ? "#fff" : "var(--text)",
-                }}
-              >
-                {PAY_METHOD_LABEL[m] ?? m}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <PayMethodSelector
+        methods={availableMethods}
+        value={payMethod}
+        onChange={setPayMethod}
+      />
 
       <div className="flex flex-col gap-2">
         <span
