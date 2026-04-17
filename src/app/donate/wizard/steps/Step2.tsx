@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { sanitizeHtml } from '@/lib/campaign-builder/sanitize-html';
 import { PayMethodSelector } from '@/components/public/donation/PayMethodSelector';
 import { AgreementSection } from '@/components/public/donation/AgreementSection';
@@ -110,6 +110,36 @@ export function Step2({
   const [ag, setAg] = useState({ terms: false, privacy: false, receipt: false, marketing: false });
   const [submitting, setSubmitting] = useState(false);
 
+  // 본인인증 팝업 완료 후 URL 파라미터 감지
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('identity') === 'success') {
+      const txId = params.get('txId') ?? sessionStorage.getItem('identity_txId');
+      if (txId) {
+        fetch('/api/auth/identity/confirm', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ txId, memberId: state.donorInfo?.memberId }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.ok) {
+              setIdentityVerified(true);
+              setIdentityName(data.name ?? '');
+              if (data.name) setInfo((prev) => ({ ...prev, name: data.name }));
+              if (data.birthday) setInfo((prev) => ({ ...prev, dob: data.birthday }));
+              sessionStorage.removeItem('identity_txId');
+              // URL에서 identity 파라미터 제거
+              const url = new URL(window.location.href);
+              url.searchParams.delete('identity');
+              url.searchParams.delete('txId');
+              window.history.replaceState({}, '', url.toString());
+            }
+          });
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function submit() {
     if (!ag.terms || !ag.privacy) return alert('필수 약관에 동의해 주세요.');
     setSubmitting(true);
@@ -204,13 +234,9 @@ export function Step2({
               }),
             });
             if (!res.ok) return alert('본인인증 요청 실패');
-            const { txId } = await res.json();
+            const { txId, authUrl } = await res.json();
             sessionStorage.setItem('identity_txId', txId);
-            window.open(
-              `https://auth.tosspayments.com/v1/identity-verification/${txId}`,
-              '_blank',
-              'width=500,height=700',
-            );
+            window.open(authUrl, '_blank', 'width=500,height=700');
           }}
           className="w-full rounded-lg py-2.5 text-sm font-semibold"
           style={{ background: 'var(--surface-2)', border: '1px solid var(--accent)', color: 'var(--accent)' }}

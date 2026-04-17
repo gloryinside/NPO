@@ -27,5 +27,6 @@ export async function POST(req: NextRequest) {
   }
 
   const data = await res.json();
-  return NextResponse.json({ txId: data.txId });
+  const authUrl = data.authUrl ?? `https://auth.tosspayments.com/v1/identity-verification/${data.txId}`;
+  return NextResponse.json({ txId: data.txId, authUrl });
 }
