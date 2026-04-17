@@ -30,7 +30,7 @@ export function AssetUploadField({ campaignId, value, onChange, label }: AssetUp
 
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-neutral-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>{label}</span>
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={value} alt="" className="mb-2 max-h-28 w-full rounded object-cover" />
@@ -45,7 +45,7 @@ export function AssetUploadField({ campaignId, value, onChange, label }: AssetUp
         }}
         className="w-full text-sm"
       />
-      {busy ? <span className="text-xs text-neutral-400">업로드 중…</span> : null}
+      {busy ? <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>업로드 중…</span> : null}
     </label>
   );
 }

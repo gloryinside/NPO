@@ -19,11 +19,10 @@ function ToolbarButton({ onClick, active, title, children }: ToolbarButtonProps)
         e.preventDefault(); // keep editor focus
         onClick();
       }}
-      className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-        active
-          ? 'bg-rose-100 text-rose-700'
-          : 'text-neutral-600 hover:bg-neutral-100'
-      }`}
+      className="rounded px-1.5 py-0.5 text-xs font-medium"
+      style={active
+        ? { background: 'var(--accent-soft)', color: 'var(--accent)' }
+        : { color: 'var(--text)' }}
     >
       {children}
     </button>
@@ -50,9 +49,9 @@ export function RichTextField({
   }, [value, editor]);
 
   return (
-    <div className="rounded border focus-within:ring-1 focus-within:ring-rose-400">
+    <div className="rounded focus-within:ring-1" style={{ border: '1px solid var(--border)', color: 'var(--text)' }}>
       {/* Formatting toolbar */}
-      <div className="flex flex-wrap gap-0.5 border-b px-1.5 py-1">
+      <div className="flex flex-wrap gap-0.5 px-1.5 py-1" style={{ borderBottom: '1px solid var(--border)' }}>
         <ToolbarButton
           title="굵게 (Ctrl+B)"
           active={editor?.isActive('bold')}
@@ -74,7 +73,7 @@ export function RichTextField({
         >
           <s>S</s>
         </ToolbarButton>
-        <div className="mx-1 w-px self-stretch bg-neutral-200" />
+        <div className="mx-1 w-px self-stretch bg-[var(--border)]" />
         <ToolbarButton
           title="제목 1"
           active={editor?.isActive('heading', { level: 2 })}
@@ -89,7 +88,7 @@ export function RichTextField({
         >
           H3
         </ToolbarButton>
-        <div className="mx-1 w-px self-stretch bg-neutral-200" />
+        <div className="mx-1 w-px self-stretch bg-[var(--border)]" />
         <ToolbarButton
           title="글머리 기호 목록"
           active={editor?.isActive('bulletList')}
@@ -104,7 +103,7 @@ export function RichTextField({
         >
           1. 목록
         </ToolbarButton>
-        <div className="mx-1 w-px self-stretch bg-neutral-200" />
+        <div className="mx-1 w-px self-stretch bg-[var(--border)]" />
         <ToolbarButton
           title="인용구"
           active={editor?.isActive('blockquote')}

@@ -5,7 +5,7 @@ export function FundraisingProgressPropsForm({ block, onChange }: any) {
   const set = (patch: Record<string, unknown>) => onChange({ ...block, props: { ...p, ...patch } });
   return (
     <div className="space-y-2">
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
         <input
           type="checkbox"
           checked={p.showDonorCount}
@@ -13,7 +13,7 @@ export function FundraisingProgressPropsForm({ block, onChange }: any) {
         />
         후원자 수 표시
       </label>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
         <input
           type="checkbox"
           checked={p.showDDay}

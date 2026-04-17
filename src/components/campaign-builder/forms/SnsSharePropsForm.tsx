@@ -17,7 +17,7 @@ export function SnsSharePropsForm({ block, onChange }: any) {
   return (
     <div className="space-y-2">
       {CHANNELS.map(({ id, label }) => (
-        <label key={id} className="flex items-center gap-2 text-sm">
+        <label key={id} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
           <input
             type="checkbox"
             checked={p.channels.includes(id)}

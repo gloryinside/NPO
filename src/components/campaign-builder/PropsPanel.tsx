@@ -44,7 +44,10 @@ export function PropsPanel({
 }) {
   if (!block) {
     return (
-      <aside className="w-80 shrink-0 border-l bg-white p-4 text-sm text-neutral-500">
+      <aside
+        className="w-80 shrink-0 border-l p-4 text-sm"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
+      >
         왼쪽 캔버스에서 블록을 클릭하세요
       </aside>
     );
@@ -53,9 +56,12 @@ export function PropsPanel({
   const Form = FORM_MAP[block.type];
 
   return (
-    <aside className="w-80 shrink-0 overflow-auto border-l bg-white">
-      <div className="border-b px-4 py-3">
-        <div className="text-xs uppercase tracking-wider text-neutral-500">
+    <aside
+      className="w-80 shrink-0 overflow-auto border-l"
+      style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
+    >
+      <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
+        <div className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>
           {BLOCK_LABELS[block.type] ?? block.type}
         </div>
       </div>
@@ -63,35 +69,36 @@ export function PropsPanel({
         {Form ? (
           <Form block={block} campaignId={campaignId} allBlocks={allBlocks} onChange={onChange} />
         ) : (
-          <p className="text-sm text-neutral-400">편집 불가</p>
+          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>편집 불가</p>
         )}
 
         {/* Common fields: anchor ID + hiddenOn — available on every block */}
-        <div className="border-t pt-4">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+        <div className="border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted-foreground)' }}>
             공통 설정
           </div>
 
           {/* Anchor ID */}
           <label className="mb-3 block">
-            <span className="mb-1 block text-xs text-neutral-600">앵커 ID (선택)</span>
+            <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>앵커 ID (선택)</span>
             <input
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="w-full rounded px-2 py-1 text-sm"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)' }}
               placeholder="예: donation-form"
               value={block.anchor ?? ''}
               onChange={(e) =>
                 onChange({ ...block, anchor: e.target.value || undefined })
               }
             />
-            <span className="mt-0.5 block text-[10px] text-neutral-400">
+            <span className="mt-0.5 block text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
               다른 블록의 CTA가 이 블록으로 스크롤할 때 사용됩니다.
             </span>
           </label>
 
           {/* hiddenOn */}
           <div>
-            <span className="mb-1 block text-xs text-neutral-600">숨기기</span>
-            <div className="flex gap-3 text-xs">
+            <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>숨기기</span>
+            <div className="flex gap-3 text-xs" style={{ color: 'var(--text)' }}>
               {(['mobile', 'desktop', undefined] as const).map((val) => (
                 <label key={String(val)} className="flex items-center gap-1">
                   <input

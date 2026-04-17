@@ -5,9 +5,10 @@ import { AssetUploadField } from '../inputs/AssetUploadField';
 function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-neutral-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>{label}</span>
       <input
-        className="w-full rounded border px-2 py-1 text-sm"
+        className="w-full rounded px-2 py-1 text-sm"
+        style={{ border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)' }}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -60,8 +61,8 @@ export function HeroPropsForm({
 
       {/* CTA destination: anchor (same-page scroll) OR external URL */}
       <div>
-        <span className="mb-1 block text-xs text-neutral-600">CTA 링크 방식</span>
-        <div className="flex gap-3 text-xs">
+        <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>CTA 링크 방식</span>
+        <div className="flex gap-3 text-xs" style={{ color: 'var(--text)' }}>
           <label className="flex items-center gap-1">
             <input
               type="radio"
@@ -85,14 +86,15 @@ export function HeroPropsForm({
         <TextInput label="CTA URL" value={p.ctaUrl ?? ''} onChange={(v) => set({ ctaUrl: v })} />
       ) : (
         <label className="block">
-          <span className="mb-1 block text-xs text-neutral-600">앵커 대상 블록</span>
+          <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>앵커 대상 블록</span>
           {anchorTargets.length === 0 ? (
             <p className="text-xs text-amber-600">
-              앵커가 설정된 블록이 없습니다. 대상 블록의 "앵커 ID" 필드를 먼저 입력하세요.
+              앵커가 설정된 블록이 없습니다. 대상 블록의 &quot;앵커 ID&quot; 필드를 먼저 입력하세요.
             </p>
           ) : (
             <select
-              className="w-full rounded border px-2 py-1 text-sm"
+              className="w-full rounded px-2 py-1 text-sm"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)' }}
               value={p.ctaAnchorBlockId}
               onChange={(e) => set({ ctaAnchorBlockId: e.target.value })}
             >

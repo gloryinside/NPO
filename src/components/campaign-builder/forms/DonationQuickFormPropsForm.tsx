@@ -6,14 +6,15 @@ export function DonationQuickFormPropsForm({ block, onChange }: any) {
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="mb-1 block text-xs text-neutral-600">제목</span>
+        <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>제목</span>
         <input
-          className="w-full rounded border px-2 py-1 text-sm"
+          className="w-full rounded px-2 py-1 text-sm"
+          style={{ border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)' }}
           value={p.heading ?? ''}
           onChange={(e) => set({ heading: e.target.value })}
         />
       </label>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
         <input
           type="checkbox"
           checked={p.showDesignation}

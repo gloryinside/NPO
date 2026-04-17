@@ -3,26 +3,32 @@
 export function FaqPropsForm({ block, onChange }: any) {
   const p = block.props;
   const set = (patch: Record<string, unknown>) => onChange({ ...block, props: { ...p, ...patch } });
+
+  const inputStyle = { border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)' } as const;
+
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="mb-1 block text-xs text-neutral-600">섹션 제목</span>
+        <span className="mb-1 block text-xs font-medium" style={{ color: 'var(--text)' }}>섹션 제목</span>
         <input
-          className="w-full rounded border px-2 py-1 text-sm"
+          className="w-full rounded px-2 py-1 text-sm"
+          style={inputStyle}
           value={p.heading ?? ''}
           onChange={(e) => set({ heading: e.target.value })}
         />
       </label>
       {p.items.map((it: any, i: number) => (
-        <div key={i} className="space-y-1 rounded border p-2">
+        <div key={i} className="space-y-1 rounded p-2" style={{ border: '1px solid var(--border)' }}>
           <input
-            className="w-full rounded border px-1 text-sm"
+            className="w-full rounded px-1 text-sm"
+            style={inputStyle}
             placeholder="질문"
             value={it.question}
             onChange={(e) => { const items = [...p.items]; items[i] = { ...it, question: e.target.value }; set({ items }); }}
           />
           <textarea
-            className="w-full rounded border px-1 text-sm"
+            className="w-full rounded px-1 text-sm"
+            style={inputStyle}
             placeholder="답변"
             rows={3}
             value={it.answer}
@@ -30,7 +36,7 @@ export function FaqPropsForm({ block, onChange }: any) {
           />
           <button
             onClick={() => set({ items: p.items.filter((_: unknown, j: number) => j !== i) })}
-            className="text-xs text-rose-500"
+            className="text-xs" style={{ color: 'var(--negative)' }}
           >
             삭제
           </button>
@@ -39,7 +45,8 @@ export function FaqPropsForm({ block, onChange }: any) {
       {p.items.length < 30 ? (
         <button
           onClick={() => set({ items: [...p.items, { question: '', answer: '' }] })}
-          className="w-full rounded border px-2 py-1 text-xs hover:bg-neutral-50"
+          className="w-full rounded px-2 py-1 text-xs transition-opacity hover:opacity-80"
+          style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
         >
           + 항목 추가
         </button>
