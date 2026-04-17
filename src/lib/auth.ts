@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getTenant } from "@/lib/tenant/context";
+import { getOtpSessionFromCookies } from "@/lib/auth/otp-session";
 import type { Member } from "@/types/member";
 
 /**
@@ -29,8 +30,9 @@ export async function requireAdminUser(): Promise<User> {
 }
 
 export type DonorSession = {
-  user: User;
+  user: User | null;
   member: Member;
+  authMethod: "supabase" | "otp";
 };
 
 /**
@@ -41,26 +43,46 @@ export type DonorSession = {
  * supabase_uid + org_id 두 조건을 모두 만족하는 행만 조회한다.
  */
 export async function getDonorSession(): Promise<DonorSession | null> {
+  const tenant = await getTenant();
+  if (!tenant) return null;
+
+  // 1. Supabase Auth 세션 시도
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
 
-  const tenant = await getTenant();
-  if (!tenant) return null;
+  if (user) {
+    const admin = createSupabaseAdminClient();
+    const { data: member } = await admin
+      .from("members")
+      .select("*")
+      .eq("supabase_uid", user.id)
+      .eq("org_id", tenant.id)
+      .maybeSingle();
 
-  const admin = createSupabaseAdminClient();
-  const { data: member, error } = await admin
-    .from("members")
-    .select("*")
-    .eq("supabase_uid", user.id)
-    .eq("org_id", tenant.id)
-    .maybeSingle();
+    if (member) {
+      return { user, member: member as Member, authMethod: "supabase" };
+    }
+  }
 
-  if (error || !member) return null;
+  // 2. OTP JWT 세션 폴백
+  const otpPayload = await getOtpSessionFromCookies();
+  if (otpPayload && otpPayload.orgId === tenant.id) {
+    const admin = createSupabaseAdminClient();
+    const { data: member } = await admin
+      .from("members")
+      .select("*")
+      .eq("id", otpPayload.memberId)
+      .eq("org_id", tenant.id)
+      .maybeSingle();
 
-  return { user, member: member as Member };
+    if (member) {
+      return { user: null, member: member as Member, authMethod: "otp" };
+    }
+  }
+
+  return null;
 }
 
 /**
