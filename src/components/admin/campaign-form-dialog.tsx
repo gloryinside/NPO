@@ -117,7 +117,7 @@ export function CampaignFormDialog({
         return;
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as { campaign?: { id?: string } };
       onOpenChange(false);
       if (!isEdit) {
         onSuccess(data.campaign?.id);
