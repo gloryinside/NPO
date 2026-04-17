@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { logout } from "@/app/(admin)/admin/actions";
+import { NotificationBadge } from "./notification-badge";
 
 interface NavItem {
   label: string;
@@ -154,6 +155,35 @@ function NavGroupSection({ group, items, defaultOpen }: NavGroup) {
   );
 }
 
+function NotificationLink() {
+  const pathname = usePathname();
+  const isActive = pathname === "/admin/notifications";
+
+  return (
+    <Link
+      href="/admin/notifications"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "0.375rem 1rem",
+        borderRadius: "0.375rem",
+        fontSize: "0.875rem",
+        textDecoration: "none",
+        transition: "color 0.15s, background-color 0.15s",
+        color: isActive ? "var(--accent)" : "var(--muted-foreground)",
+        background: isActive
+          ? "color-mix(in srgb, var(--accent) 10%, transparent)"
+          : "transparent",
+        fontWeight: isActive ? 500 : 400,
+        marginBottom: "0.25rem",
+      }}
+    >
+      알림
+      <NotificationBadge />
+    </Link>
+  );
+}
+
 export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
     <aside
@@ -196,6 +226,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
       {/* Navigation */}
       <nav style={{ flex: 1, overflowY: "auto", paddingTop: "0.5rem", paddingBottom: "0.5rem" }}>
+        <NotificationLink />
         {NAV.map((group) => (
           <NavGroupSection key={group.group} {...group} />
         ))}
