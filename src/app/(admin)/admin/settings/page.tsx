@@ -5,6 +5,8 @@ import { decryptSecret, maskPlaintext } from "@/lib/secrets/crypto";
 import { TossSettingsForm } from "@/components/admin/toss-settings-form";
 import { OrgProfileForm } from "@/components/admin/org-profile-form";
 import { ErpSettingsForm } from "@/components/admin/erp-settings-form";
+import { ThemeSettingsForm } from "@/components/admin/theme-settings-form";
+import { ThemeConfigSchema, defaultThemeConfig } from "@/lib/theme/config";
 
 function maskSecret(value: string | null): string | null {
   return value ? maskPlaintext(value) : null;
@@ -40,7 +42,7 @@ export default async function SettingsPage() {
     supabase
       .from("orgs")
       .select(
-        "name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats, bank_name, bank_account, account_holder"
+        "name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats, bank_name, bank_account, account_holder, theme_config"
       )
       .eq("id", tenantId)
       .single(),
@@ -69,6 +71,9 @@ export default async function SettingsPage() {
     tossSecretKeyMasked: maskSecret(tossSecretPlain),
     tossWebhookSecretMasked: maskSecret(tossWebhookPlain),
   };
+
+  const parsedTheme = ThemeConfigSchema.safeParse(orgData?.theme_config);
+  const initialTheme = parsedTheme.success ? parsedTheme.data : defaultThemeConfig();
 
   const initialOrg = {
     name: (orgData?.name as string) ?? "",
@@ -115,7 +120,7 @@ export default async function SettingsPage() {
 
       <hr className="border-[var(--border)] mb-10" />
 
-      <section>
+      <section className="mb-10">
         <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
           ERP 연동 설정
         </h2>
@@ -127,6 +132,18 @@ export default async function SettingsPage() {
           erpApiKeyMasked={maskSecret(erpApiPlain)}
           erpWebhookUrl={secretsRow?.erp_webhook_url ?? null}
         />
+      </section>
+
+      <hr className="border-[var(--border)] mb-10" />
+
+      <section className="mb-10">
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
+          공개 페이지 테마
+        </h2>
+        <p className="text-xs text-[var(--muted-foreground)] mb-4">
+          기관의 공개 후원 페이지에 적용될 색상과 디스플레이 모드를 설정합니다.
+        </p>
+        <ThemeSettingsForm initialData={initialTheme} />
       </section>
     </div>
   );
