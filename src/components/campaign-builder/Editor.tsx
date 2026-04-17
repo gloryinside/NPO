@@ -5,6 +5,8 @@ import { Canvas } from './Canvas';
 import { Palette } from './Palette';
 import { PropsPanel } from './PropsPanel';
 
+type Viewport = 'desktop' | 'mobile';
+
 export function Editor({
   campaignId,
   campaignSlug,
@@ -19,8 +21,30 @@ export function Editor({
   const [content, setContent] = useState<PageContent>(initialContent);
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [previewToken, setPreviewToken] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [viewport, setViewport] = useState<Viewport>('desktop');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const prevSaveStatus = useRef<'saved' | 'saving' | 'unsaved'>('saved');
+
+  // Fetch preview token on mount for the split-pane iframe
+  useEffect(() => {
+    fetch(`/api/admin/campaigns/${campaignId}/preview-token`, { method: 'POST' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.token) setPreviewToken(data.token); })
+      .catch(() => {});
+  }, [campaignId]);
+
+  // Reload iframe when autosave completes
+  useEffect(() => {
+    if (prevSaveStatus.current === 'saving' && saveStatus === 'saved') {
+      setPreviewLoading(true);
+      iframeRef.current?.contentWindow?.location.reload();
+    }
+    prevSaveStatus.current = saveStatus;
+  }, [saveStatus]);
 
   // Autosave: 2-second debounce on content changes
   useEffect(() => {
@@ -84,11 +108,8 @@ export function Editor({
   }, []);
 
   async function handlePreview() {
-    const res = await fetch(`/api/admin/campaigns/${campaignId}/preview-token`, {
-      method: 'POST',
-    });
-    if (!res.ok) return alert('미리보기 토큰 생성 실패');
-    const { token } = await res.json();
+    const token = previewToken ?? (await fetch(`/api/admin/campaigns/${campaignId}/preview-token`, { method: 'POST' }).then(r => r.json()).then(d => d.token).catch(() => null));
+    if (!token) return alert('미리보기 토큰 생성 실패');
     window.open(`/campaigns/${campaignSlug}/preview?token=${token}`, '_blank');
   }
 
@@ -97,6 +118,10 @@ export function Editor({
     const res = await fetch(`/api/admin/campaigns/${campaignId}/publish`, { method: 'POST' });
     alert(res.ok ? '게시되었습니다.' : '게시 실패');
   }
+
+  const previewSrc = previewToken
+    ? `/campaigns/${campaignSlug}/preview?token=${previewToken}`
+    : null;
 
   return (
     <div className="flex h-screen flex-col">
@@ -125,6 +150,35 @@ export function Editor({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Viewport toggle */}
+          <div className="flex rounded border" style={{ borderColor: 'var(--border)' }}>
+            <button
+              type="button"
+              onClick={() => setViewport('desktop')}
+              className="px-2 py-1 text-xs transition-colors"
+              style={{
+                background: viewport === 'desktop' ? 'var(--accent)' : 'transparent',
+                color: viewport === 'desktop' ? '#fff' : 'var(--muted-foreground)',
+                borderRadius: '0.25rem 0 0 0.25rem',
+              }}
+              title="데스크탑"
+            >
+              🖥
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewport('mobile')}
+              className="px-2 py-1 text-xs transition-colors"
+              style={{
+                background: viewport === 'mobile' ? 'var(--accent)' : 'transparent',
+                color: viewport === 'mobile' ? '#fff' : 'var(--muted-foreground)',
+                borderRadius: '0 0.25rem 0.25rem 0',
+              }}
+              title="모바일"
+            >
+              📱
+            </button>
+          </div>
           <button
             onClick={handlePreview}
             className="rounded border px-3 py-1 text-xs transition-colors hover:opacity-80"
@@ -142,7 +196,7 @@ export function Editor({
         </div>
       </header>
 
-      {/* Body: Palette | Canvas | PropsPanel */}
+      {/* Body: Palette | Canvas (280px) | Preview (flex-1) | PropsPanel (280px) */}
       <div className="flex flex-1 overflow-hidden">
         <Palette
           campaignId={campaignId}
@@ -150,8 +204,8 @@ export function Editor({
           onAdd={handleAddBlock}
         />
 
-        {/* Canvas */}
-        <main className="flex flex-1 flex-col overflow-auto border-r p-3"
+        {/* Canvas — fixed width */}
+        <main className="flex w-[280px] shrink-0 flex-col overflow-auto border-r p-3"
           style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}>
           <p className="mb-2 text-center text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>
             블록 구성
@@ -165,6 +219,47 @@ export function Editor({
             onDuplicate={handleDuplicate}
           />
         </main>
+
+        {/* Preview panel */}
+        <div className="flex flex-1 flex-col overflow-hidden border-r"
+          style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}>
+          <div className="flex shrink-0 items-center justify-between border-b px-3 py-1.5"
+            style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+            <span className="text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>미리보기</span>
+            {saveStatus === 'saving' && (
+              <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>업데이트 중…</span>
+            )}
+          </div>
+          <div className="flex flex-1 items-start justify-center overflow-auto p-4">
+            {previewSrc ? (
+              <div
+                className="relative h-full overflow-hidden rounded-lg shadow-lg"
+                style={{ width: viewport === 'mobile' ? '390px' : '100%', minHeight: '600px' }}
+              >
+                {previewLoading && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.05)' }}>
+                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>로딩 중…</span>
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  src={previewSrc}
+                  className="h-full w-full border-0"
+                  style={{ minHeight: '600px' }}
+                  title="캠페인 미리보기"
+                  onLoad={() => setPreviewLoading(false)}
+                />
+              </div>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                  미리보기를 불러오는 중…
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
 
         <PropsPanel block={selectedBlock} campaignId={campaignId} allBlocks={content.blocks} onChange={handleBlockChange} />
       </div>
