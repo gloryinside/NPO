@@ -18,7 +18,7 @@ const CustomFieldSchema = z.object({
 
 export const FormSettingsSchema = z.object({
   amountPresets: z.array(z.number().int().positive()),
-  amountDescriptions: z.record(z.string()).optional(),
+  amountDescriptions: z.record(z.string(), z.string()).optional(),
   allowCustomAmount: z.boolean(),
   donationTypes: z.array(DonationType),
   paymentMethods: z.array(PaymentMethod),

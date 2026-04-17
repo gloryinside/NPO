@@ -231,8 +231,8 @@ export default async function DonorHomePage() {
                     >
                       {formatAmount(p.amount)}
                     </div>
-                    {p.pay_status === 'paid' && (() => {
-                      const daysSince = (Date.now() - new Date(p.pay_date).getTime()) / 86400000;
+                    {p.pay_status === 'paid' && p.pay_date && (() => {
+                      const daysSince = (Date.now() - new Date(p.pay_date as string).getTime()) / 86400000;
                       return daysSince <= 7 ? <PaymentCancelButton paymentId={p.id} /> : null;
                     })()}
                   </div>
