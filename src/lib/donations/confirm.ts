@@ -210,6 +210,7 @@ async function sendDonationConfirmedEmail(
 
     const payType = (payment as unknown as { pay_method?: string | null }).pay_method === 'card_billing' ? 'regular' : 'onetime';
     notifyDonationThanks({
+      orgId: payment.org_id,
       phone: memberRes.data?.phone ?? null,
       email: memberEmail,
       name: memberRes.data?.name ?? '후원자',

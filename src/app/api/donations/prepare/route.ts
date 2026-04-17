@@ -401,6 +401,7 @@ export async function POST(req: NextRequest) {
     // 접수 확인 이메일 (fire-and-forget)
     if (email) {
       sendOfflineDonationReceived({
+        orgId: tenant.id,
         to: email,
         memberName: memberName.trim(),
         orgName: org?.name ?? tenant.name,

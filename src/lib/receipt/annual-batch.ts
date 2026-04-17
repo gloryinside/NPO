@@ -148,6 +148,7 @@ export async function issueAnnualReceipts(orgId: string, year: number): Promise<
 
       // Notify
       notifyReceiptIssued({
+        orgId,
         phone: (member.phone as string | null) ?? null,
         email: (member.email as string | null) ?? null,
         name: member.name as string,

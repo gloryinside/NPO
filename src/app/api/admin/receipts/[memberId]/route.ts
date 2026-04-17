@@ -209,6 +209,7 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   // 8) Email notification to donor (fire-and-forget)
   const memberEmail = (member as unknown as { email?: string | null }).email;
   notifyReceiptIssued({
+    orgId: tenant.id,
     phone: member.phone ?? null,
     email: memberEmail ?? null,
     name: member.name,

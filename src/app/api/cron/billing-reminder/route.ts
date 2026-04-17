@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
     const org = promise.orgs as unknown as { name: string };
 
     notifyBillingUpcoming({
+      orgId: promise.org_id as string,
       phone: member?.phone ?? null,
       name: member?.name ?? '후원자',
       date: targetDateStr,

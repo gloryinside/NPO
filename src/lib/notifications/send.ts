@@ -17,6 +17,7 @@ async function sendWithFallback(phone: string | null, templateCode: string, para
 
 // ── 후원 완료 감사 ───
 export type DonationThanksParams = {
+  orgId: string;
   phone: string | null;
   email: string | null;
   name: string;
@@ -29,7 +30,7 @@ export type DonationThanksParams = {
 };
 
 export function notifyDonationThanks(params: DonationThanksParams): void {
-  const { phone, email, name, amount, type, orgName, campaignTitle, paymentCode, approvedAt } = params;
+  const { orgId, phone, email, name, amount, type, orgName, campaignTitle, paymentCode, approvedAt } = params;
   const typeLabel = type === 'regular' ? '정기' : '일시';
   const amountStr = fmt(amount);
 
@@ -38,12 +39,13 @@ export function notifyDonationThanks(params: DonationThanksParams): void {
   }, TEMPLATES.DONATION_THANKS.smsBody({ name, amount: amountStr, type: typeLabel, orgName }));
 
   if (email) {
-    sendDonationConfirmed({ to: email, memberName: name, orgName, campaignTitle, amount, paymentCode, approvedAt });
+    sendDonationConfirmed({ orgId, to: email, memberName: name, orgName, campaignTitle, amount, paymentCode, approvedAt });
   }
 }
 
 // ── 영수증 발급 완료 ───
 export type ReceiptIssuedParams = {
+  orgId: string;
   phone: string | null;
   email: string | null;
   name: string;
@@ -55,7 +57,7 @@ export type ReceiptIssuedParams = {
 };
 
 export function notifyReceiptIssued(params: ReceiptIssuedParams): void {
-  const { phone, email, name, year, pdfUrl, orgName, receiptCode, totalAmount } = params;
+  const { orgId, phone, email, name, year, pdfUrl, orgName, receiptCode, totalAmount } = params;
   const link = pdfUrl ?? '마이페이지에서 확인';
 
   void sendWithFallback(phone, TEMPLATES.RECEIPT_ISSUED.code, {
@@ -63,12 +65,13 @@ export function notifyReceiptIssued(params: ReceiptIssuedParams): void {
   }, TEMPLATES.RECEIPT_ISSUED.smsBody({ name, year: String(year), orgName }));
 
   if (email) {
-    sendReceiptEmail({ to: email, memberName: name, orgName, year, receiptCode, totalAmount, pdfUrl });
+    sendReceiptEmail({ orgId, to: email, memberName: name, orgName, year, receiptCode, totalAmount, pdfUrl });
   }
 }
 
 // ── 결제 실패 (후원자) ───
 export type BillingFailedParams = {
+  orgId: string;
   phone: string | null;
   name: string;
   amount: number;
@@ -87,6 +90,7 @@ export function notifyBillingFailed(params: BillingFailedParams): void {
 
 // ── 결제 예정 D-3 ───
 export type BillingUpcomingParams = {
+  orgId: string;
   phone: string | null;
   name: string;
   date: string;
