@@ -1,4 +1,6 @@
 'use client';
+import { DonationTypeToggle } from '@/components/public/donation/DonationTypeToggle';
+import { AmountSelector } from '@/components/public/donation/AmountSelector';
 import type { WizardState } from '../WizardClient';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
@@ -14,78 +16,41 @@ export function Step1({
   onNext: () => void;
 }) {
   return (
-    <div className="space-y-4">
-      {/* Donation type */}
-      {settings.donationTypes.length > 1 && (
-        <div className="flex gap-2">
-          {settings.donationTypes.map((t) => (
-            <button
-              type="button"
-              key={t}
-              onClick={() => setState({ ...state, type: t })}
-              className={`flex-1 rounded-full px-4 py-2 ${state.type === t ? 'bg-rose-500 text-white' : 'bg-neutral-100'}`}
-            >
-              {t === 'regular' ? '정기' : '일시'}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="space-y-6">
+      <DonationTypeToggle
+        value={state.type}
+        available={settings.donationTypes as ('onetime' | 'regular')[]}
+        onChange={(t) => setState({ ...state, type: t })}
+      />
 
-      {/* Amount presets */}
-      <div className="grid grid-cols-2 gap-2">
-        {settings.amountPresets.map((a) => (
-          <button
-            type="button"
-            key={a}
-            onClick={() => setState({ ...state, amount: a })}
-            className={`rounded border px-3 py-2 text-sm ${state.amount === a ? 'border-rose-500 bg-rose-50 font-semibold' : ''}`}
-          >
-            {a.toLocaleString()}원
-          </button>
-        ))}
-      </div>
+      <AmountSelector
+        presets={settings.amountPresets}
+        amountDescriptions={settings.amountDescriptions}
+        allowCustom={settings.allowCustomAmount}
+        value={state.amount}
+        onChange={(a) => setState({ ...state, amount: a ?? 0 })}
+      />
 
-      {/* Custom amount */}
-      {settings.allowCustomAmount && (
-        <div>
-          <label className="mb-1 block text-xs text-neutral-600">직접 입력</label>
-          <input
-            type="number"
-            min={0}
-            value={state.amount}
-            onChange={(e) => setState({ ...state, amount: Number(e.target.value) })}
-            className="w-full rounded border px-3 py-2"
-          />
-        </div>
-      )}
-
-      {/* Designation */}
       {settings.designations.length > 0 && (
         <div>
-          <label className="mb-1 block text-xs text-neutral-600">후원 목적</label>
+          <label className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>
+            후원 목적
+          </label>
           <select
             value={state.designation ?? ''}
             onChange={(e) => setState({ ...state, designation: e.target.value || undefined })}
-            className="w-full rounded border px-3 py-2"
+            className="w-full rounded px-3 py-2 text-sm"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
           >
             <option value="">선택 안 함</option>
             {settings.designations.map((d) => (
-              <option key={d.key} value={d.key}>
-                {d.label}
-              </option>
+              <option key={d.key} value={d.key}>{d.label}</option>
             ))}
           </select>
         </div>
       )}
 
-      <button
-        type="button"
-        disabled={state.amount <= 0}
-        onClick={onNext}
-        className="w-full rounded-full bg-rose-500 py-3 font-semibold text-white disabled:opacity-50"
-      >
-        다음
-      </button>
+      {/* Sticky CTA is rendered in WizardClient */}
     </div>
   );
 }

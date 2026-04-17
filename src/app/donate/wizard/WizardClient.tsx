@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Step1 } from './steps/Step1';
 import { Step2 } from './steps/Step2';
 import { Step3 } from './steps/Step3';
+import { StepProgressBar } from '@/components/public/donation/StepProgressBar';
+import { StickyCtaButton } from '@/components/public/donation/StickyCtaButton';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
 export type WizardState = {
@@ -35,25 +37,12 @@ export function WizardClient({
 
   return (
     <main className="mx-auto max-w-xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-bold">{campaign.title}</h1>
+      <h1 className="mb-6 text-xl font-bold" style={{ color: 'var(--text)' }}>{campaign.title}</h1>
 
-      {/* Step indicator */}
-      <div className="mb-6 flex items-center gap-2 text-sm">
-        {([1, 2, 3] as const).map((s) => (
-          <span
-            key={s}
-            className={`flex h-7 w-7 items-center justify-center rounded-full ${
-              step === s
-                ? 'bg-rose-500 text-white'
-                : step > s
-                  ? 'bg-rose-200 text-rose-700'
-                  : 'bg-neutral-100 text-neutral-400'
-            }`}
-          >
-            {s}
-          </span>
-        ))}
-      </div>
+      <StepProgressBar
+        steps={['후원 선택', '정보 입력', '결제 완료']}
+        currentStep={step - 1}
+      />
 
       {step === 1 && (
         <Step1
@@ -74,6 +63,15 @@ export function WizardClient({
         />
       )}
       {step === 3 && <Step3 campaign={campaign} settings={settings} state={state} />}
+
+      {step === 1 && (
+        <StickyCtaButton
+          label="다음"
+          onClick={() => setStep(2)}
+          disabled={state.amount <= 0}
+          loading={false}
+        />
+      )}
     </main>
   );
 }

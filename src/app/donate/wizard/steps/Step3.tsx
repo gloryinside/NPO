@@ -28,23 +28,37 @@ export function Step3({
 
   return (
     <div className="space-y-4 text-center">
-      <div className="text-5xl">🎉</div>
+      <div
+        className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full"
+        style={{ background: 'var(--accent-soft)' }}
+      >
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <path
+            d="M10 20l8 8 12-16"
+            stroke="var(--accent)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
       <h1 className="text-2xl font-bold">후원해 주셔서 감사합니다</h1>
-      <p className="text-neutral-600">
+      <p style={{ color: 'var(--muted-foreground)' }}>
         {state.amount.toLocaleString()}원{' '}
         {state.type === 'regular' ? '정기' : '일시'} 후원이 완료되었습니다.
       </p>
       {state.receiptOptIn && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
           기부금 영수증은 등록하신 이메일로 발송됩니다.
         </p>
       )}
       {settings.completeRedirectUrl && (
-        <p className="text-xs text-neutral-400">잠시 후 자동으로 이동합니다…</p>
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>잠시 후 자동으로 이동합니다…</p>
       )}
       <a
         href={`/campaigns/${campaign.slug}`}
-        className="inline-block rounded border px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
+        className="inline-block rounded px-4 py-2 text-sm"
+        style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
       >
         캠페인으로 돌아가기
       </a>

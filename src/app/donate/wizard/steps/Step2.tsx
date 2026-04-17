@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { sanitizeHtml } from '@/lib/campaign-builder/sanitize-html';
+import { PayMethodSelector } from '@/components/public/donation/PayMethodSelector';
+import { AgreementSection } from '@/components/public/donation/AgreementSection';
 import type { WizardState } from '../WizardClient';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
@@ -23,10 +25,11 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-neutral-600">{label}</span>
+      <span className="mb-1 block text-xs" style={{ color: 'var(--text)' }}>{label}</span>
       <input
         type={type}
-        className="w-full rounded border px-2 py-1"
+        className="w-full rounded px-2 py-1"
+        style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -48,7 +51,8 @@ function CustomFieldInput({
       <label className="block">
         <span className="mb-1 block text-xs">{field.label}</span>
         <textarea
-          className="w-full rounded border px-2 py-1"
+          className="w-full rounded px-2 py-1"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
           value={(value as string) ?? ''}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -66,7 +70,8 @@ function CustomFieldInput({
       <label className="block">
         <span className="mb-1 block text-xs">{field.label}</span>
         <select
-          className="w-full rounded border px-2 py-1"
+          className="w-full rounded px-2 py-1"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
           value={(value as string) ?? ''}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -101,7 +106,7 @@ export function Step2({
   const [method, setMethod] = useState(settings.paymentMethods[0] ?? 'card');
   const [receipt, setReceipt] = useState(settings.requireReceipt);
   const [residentNo, setResidentNo] = useState('');
-  const [ag, setAg] = useState({ terms: false, privacy: false, marketing: false });
+  const [ag, setAg] = useState({ terms: false, privacy: false, receipt: false, marketing: false });
   const [submitting, setSubmitting] = useState(false);
 
   async function submit() {
@@ -168,15 +173,11 @@ export function Step2({
         />
       ))}
 
-      <div>
-        <div className="mb-1 text-xs text-neutral-600">결제수단</div>
-        {settings.paymentMethods.map((m) => (
-          <label key={m} className="mr-3 inline-flex items-center gap-1 text-sm">
-            <input type="radio" checked={method === m} onChange={() => setMethod(m)} />
-            {m}
-          </label>
-        ))}
-      </div>
+      <PayMethodSelector
+        methods={settings.paymentMethods}
+        value={method}
+        onChange={setMethod}
+      />
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -191,41 +192,39 @@ export function Step2({
         <Input label="주민번호 / 사업자번호" value={residentNo} onChange={setResidentNo} />
       )}
 
-      {sanitizedTerms && (
-        <div
-          className="max-h-32 overflow-auto rounded border p-3 text-xs text-neutral-600"
-          /* sanitizeHtml (DOMPurify) is applied on the line above — safe to render */
-          dangerouslySetInnerHTML={{ __html: sanitizedTerms }}
-        />
-      )}
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={ag.terms} onChange={(e) => setAg({ ...ag, terms: e.target.checked })} />
-        [필수] 이용약관 동의
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={ag.privacy} onChange={(e) => setAg({ ...ag, privacy: e.target.checked })} />
-        [필수] 개인정보 수집·이용 동의
-      </label>
-      {settings.marketingOptInLabel && (
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={ag.marketing}
-            onChange={(e) => setAg({ ...ag, marketing: e.target.checked })}
-          />
-          [선택] {settings.marketingOptInLabel}
-        </label>
-      )}
+      <AgreementSection
+        termsHtml={sanitizedTerms}
+        requireReceipt={settings.requireReceipt}
+        marketingLabel={settings.marketingOptInLabel}
+        value={{
+          allChecked:
+            ag.terms &&
+            ag.privacy &&
+            (!settings.requireReceipt || ag.receipt) &&
+            (!settings.marketingOptInLabel || ag.marketing),
+          terms: ag.terms,
+          privacy: ag.privacy,
+          receipt: ag.receipt ?? false,
+          marketing: ag.marketing,
+        }}
+        onChange={(v) => setAg({ terms: v.terms, privacy: v.privacy, receipt: v.receipt, marketing: v.marketing })}
+      />
 
       <div className="flex gap-2">
-        <button type="button" onClick={onBack} className="flex-1 rounded border py-3 text-sm">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex-1 rounded py-3 text-sm"
+          style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
+        >
           이전
         </button>
         <button
           type="button"
           disabled={submitting || !info.name || !info.mobile}
           onClick={submit}
-          className="flex-1 rounded-full bg-rose-500 py-3 font-semibold text-white disabled:opacity-50"
+          className="flex-1 rounded-full py-3 font-semibold text-white disabled:opacity-50"
+          style={{ background: 'var(--accent)' }}
         >
           {submitting ? '처리 중…' : '후원하기'}
         </button>
