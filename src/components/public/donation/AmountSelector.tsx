@@ -27,10 +27,13 @@ export default function AmountSelector({
   };
 
   const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    setCustomInput(raw);
-    const num = Number(raw);
-    if (raw && !isNaN(num) && num >= 1000) {
+    // Strip non-numeric characters, allow only digits
+    const digits = e.target.value.replace(/[^0-9]/g, '');
+    const num = Number(digits);
+    // Format with commas for display
+    const formatted = digits ? num.toLocaleString('ko-KR') : '';
+    setCustomInput(formatted);
+    if (digits && num >= 1000) {
       onChange(num);
     } else {
       onChange(null);
@@ -68,9 +71,9 @@ export default function AmountSelector({
 
       {allowCustom && (
         <input
-          type="number"
-          min={1000}
-          placeholder="직접 입력"
+          type="text"
+          inputMode="numeric"
+          placeholder="직접 입력 (원)"
           value={customInput}
           onChange={handleCustomChange}
           style={{

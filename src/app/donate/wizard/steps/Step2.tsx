@@ -112,7 +112,6 @@ export function Step2({
   async function submit() {
     if (!ag.terms || !ag.privacy) return alert('필수 약관에 동의해 주세요.');
     setSubmitting(true);
-    setState({ ...state, donorInfo: info, paymentMethod: method, customFields, receiptOptIn: receipt });
     window.gtag?.('event', 'add_payment_info', { value: state.amount, currency: 'KRW' });
 
     const res = await fetch('/api/donations/prepare', {
@@ -143,9 +142,11 @@ export function Step2({
     const data = (await res.json()) as {
       offline?: boolean;
       checkoutUrl?: string;
+      paymentCode?: string;
     };
 
     if (data.offline || !data.checkoutUrl) {
+      setState({ ...state, donorInfo: info, paymentMethod: method, customFields, receiptOptIn: receipt, paymentCode: data.paymentCode });
       onDone();
       return;
     }

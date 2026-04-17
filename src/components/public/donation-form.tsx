@@ -5,6 +5,8 @@ import { loadTossPayments } from "@tosspayments/payment-sdk";
 import type { Campaign } from "@/types/campaign";
 import { DonationTypeToggle } from "@/components/public/donation/DonationTypeToggle";
 import { PayMethodSelector } from "@/components/public/donation/PayMethodSelector";
+import AmountSelector from "@/components/public/donation/AmountSelector";
+import { StickyCtaButton } from "@/components/public/donation/StickyCtaButton";
 
 const DEFAULT_PRESET_AMOUNTS = [10000, 30000, 50000, 100000];
 
@@ -168,24 +170,9 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
   const [memberPhone, setMemberPhone] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [amount, setAmount] = useState<number>(presetAmounts[0] ?? 30000);
-  const [customAmount, setCustomAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [offlineConfirm, setOfflineConfirm] = useState<OfflineConfirmData | null>(null);
-
-  function handlePresetAmount(value: number) {
-    setAmount(value);
-    setCustomAmount("");
-  }
-
-  function handleCustomAmountChange(raw: string) {
-    const numeric = raw.replace(/[^0-9]/g, "");
-    setCustomAmount(numeric);
-    const parsed = Number(numeric);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      setAmount(parsed);
-    }
-  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -268,6 +255,7 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
 
   return (
     <form
+      data-donation-form
       onSubmit={handleSubmit}
       className="flex flex-col gap-6 rounded-xl border p-6"
       style={{
@@ -362,48 +350,15 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
       />
 
       <div className="flex flex-col gap-2">
-        <span
-          className="text-sm font-medium"
-          style={{ color: "var(--text)" }}
-        >
+        <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
           후원 금액 <span style={{ color: "var(--negative)" }}>*</span>
         </span>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {presetAmounts.map((value) => {
-            const selected = !customAmount && amount === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => handlePresetAmount(value)}
-                className="rounded-lg border px-3 py-2 text-sm font-semibold transition-colors"
-                style={{
-                  background: selected ? "var(--accent)" : "var(--surface-2)",
-                  borderColor: selected ? "var(--accent)" : "var(--border)",
-                  color: selected ? "#ffffff" : "var(--text)",
-                }}
-              >
-                {formatAmount(value)}원
-              </button>
-            );
-          })}
-        </div>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={customAmount}
-          onChange={(e) => handleCustomAmountChange(e.target.value)}
-          className="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--surface-2)",
-            borderColor: "var(--border)",
-            color: "var(--text)",
-          }}
-          placeholder="직접 입력 (원)"
+        <AmountSelector
+          presets={presetAmounts}
+          allowCustom={true}
+          value={amount}
+          onChange={(a) => setAmount(a ?? 0)}
         />
-        <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-          결제 예정 금액: {formatAmount(amount || 0)}원
-        </p>
       </div>
 
       {errorMessage && (
@@ -419,21 +374,16 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{
-          background: "var(--accent)",
-          color: "#ffffff",
+      <StickyCtaButton
+        label={payMethod === "transfer" || payMethod === "cms" ? "후원 신청" : "결제 진행"}
+        onClick={() => {
+          // Trigger the form's native submit event
+          const form = document.querySelector('form[data-donation-form]') as HTMLFormElement | null;
+          form?.requestSubmit();
         }}
-      >
-        {loading
-          ? "처리 중..."
-          : payMethod === "transfer" || payMethod === "cms"
-          ? "후원 신청"
-          : "결제 진행"}
-      </button>
+        disabled={!memberName.trim() || !amount || amount <= 0}
+        loading={loading}
+      />
     </form>
   );
 }

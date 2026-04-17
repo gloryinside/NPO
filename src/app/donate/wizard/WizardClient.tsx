@@ -15,6 +15,7 @@ export type WizardState = {
   paymentMethod?: string;
   customFields?: Record<string, unknown>;
   receiptOptIn?: boolean;
+  paymentCode?: string;
   idempotencyKey: string;
 };
 
