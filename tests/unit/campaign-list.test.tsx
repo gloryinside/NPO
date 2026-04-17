@@ -63,9 +63,8 @@ describe("CampaignList — 페이지 편집 버튼", () => {
 describe("CampaignList — 신규 생성 후 빌더 이동", () => {
   it('"새 캠페인" 버튼 클릭 시 다이얼로그가 열린다', () => {
     render(<CampaignList campaigns={[]} />);
-    const newBtn = screen.getByRole("button", { name: "새 캠페인" });
-    expect(newBtn).toBeTruthy();
-    fireEvent.click(newBtn);
-    expect(screen.getAllByText("새 캠페인").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "새 캠페인" }));
+    // 다이얼로그가 열리면 dialog role을 가진 요소가 DOM에 나타난다
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 });

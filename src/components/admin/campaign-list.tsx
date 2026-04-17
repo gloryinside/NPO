@@ -85,6 +85,10 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
     setDialogOpen(true);
   };
 
+  const handlePageEdit = useCallback((id: string) => {
+    router.push(`/admin/campaigns/${id}/edit`);
+  }, [router]);
+
   const handleArchive = async (campaign: Campaign) => {
     if (!confirm(`"${campaign.title}" 캠페인을 보관하시겠습니까?`)) return;
     try {
@@ -208,7 +212,7 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => router.push(`/admin/campaigns/${campaign.id}/edit`)}
+                        onClick={() => handlePageEdit(campaign.id)}
                         style={{
                           borderColor: "var(--border)",
                           color: "var(--text)",
