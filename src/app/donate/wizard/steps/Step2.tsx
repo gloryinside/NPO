@@ -105,7 +105,8 @@ export function Step2({
   const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
   const [method, setMethod] = useState(settings.paymentMethods[0] ?? 'card');
   const [receipt, setReceipt] = useState(settings.requireReceipt);
-  const [residentNo, setResidentNo] = useState('');
+  const [identityVerified, setIdentityVerified] = useState(false);
+  const [identityName, setIdentityName] = useState('');
   const [ag, setAg] = useState({ terms: false, privacy: false, receipt: false, marketing: false });
   const [submitting, setSubmitting] = useState(false);
 
@@ -128,7 +129,7 @@ export function Step2({
         customFields,
         payMethod: method,
         receiptOptIn: receipt,
-        residentNo: receipt ? residentNo : undefined,
+        identityVerified: receipt ? identityVerified : undefined,
         idempotencyKey: state.idempotencyKey,
       }),
     });
@@ -180,17 +181,50 @@ export function Step2({
         onChange={setMethod}
       />
 
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
         <input
           type="checkbox"
           checked={receipt}
           onChange={(e) => setReceipt(e.target.checked)}
           disabled={settings.requireReceipt}
+          style={{ accentColor: 'var(--accent)' }}
         />
         기부금 영수증 신청
       </label>
-      {receipt && (
-        <Input label="주민번호 / 사업자번호" value={residentNo} onChange={setResidentNo} />
+      {receipt && !identityVerified && (
+        <button
+          type="button"
+          onClick={async () => {
+            const res = await fetch('/api/auth/identity/request', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                successUrl: `${window.location.origin}/donate/wizard?identity=success`,
+                failUrl: `${window.location.origin}/donate/wizard?identity=fail`,
+              }),
+            });
+            if (!res.ok) return alert('본인인증 요청 실패');
+            const { txId } = await res.json();
+            sessionStorage.setItem('identity_txId', txId);
+            window.open(
+              `https://auth.tosspayments.com/v1/identity-verification/${txId}`,
+              '_blank',
+              'width=500,height=700',
+            );
+          }}
+          className="w-full rounded-lg py-2.5 text-sm font-semibold"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
+        >
+          본인인증
+        </button>
+      )}
+      {receipt && identityVerified && (
+        <div
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+        >
+          <span>✓</span> 본인인증 완료 ({identityName})
+        </div>
       )}
 
       <AgreementSection
