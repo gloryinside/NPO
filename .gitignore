@@ -44,6 +44,8 @@ supabase/.temp/
 # Superpowers workspace
 .superpowers/
 .claude/
+docs/superpowers/
+docs/벤지마킹/
 
 # Yarn / pnpm
 .pnp.*
