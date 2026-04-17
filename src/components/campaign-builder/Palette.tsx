@@ -8,19 +8,18 @@ type Tab = 'blocks' | 'settings';
 type CatalogEntry = {
   type: Block['type'];
   label: string;
-  icon: string;
   defaults: Block['props'];
 };
 
 const CATALOG: CatalogEntry[] = [
-  { type: 'hero', label: 'Hero 배너', icon: '🖼', defaults: { headline: '제목을 입력하세요', ctaLabel: '후원하기' } },
-  { type: 'richText', label: '텍스트', icon: '✏️', defaults: { html: '<p>내용을 입력하세요.</p>' } },
-  { type: 'imageSingle', label: '이미지', icon: '📷', defaults: { assetId: '', alt: '' } },
-  { type: 'impactStats', label: '임팩트 통계', icon: '📊', defaults: { items: [{ icon: '', value: '0', label: '항목' }] } },
-  { type: 'fundraisingProgress', label: '모금 현황', icon: '📈', defaults: { showDonorCount: true } },
-  { type: 'faq', label: 'FAQ', icon: '❓', defaults: { items: [{ question: '', answer: '' }] } },
-  { type: 'donationQuickForm', label: '퀵 후원 폼', icon: '💜', defaults: { title: '지금 후원하세요' } },
-  { type: 'snsShare', label: 'SNS 공유', icon: '🔗', defaults: { platforms: ['kakao', 'facebook', 'link'] } },
+  { type: 'hero', label: 'Hero 배너', defaults: { headline: '제목을 입력하세요', ctaLabel: '후원하기' } },
+  { type: 'richText', label: '텍스트', defaults: { html: '<p>내용을 입력하세요.</p>' } },
+  { type: 'imageSingle', label: '이미지', defaults: { assetId: '', alt: '' } },
+  { type: 'impactStats', label: '임팩트 통계', defaults: { items: [{ icon: '', value: '0', label: '항목' }] } },
+  { type: 'fundraisingProgress', label: '모금 현황', defaults: { showDonorCount: true } },
+  { type: 'faq', label: 'FAQ', defaults: { items: [{ question: '', answer: '' }] } },
+  { type: 'donationQuickForm', label: '퀵 후원 폼', defaults: { title: '지금 후원하세요' } },
+  { type: 'snsShare', label: 'SNS 공유', defaults: { platforms: ['kakao', 'facebook', 'link'] } },
 ];
 
 export function Palette({
@@ -68,7 +67,7 @@ export function Palette({
       {/* Block catalog */}
       {tab === 'blocks' && (
         <div className="flex-1 overflow-auto p-2">
-          {CATALOG.map(({ type, label, icon, defaults }) => (
+          {CATALOG.map(({ type, label, defaults }) => (
             <button
               type="button"
               key={type}
@@ -80,7 +79,6 @@ export function Palette({
                 color: 'var(--text)',
               }}
             >
-              <span>{icon}</span>
               <span className="flex-1">{label}</span>
               <span style={{ color: 'var(--accent)', fontWeight: 600 }}>+</span>
             </button>

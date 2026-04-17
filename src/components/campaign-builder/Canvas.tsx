@@ -14,19 +14,6 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Block } from '@/lib/campaign-builder/blocks/schema';
 import { BlockToolbar } from './BlockToolbar';
 
-const BLOCK_ICONS: Record<string, string> = {
-  hero: '🖼',
-  richText: '✏️',
-  imageSingle: '🖼',
-  impactStats: '📊',
-  fundraisingProgress: '📈',
-  faq: '❓',
-  donationQuickForm: '💜',
-  snsShare: '🔗',
-};
-
-// Client-side preview for each block type — plain text/icon stubs
-// (full server components can't be used inside the editor canvas)
 const PREVIEW_LABELS: Record<string, string> = {
   hero: 'Hero 배너',
   richText: '텍스트 블록',
@@ -156,7 +143,6 @@ function SortableBlock({
         className="px-3 py-3 text-xs font-medium"
         style={{ color: selected ? 'var(--accent)' : 'var(--text)' }}
       >
-        {BLOCK_ICONS[block.type] ?? '▪'}{' '}
         {PREVIEW_LABELS[block.type] ?? block.type}
       </div>
     </div>
