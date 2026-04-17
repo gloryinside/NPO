@@ -23,7 +23,7 @@ type Props = {
   campaign?: Campaign;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (newCampaignId?: string) => void;
 };
 
 const PAY_METHOD_CHOICES: Array<{ value: string; label: string }> = [
@@ -117,8 +117,13 @@ export function CampaignFormDialog({
         return;
       }
 
-      onSuccess();
+      const data = await res.json();
       onOpenChange(false);
+      if (!isEdit) {
+        onSuccess(data.campaign?.id);
+      } else {
+        onSuccess();
+      }
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
