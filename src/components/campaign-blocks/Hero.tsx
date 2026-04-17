@@ -13,7 +13,8 @@ export function Hero({ block }: { block: { props: any } }) {
         {subheadline ? <p className="mt-4 max-w-2xl text-lg">{subheadline}</p> : null}
         <a
           href={ctaAnchorBlockId ? `#${ctaAnchorBlockId}` : '#donate'}
-          className="mt-8 rounded-full bg-white px-8 py-3 font-semibold text-black hover:bg-neutral-100"
+          className="mt-8 rounded-full px-8 py-3 font-semibold text-white hover:opacity-90 transition-opacity"
+          style={{ background: 'var(--accent)' }}
         >
           {ctaLabel}
         </a>

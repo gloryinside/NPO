@@ -34,7 +34,8 @@ export function SnsShare({ block }: { block: { props: any } }) {
       {channels.includes('link') ? (
         <button
           onClick={copyLink}
-          className="inline-flex items-center gap-2 rounded-full bg-neutral-200 px-5 py-2 text-sm hover:bg-neutral-300"
+          className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm transition-opacity hover:opacity-80"
+          style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)' }}
         >
           <Link className="h-4 w-4" />
           링크 복사

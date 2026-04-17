@@ -34,7 +34,11 @@ export function DonationQuickForm({
   }
 
   return (
-    <section id="donate" className="mx-auto my-12 max-w-xl rounded-xl bg-white p-6 shadow-lg">
+    <section
+      id="donate"
+      className="mx-auto my-12 max-w-xl rounded-xl p-6 shadow-lg"
+      style={{ background: 'var(--surface)', color: 'var(--text)' }}
+    >
       {block.props.heading ? (
         <h2 className="mb-4 text-2xl font-bold">{block.props.heading}</h2>
       ) : null}
@@ -46,9 +50,10 @@ export function DonationQuickForm({
             <button
               key={t}
               onClick={() => setDonationType(t)}
-              className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                donationType === t ? 'bg-rose-500 text-white' : 'bg-neutral-100 hover:bg-neutral-200'
-              }`}
+              className="flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors"
+              style={donationType === t
+                ? { background: 'var(--accent)', color: '#fff' }
+                : { background: 'var(--surface-2)', color: 'var(--text)' }}
             >
               {t === 'regular' ? '정기후원' : '일시후원'}
             </button>
@@ -62,9 +67,10 @@ export function DonationQuickForm({
           <button
             key={a}
             onClick={() => setAmount(a)}
-            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-              amount === a ? 'border-rose-500 bg-rose-50 font-semibold' : 'hover:bg-neutral-50'
-            }`}
+            className="rounded-lg px-3 py-2 text-sm transition-colors"
+            style={amount === a
+              ? { border: '2px solid var(--accent)', background: 'var(--accent-soft)', fontWeight: 600, color: 'var(--accent)' }
+              : { border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
           >
             {a.toLocaleString('ko-KR')}원
           </button>
@@ -79,7 +85,8 @@ export function DonationQuickForm({
           min={1000}
           step={1000}
           onChange={(e) => setAmount(Number(e.target.value))}
-          className="mb-4 w-full rounded border px-3 py-2 text-sm"
+          className="mb-4 w-full rounded px-3 py-2 text-sm"
+          style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
           placeholder="직접 입력"
         />
       ) : null}
@@ -89,7 +96,8 @@ export function DonationQuickForm({
         <select
           value={designation}
           onChange={(e) => setDesignation(e.target.value)}
-          className="mb-4 w-full rounded border px-3 py-2 text-sm"
+          className="mb-4 w-full rounded px-3 py-2 text-sm"
+          style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
         >
           {formSettings.designations.map((d: any) => (
             <option key={d.key} value={d.key}>{d.label}</option>
@@ -99,7 +107,8 @@ export function DonationQuickForm({
 
       <button
         onClick={handleSubmit}
-        className="w-full rounded-full bg-rose-500 py-3 font-semibold text-white hover:bg-rose-600 active:scale-95 transition-transform"
+        className="w-full rounded-full py-3 font-semibold text-white transition-opacity hover:opacity-90 active:scale-95"
+        style={{ background: 'var(--accent)' }}
       >
         후원하기
       </button>

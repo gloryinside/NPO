@@ -9,14 +9,14 @@ export async function FundraisingProgress({ block, slug }: { block: { props: any
 
   return (
     <section className="mx-auto my-8 max-w-3xl px-4">
-      <div className="mb-2 flex justify-between text-sm text-neutral-700">
+      <div className="mb-2 flex justify-between text-sm" style={{ color: 'var(--text)' }}>
         <span>{p.raised.toLocaleString('ko-KR')}원 모금</span>
         <span>{p.percent}%</span>
       </div>
-      <div className="h-3 w-full overflow-hidden rounded-full bg-neutral-200">
-        <div className="h-full bg-rose-500 transition-[width]" style={{ width: `${p.percent}%` }} />
+      <div className="h-3 w-full overflow-hidden rounded-full" style={{ background: 'var(--surface-2)' }}>
+        <div className="h-full transition-[width]" style={{ width: `${p.percent}%`, background: 'var(--accent)' }} />
       </div>
-      <div className="mt-3 flex gap-6 text-sm text-neutral-600">
+      <div className="mt-3 flex gap-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>
         {block.props.showDonorCount ? (
           <span>{p.donorCount.toLocaleString('ko-KR')}명 참여</span>
         ) : null}

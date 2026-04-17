@@ -10,18 +10,19 @@ export function Faq({ block }: { block: { props: any } }) {
       {block.props.heading ? (
         <h2 className="mb-6 text-2xl font-bold">{block.props.heading}</h2>
       ) : null}
-      <div className="divide-y rounded-lg border">
+      <div className="divide-y rounded-lg" style={{ border: '1px solid var(--border)' }}>
         {block.props.items.map((it: any, i: number) => (
-          <div key={i}>
+          <div key={i} style={{ borderColor: 'var(--border)' }}>
             <button
               onClick={() => setOpen(open === i ? null : i)}
               className="flex w-full items-center justify-between px-4 py-4 text-left font-medium"
+              style={{ color: 'var(--text)', background: 'var(--surface)' }}
             >
               {it.question}
               <ChevronDown className={`h-4 w-4 transition-transform ${open === i ? 'rotate-180' : ''}`} />
             </button>
             {open === i ? (
-              <div className="px-4 pb-4 text-neutral-700">{it.answer}</div>
+              <div className="px-4 pb-4" style={{ color: 'var(--muted-foreground)', background: 'var(--surface)' }}>{it.answer}</div>
             ) : null}
           </div>
         ))}

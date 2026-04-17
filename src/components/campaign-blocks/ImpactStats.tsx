@@ -11,10 +11,10 @@ export function ImpactStats({ block }: { block: { props: any } }) {
         {items.map((it: any, i: number) => {
           const Icon = (ICONS as any)[it.icon] ?? Heart;
           return (
-            <div key={i} className="flex flex-col items-center rounded-lg bg-neutral-50 p-6 text-center">
-              <Icon className="mb-3 h-8 w-8 text-rose-500" />
-              <div className="text-2xl font-bold">{it.value}</div>
-              <div className="mt-1 text-sm text-neutral-600">{it.label}</div>
+            <div key={i} className="flex flex-col items-center rounded-lg p-6 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <Icon className="mb-3 h-8 w-8" style={{ color: 'var(--accent)' }} />
+              <div className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{it.value}</div>
+              <div className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>{it.label}</div>
             </div>
           );
         })}

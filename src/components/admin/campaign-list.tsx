@@ -2,14 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CampaignFormDialog } from "@/components/admin/campaign-form-dialog";
@@ -125,121 +118,87 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
         </Button>
       </div>
 
-      <div
-        className="rounded-lg border overflow-hidden"
-        style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-      >
-        <Table>
-          <TableHeader>
-            <TableRow style={{ borderColor: "var(--border)" }}>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                제목
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                슬러그
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                상태
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                목표금액
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                기간
-              </TableHead>
-              <TableHead
-                style={{ color: "var(--muted-foreground)" }}
-                className="text-right"
-              >
-                액션
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {campaigns.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center py-12"
-                  style={{ color: "var(--muted-foreground)" }}
-                >
-                  등록된 캠페인이 없습니다.
-                </TableCell>
-              </TableRow>
-            ) : (
-              campaigns.map((campaign) => (
-                <TableRow
-                  key={campaign.id}
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <TableCell
-                    className="font-medium"
-                    style={{ color: "var(--text)" }}
-                  >
+      {campaigns.length === 0 ? (
+        <div
+          className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-20 text-center"
+          style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+        >
+          <span className="mb-3 text-5xl">📋</span>
+          <p className="text-base font-medium">등록된 캠페인이 없습니다.</p>
+          <p className="mt-1 text-sm">위의 '새 캠페인' 버튼으로 첫 번째 캠페인을 만들어보세요.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+          {campaigns.map((campaign) => (
+            <div
+              key={campaign.id}
+              className="flex flex-col overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
+              style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+            >
+              {/* Thumbnail */}
+              <div className="relative h-36 w-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
+                {campaign.thumbnail_url ? (
+                  <Image src={campaign.thumbnail_url} alt={campaign.title} fill className="object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-4xl">📣</div>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="flex flex-1 flex-col p-4">
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-snug" style={{ color: "var(--text)" }}>
                     {campaign.title}
-                  </TableCell>
-                  <TableCell
-                    className="font-mono text-sm"
-                    style={{ color: "var(--muted-foreground)" }}
+                  </h3>
+                  <StatusBadge status={campaign.status} />
+                </div>
+                <p className="mb-1 font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  {campaign.slug}
+                </p>
+                <p className="mb-3 text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  {dateRange(campaign)}
+                </p>
+                {campaign.goal_amount != null && (
+                  <p className="mb-3 text-xs font-medium" style={{ color: "var(--text)" }}>
+                    목표 {formattedGoal(campaign.goal_amount)}
+                  </p>
+                )}
+
+                {/* Actions */}
+                <div className="mt-auto flex flex-wrap gap-1.5">
+                  <Button
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => handlePageEdit(campaign.id)}
+                    style={{ background: "var(--accent)", color: "#fff" }}
                   >
-                    {campaign.slug}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={campaign.status} />
-                  </TableCell>
-                  <TableCell style={{ color: "var(--text)" }}>
-                    {formattedGoal(campaign.goal_amount)}
-                  </TableCell>
-                  <TableCell
-                    className="text-sm"
-                    style={{ color: "var(--muted-foreground)" }}
+                    페이지 편집
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => handleEdit(campaign)}
+                    style={{ borderColor: "var(--border)", color: "var(--text)" }}
                   >
-                    {dateRange(campaign)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(campaign)}
-                        style={{
-                          borderColor: "var(--border)",
-                          color: "var(--text)",
-                        }}
-                      >
-                        수정
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handlePageEdit(campaign.id)}
-                        style={{
-                          borderColor: "var(--border)",
-                          color: "var(--text)",
-                        }}
-                      >
-                        페이지 편집
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleArchive(campaign)}
-                        disabled={campaign.status === "archived"}
-                        style={{
-                          borderColor: "var(--border)",
-                          color: "var(--negative)",
-                        }}
-                      >
-                        보관
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                    수정
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => handleArchive(campaign)}
+                    disabled={campaign.status === "archived"}
+                    style={{ borderColor: "var(--border)", color: "var(--negative)" }}
+                  >
+                    보관
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <CampaignFormDialog
         campaign={editTarget}
