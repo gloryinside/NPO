@@ -39,6 +39,7 @@ CREATE OR REPLACE FUNCTION encrypt_secret(plaintext text, passphrase text)
   LANGUAGE sql
   SECURITY DEFINER
   STABLE
+  SET search_path = public, extensions
 AS $$
   SELECT pgp_sym_encrypt(plaintext, passphrase)
 $$;
@@ -49,6 +50,7 @@ CREATE OR REPLACE FUNCTION decrypt_secret(ciphertext bytea, passphrase text)
   LANGUAGE sql
   SECURITY DEFINER
   STABLE
+  SET search_path = public, extensions
 AS $$
   SELECT pgp_sym_decrypt(ciphertext, passphrase)
 $$;
@@ -59,6 +61,7 @@ CREATE OR REPLACE FUNCTION hash_api_key(plaintext text)
   RETURNS text
   LANGUAGE sql
   IMMUTABLE
+  SET search_path = public, extensions
 AS $$
   SELECT encode(digest(plaintext, 'sha256'), 'hex')
 $$;

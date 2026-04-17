@@ -25,6 +25,7 @@ CREATE OR REPLACE FUNCTION encrypt_id_number(plaintext text, passphrase text)
   LANGUAGE sql
   SECURITY DEFINER
   STABLE
+  SET search_path = public, extensions
 AS $$
   SELECT pgp_sym_encrypt(plaintext, passphrase)
 $$;
@@ -35,6 +36,7 @@ CREATE OR REPLACE FUNCTION decrypt_id_number(ciphertext bytea, passphrase text)
   LANGUAGE sql
   SECURITY DEFINER
   STABLE
+  SET search_path = public, extensions
 AS $$
   SELECT pgp_sym_decrypt(ciphertext, passphrase)
 $$;
