@@ -5,7 +5,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { Editor } from '@/components/campaign-builder/Editor';
 import { defaultFormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
-export default async function CampaignEditPage({ params }: { params: { id: string } }) {
+export default async function CampaignEditPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   await requireAdminUser();
   const tenant = await requireTenant();
   const supabase = createSupabaseAdminClient();
@@ -13,7 +14,7 @@ export default async function CampaignEditPage({ params }: { params: { id: strin
   const { data: campaign } = await supabase
     .from('campaigns')
     .select('id, slug, page_content, form_settings')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('org_id', tenant.id)
     .single();
 
