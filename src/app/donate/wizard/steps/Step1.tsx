@@ -1,6 +1,6 @@
 'use client';
-import { DonationTypeToggle } from '@/components/public/donation/DonationTypeToggle';
-import { AmountSelector } from '@/components/public/donation/AmountSelector';
+import DonationTypeToggle from '@/components/public/donation/DonationTypeToggle';
+import AmountSelector from '@/components/public/donation/AmountSelector';
 import type { WizardState } from '../WizardClient';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
@@ -25,7 +25,7 @@ export function Step1({
 
       <AmountSelector
         presets={settings.amountPresets}
-        amountDescriptions={settings.amountDescriptions}
+        amountDescriptions={settings.amountDescriptions as Record<string, string> | undefined}
         allowCustom={settings.allowCustomAmount}
         value={state.amount}
         onChange={(a) => setState({ ...state, amount: a ?? 0 })}
@@ -33,14 +33,14 @@ export function Step1({
 
       {settings.designations.length > 0 && (
         <div>
-          <label className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>
+          <label className="mb-1 block text-sm font-medium text-[var(--text)]">
             후원 목적
           </label>
           <select
+            title="후원 목적 선택"
             value={state.designation ?? ''}
             onChange={(e) => setState({ ...state, designation: e.target.value || undefined })}
-            className="w-full rounded px-3 py-2 text-sm"
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            className="w-full rounded px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)]"
           >
             <option value="">선택 안 함</option>
             {settings.designations.map((d) => (

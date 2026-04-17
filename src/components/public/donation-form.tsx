@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { loadTossPayments } from "@tosspayments/payment-sdk";
 import type { Campaign } from "@/types/campaign";
-import { DonationTypeToggle } from "@/components/public/donation/DonationTypeToggle";
-import { PayMethodSelector } from "@/components/public/donation/PayMethodSelector";
+import DonationTypeToggle from "@/components/public/donation/DonationTypeToggle";
+import PayMethodSelector from "@/components/public/donation/PayMethodSelector";
 import AmountSelector from "@/components/public/donation/AmountSelector";
-import { StickyCtaButton } from "@/components/public/donation/StickyCtaButton";
+import StickyCtaButton from "@/components/public/donation/StickyCtaButton";
 
 const DEFAULT_PRESET_AMOUNTS = [10000, 30000, 50000, 100000];
 
@@ -33,112 +33,90 @@ function OfflineConfirmScreen({ data }: { data: OfflineConfirmData }) {
   const hasBankInfo = data.bankAccount || data.bankName;
 
   return (
-    <div
-      className="rounded-xl border p-6 flex flex-col gap-5"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-    >
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 flex flex-col gap-5">
       <div className="text-center">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-2xl mx-auto mb-3"
-          style={{ background: "rgba(34,197,94,0.12)" }}
-        >
+        <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl mx-auto mb-3 bg-green-500/10">
           ✓
         </div>
-        <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>
+        <h2 className="text-lg font-bold text-[var(--text)]">
           {label} 신청이 완료되었습니다
         </h2>
-        <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
+        <p className="text-sm mt-1 text-[var(--muted-foreground)]">
           아래 계좌로 후원금을 입금해 주시면 처리됩니다.
         </p>
       </div>
 
-      <div
-        className="rounded-lg border p-4 flex flex-col gap-2"
-        style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
-      >
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 flex flex-col gap-2">
         <div className="flex justify-between text-sm">
-          <span style={{ color: "var(--muted-foreground)" }}>캠페인</span>
-          <span style={{ color: "var(--text)", fontWeight: 500 }}>{data.orderName}</span>
+          <span className="text-[var(--muted-foreground)]">캠페인</span>
+          <span className="text-[var(--text)] font-medium">{data.orderName}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span style={{ color: "var(--muted-foreground)" }}>후원자</span>
-          <span style={{ color: "var(--text)", fontWeight: 500 }}>{data.memberName}</span>
+          <span className="text-[var(--muted-foreground)]">후원자</span>
+          <span className="text-[var(--text)] font-medium">{data.memberName}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span style={{ color: "var(--muted-foreground)" }}>후원 유형</span>
-          <span style={{ color: "var(--text)", fontWeight: 500 }}>
+          <span className="text-[var(--muted-foreground)]">후원 유형</span>
+          <span className="text-[var(--text)] font-medium">
             {data.donationType === "regular" ? "정기 후원" : "일시 후원"}
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span style={{ color: "var(--muted-foreground)" }}>후원 금액</span>
-          <span className="font-bold" style={{ color: "var(--accent)" }}>
+          <span className="text-[var(--muted-foreground)]">후��� 금액</span>
+          <span className="font-bold text-[var(--accent)]">
             {formatAmount(data.amount)}원
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span style={{ color: "var(--muted-foreground)" }}>접수번호</span>
-          <span className="font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>
+          <span className="text-[var(--muted-foreground)]">��수번호</span>
+          <span className="font-mono text-xs text-[var(--muted-foreground)]">
             {data.paymentCode}
           </span>
         </div>
       </div>
 
       {hasBankInfo && (
-        <div
-          className="rounded-lg border p-4"
-          style={{
-            borderColor: "var(--accent)",
-            background: "rgba(124,58,237,0.06)",
-          }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--accent)" }}>
+        <div className="rounded-lg border border-[var(--accent)] bg-[var(--accent)]/5 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-3 text-[var(--accent)]">
             입금 계좌 안내
           </p>
           <div className="flex flex-col gap-1.5 text-sm">
             {data.bankName && (
               <div className="flex justify-between">
-                <span style={{ color: "var(--muted-foreground)" }}>은행</span>
-                <span style={{ color: "var(--text)", fontWeight: 500 }}>{data.bankName}</span>
+                <span className="text-[var(--muted-foreground)]">은행</span>
+                <span className="text-[var(--text)] font-medium">{data.bankName}</span>
               </div>
             )}
             {data.bankAccount && (
               <div className="flex justify-between">
-                <span style={{ color: "var(--muted-foreground)" }}>계좌번호</span>
-                <span className="font-mono" style={{ color: "var(--text)", fontWeight: 500 }}>
+                <span className="text-[var(--muted-foreground)]">계좌번호</span>
+                <span className="font-mono text-[var(--text)] font-medium">
                   {data.bankAccount}
                 </span>
               </div>
             )}
             {data.accountHolder && (
               <div className="flex justify-between">
-                <span style={{ color: "var(--muted-foreground)" }}>예금주</span>
-                <span style={{ color: "var(--text)", fontWeight: 500 }}>{data.accountHolder}</span>
+                <span className="text-[var(--muted-foreground)]">예금주</span>
+                <span className="text-[var(--text)] font-medium">{data.accountHolder}</span>
               </div>
             )}
           </div>
-          <p className="text-xs mt-3" style={{ color: "var(--muted-foreground)" }}>
+          <p className="text-xs mt-3 text-[var(--muted-foreground)]">
             입금 시 이름(후원자명)을 기재해 주세요. 입금 확인 후 후원이 처리됩니다.
           </p>
         </div>
       )}
 
       {!hasBankInfo && (
-        <p className="text-sm text-center" style={{ color: "var(--muted-foreground)" }}>
+        <p className="text-sm text-center text-[var(--muted-foreground)]">
           담당자가 연락하여 입금 안내를 드릴 예정입니다.
         </p>
       )}
 
       {isCms && (
-        <div
-          className="rounded-lg border px-4 py-3 text-sm"
-          style={{
-            borderColor: "var(--border)",
-            background: "var(--surface-2)",
-            color: "var(--muted-foreground)",
-          }}
-        >
-          CMS 자동이체는 신청 접수 후 담당자가 이체 동의서를 안내해 드립니다.
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted-foreground)] px-4 py-3 text-sm">
+          CMS ��동이체는 신청 접수 후 담당자가 이체 동의서를 안내해 드립니다.
         </div>
       )}
     </div>
@@ -179,7 +157,7 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
     setErrorMessage(null);
 
     if (!memberName.trim()) {
-      setErrorMessage("이름을 입력해주세요.");
+      setErrorMessage("이��을 입력해주세요.");
       return;
     }
     if (!amount || amount <= 0) {
@@ -208,7 +186,6 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
         throw new Error(data?.error ?? "결제 준비에 실패했습니다.");
       }
 
-      // 오프라인 결제 (계좌이체·CMS): 계좌 안내 화면 표시
       if (data.offline) {
         setOfflineConfirm({
           payMethod: data.payMethod,
@@ -225,7 +202,7 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
       }
 
       if (!data.tossClientKey) {
-        throw new Error("결제 설정이 누락되었습니다.");
+        throw new Error("결제 ���정이 누락되었습니다.");
       }
 
       const tossPayments = await loadTossPayments(data.tossClientKey);
@@ -238,7 +215,6 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
         successUrl: `${window.location.origin}/donate/success`,
         failUrl: `${window.location.origin}/donate/fail`,
       });
-      // requestPayment 성공 시 redirect 가 일어나므로 여기 이후 코드는 실행되지 않음
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : "결제 진행 중 오류가 발생했습니다."
@@ -248,7 +224,6 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
     }
   }
 
-  // 오프라인 결제 완료 화면
   if (offlineConfirm) {
     return <OfflineConfirmScreen data={offlineConfirm} />;
   }
@@ -257,19 +232,14 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
     <form
       data-donation-form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-6 rounded-xl border p-6"
-      style={{
-        background: "var(--surface)",
-        borderColor: "var(--border)",
-      }}
+      className="flex flex-col gap-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6"
     >
       <div className="flex flex-col gap-2">
         <label
           htmlFor="memberName"
-          className="text-sm font-medium"
-          style={{ color: "var(--text)" }}
+          className="text-sm font-medium text-[var(--text)]"
         >
-          이름 <span style={{ color: "var(--negative)" }}>*</span>
+          이름 <span className="text-red-500">*</span>
         </label>
         <input
           id="memberName"
@@ -277,21 +247,15 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
           required
           value={memberName}
           onChange={(e) => setMemberName(e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--surface-2)",
-            borderColor: "var(--border)",
-            color: "var(--text)",
-          }}
-          placeholder="홍길동"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] px-3 py-2 text-sm outline-none"
+          placeholder="홍길��"
         />
       </div>
 
       <div className="flex flex-col gap-2">
         <label
           htmlFor="memberPhone"
-          className="text-sm font-medium"
-          style={{ color: "var(--text)" }}
+          className="text-sm font-medium text-[var(--text)]"
         >
           연락처
         </label>
@@ -300,12 +264,7 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
           type="tel"
           value={memberPhone}
           onChange={(e) => setMemberPhone(e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--surface-2)",
-            borderColor: "var(--border)",
-            color: "var(--text)",
-          }}
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] px-3 py-2 text-sm outline-none"
           placeholder="010-1234-5678"
         />
       </div>
@@ -313,8 +272,7 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
       <div className="flex flex-col gap-2">
         <label
           htmlFor="memberEmail"
-          className="text-sm font-medium"
-          style={{ color: "var(--text)" }}
+          className="text-sm font-medium text-[var(--text)]"
         >
           이메일
         </label>
@@ -323,17 +281,11 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
           type="email"
           value={memberEmail}
           onChange={(e) => setMemberEmail(e.target.value)}
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--surface-2)",
-            borderColor: "var(--border)",
-            color: "var(--text)",
-          }}
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] px-3 py-2 text-sm outline-none"
           placeholder="donor@example.com"
         />
       </div>
 
-      {/* 후원 유형 탭 */}
       {showTypeTabs && (
         <DonationTypeToggle
           value={donationType}
@@ -342,7 +294,6 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
         />
       )}
 
-      {/* 결제 수단 */}
       <PayMethodSelector
         methods={availableMethods}
         value={payMethod}
@@ -350,8 +301,8 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
       />
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
-          후원 금액 <span style={{ color: "var(--negative)" }}>*</span>
+        <span className="text-sm font-medium text-[var(--text)]">
+          후원 금액 <span className="text-red-500">*</span>
         </span>
         <AmountSelector
           presets={presetAmounts}
@@ -362,22 +313,14 @@ export default function DonationForm({ campaign }: { campaign: Campaign }) {
       </div>
 
       {errorMessage && (
-        <div
-          className="rounded-lg border px-3 py-2 text-sm"
-          style={{
-            background: "rgba(239,68,68,0.1)",
-            borderColor: "rgba(239,68,68,0.4)",
-            color: "var(--negative)",
-          }}
-        >
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 text-red-500 px-3 py-2 text-sm">
           {errorMessage}
         </div>
       )}
 
       <StickyCtaButton
-        label={payMethod === "transfer" || payMethod === "cms" ? "후원 신청" : "결제 진행"}
+        label={payMethod === "transfer" || payMethod === "cms" ? "후��� 신청" : "결제 진행"}
         onClick={() => {
-          // Trigger the form's native submit event
           const form = document.querySelector('form[data-donation-form]') as HTMLFormElement | null;
           form?.requestSubmit();
         }}

@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { sanitizeHtml } from '@/lib/campaign-builder/sanitize-html';
-import { PayMethodSelector } from '@/components/public/donation/PayMethodSelector';
-import { AgreementSection } from '@/components/public/donation/AgreementSection';
+import PayMethodSelector from '@/components/public/donation/PayMethodSelector';
+import AgreementSection from '@/components/public/donation/AgreementSection';
 import type { WizardState } from '../WizardClient';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
@@ -25,11 +25,10 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs" style={{ color: 'var(--text)' }}>{label}</span>
+      <span className="mb-1 block text-xs text-[var(--text)]">{label}</span>
       <input
         type={type}
-        className="w-full rounded px-2 py-1"
-        style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+        className="w-full rounded px-2 py-1 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)]"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -51,8 +50,7 @@ function CustomFieldInput({
       <label className="block">
         <span className="mb-1 block text-xs">{field.label}</span>
         <textarea
-          className="w-full rounded px-2 py-1"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+          className="w-full rounded px-2 py-1 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)]"
           value={(value as string) ?? ''}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -70,8 +68,8 @@ function CustomFieldInput({
       <label className="block">
         <span className="mb-1 block text-xs">{field.label}</span>
         <select
-          className="w-full rounded px-2 py-1"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+          title={field.label}
+          className="w-full rounded px-2 py-1 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)]"
           value={(value as string) ?? ''}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -103,7 +101,7 @@ export function Step2({
 }) {
   const [info, setInfo] = useState({ name: '', dob: '', mobile: '', email: '', address: '' });
   const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
-  const [method, setMethod] = useState(settings.paymentMethods[0] ?? 'card');
+  const [method, setMethod] = useState<string>(settings.paymentMethods[0] ?? 'card');
   const [receipt, setReceipt] = useState(settings.requireReceipt);
   const [identityVerified, setIdentityVerified] = useState(false);
   const [identityName, setIdentityName] = useState('');
@@ -114,7 +112,6 @@ export function Step2({
   const [cardPassword, setCardPassword] = useState('');
   const [cardBirth, setCardBirth] = useState('');
 
-  // 본인인증 팝업 완료 후 URL 파라미터 감지
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('identity') === 'success') {
@@ -133,7 +130,6 @@ export function Step2({
               if (data.name) setInfo((prev) => ({ ...prev, name: data.name }));
               if (data.birthday) setInfo((prev) => ({ ...prev, dob: data.birthday }));
               sessionStorage.removeItem('identity_txId');
-              // URL에서 identity 파라미터 제거
               const url = new URL(window.location.href);
               url.searchParams.delete('identity');
               url.searchParams.delete('txId');
@@ -223,27 +219,27 @@ export function Step2({
       />
 
       {state.type === 'regular' && method === 'card' && (
-        <div className="space-y-3 rounded-lg p-4" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-          <p className="text-xs font-medium" style={{ color: 'var(--text)' }}>정기결제 카드 정보</p>
+        <div className="space-y-3 rounded-lg p-4 bg-[var(--surface-2)] border border-[var(--border)]">
+          <p className="text-xs font-medium text-[var(--text)]">정기결제 카드 정보</p>
           <Input label="카드번호 (16자리)" value={cardNumber} onChange={(v) => setCardNumber(v.replace(/\D/g, '').slice(0, 16))} />
           <div className="grid grid-cols-2 gap-2">
             <Input label="유효기간 (MM/YY)" value={cardExpiry} onChange={(v) => setCardExpiry(v)} />
             <Input label="비밀번호 앞 2자리" value={cardPassword} type="password" onChange={(v) => setCardPassword(v.replace(/\D/g, '').slice(0, 2))} />
           </div>
           <Input label="생년월일 (6자리)" value={cardBirth} onChange={(v) => setCardBirth(v.replace(/\D/g, '').slice(0, 6))} />
-          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          <p className="text-xs text-[var(--muted-foreground)]">
             매월 자동결제를 위해 카드 정보가 필요합니다. 카드 정보는 저장되지 않으며 빌링키 발급에만 사용됩니다.
           </p>
         </div>
       )}
 
-      <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
+      <label className="flex items-center gap-2 text-sm text-[var(--text)]">
         <input
           type="checkbox"
           checked={receipt}
           onChange={(e) => setReceipt(e.target.checked)}
           disabled={settings.requireReceipt}
-          style={{ accentColor: 'var(--accent)' }}
+          className="accent-[var(--accent)]"
         />
         기부금 영수증 신청
       </label>
@@ -264,17 +260,13 @@ export function Step2({
             sessionStorage.setItem('identity_txId', txId);
             window.open(authUrl, '_blank', 'width=500,height=700');
           }}
-          className="w-full rounded-lg py-2.5 text-sm font-semibold"
-          style={{ background: 'var(--surface-2)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
+          className="w-full rounded-lg py-2.5 text-sm font-semibold bg-[var(--surface-2)] border border-[var(--accent)] text-[var(--accent)]"
         >
           본인인증
         </button>
       )}
       {receipt && identityVerified && (
-        <div
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-        >
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-[var(--accent-soft)] text-[var(--accent)]">
           <span>✓</span> 본인인증 완료 ({identityName})
         </div>
       )}
@@ -294,15 +286,14 @@ export function Step2({
           receipt: ag.receipt ?? false,
           marketing: ag.marketing,
         }}
-        onChange={(v) => setAg({ terms: v.terms, privacy: v.privacy, receipt: v.receipt, marketing: v.marketing })}
+        onChange={(v: { terms: boolean; privacy: boolean; receipt: boolean; marketing: boolean }) => setAg({ terms: v.terms, privacy: v.privacy, receipt: v.receipt, marketing: v.marketing })}
       />
 
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onBack}
-          className="flex-1 rounded py-3 text-sm"
-          style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
+          className="flex-1 rounded py-3 text-sm border border-[var(--border)] text-[var(--muted-foreground)]"
         >
           이전
         </button>
@@ -310,8 +301,7 @@ export function Step2({
           type="button"
           disabled={submitting || !info.name || !info.mobile}
           onClick={submit}
-          className="flex-1 rounded-full py-3 font-semibold text-white disabled:opacity-50"
-          style={{ background: 'var(--accent)' }}
+          className="flex-1 rounded-full py-3 font-semibold text-white bg-[var(--accent)] disabled:opacity-50"
         >
           {submitting ? '처리 중…' : '후원하기'}
         </button>

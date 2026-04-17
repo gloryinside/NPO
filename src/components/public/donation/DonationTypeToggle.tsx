@@ -21,22 +21,24 @@ export default function DonationTypeToggle({ value, available, onChange }: Donat
         const selected = value === type;
         return (
           <button
+            type="button"
             key={type}
             onClick={() => onChange(type)}
-            style={{
-              border: selected ? '2px solid var(--accent)' : '1px solid var(--border)',
-              background: selected ? 'var(--accent-soft)' : 'var(--surface-2)',
-              color: 'var(--text)',
-              minHeight: '44px',
-            }}
-            className="flex-1 flex flex-col items-center justify-center gap-1 rounded-xl py-4 px-3 transition-all"
+            className={[
+              'flex-1 flex flex-col items-center justify-center gap-1 rounded-xl py-4 px-3 min-h-[44px] transition-all text-[var(--text)]',
+              selected
+                ? 'border-2 border-[var(--accent)] bg-[var(--accent-soft)]'
+                : 'border border-[var(--border)] bg-[var(--surface-2)]',
+            ].join(' ')}
           >
             <span className="text-2xl">{config.icon}</span>
             <span className="text-sm font-bold">{config.title}</span>
-            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{config.desc}</span>
+            <span className="text-xs text-[var(--muted-foreground)]">{config.desc}</span>
           </button>
         );
       })}
     </div>
   );
 }
+
+export { DonationTypeToggle };

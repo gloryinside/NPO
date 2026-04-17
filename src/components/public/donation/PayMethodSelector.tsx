@@ -25,15 +25,15 @@ export default function PayMethodSelector({ methods, value, onChange }: PayMetho
         const selected = value === method;
         return (
           <button
+            type="button"
             key={method}
             onClick={() => onChange(method)}
-            style={{
-              background: selected ? 'var(--accent)' : 'var(--surface-2)',
-              color: selected ? '#fff' : 'var(--text)',
-              border: selected ? 'none' : '1px solid var(--border)',
-              minHeight: '44px',
-            }}
-            className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all"
+            className={[
+              'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium min-h-[44px] transition-all',
+              selected
+                ? 'bg-[var(--accent)] text-white border-0'
+                : 'bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]',
+            ].join(' ')}
           >
             <span>{config.icon}</span>
             <span>{config.label}</span>
@@ -43,3 +43,5 @@ export default function PayMethodSelector({ methods, value, onChange }: PayMetho
     </div>
   );
 }
+
+export { PayMethodSelector };

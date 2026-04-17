@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Step1 } from './steps/Step1';
 import { Step2 } from './steps/Step2';
 import { Step3 } from './steps/Step3';
-import { StepProgressBar } from '@/components/public/donation/StepProgressBar';
-import { StickyCtaButton } from '@/components/public/donation/StickyCtaButton';
+import StepProgressBar from '@/components/public/donation/StepProgressBar';
+import StickyCtaButton from '@/components/public/donation/StickyCtaButton';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
 export type WizardState = {
@@ -38,7 +38,7 @@ export function WizardClient({
 
   return (
     <main className="mx-auto max-w-xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-bold" style={{ color: 'var(--text)' }}>{campaign.title}</h1>
+      <h1 className="mb-6 text-xl font-bold text-[var(--text)]">{campaign.title}</h1>
 
       <StepProgressBar
         steps={['후원 선택', '정보 입력', '결제 완료']}

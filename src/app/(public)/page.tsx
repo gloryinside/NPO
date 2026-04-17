@@ -75,8 +75,7 @@ export default async function PublicPage() {
           </p>
           <Link
             href="/admin/login"
-            className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium text-white transition-colors"
-            style={{ background: "var(--accent)" }}
+            className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium text-white bg-[var(--accent)] transition-colors"
           >
             시작하기
           </Link>
@@ -122,7 +121,6 @@ export default async function PublicPage() {
       .eq("org_id", tenant.id)
       .eq("status", "active")
       .order("started_at", { ascending: false }),
-    // 누적 후원 현황
     adminSupabase
       .from("payments")
       .select("amount, member_id")
@@ -133,12 +131,10 @@ export default async function PublicPage() {
   const org = orgData as OrgRow | null;
   const campaignList = (campaigns as unknown as CampaignRow[]) ?? [];
 
-  // 누적 통계
   const statsRows = statsResult.data ?? [];
   const totalRaised = statsRows.reduce((s: number, r: { amount: number | null }) => s + Number(r.amount ?? 0), 0);
   const uniqueDonors = new Set(statsRows.map((r: { member_id: string | null }) => r.member_id).filter(Boolean)).size;
 
-  // 캠페인별 달성률 계산
   const campaignIds = campaignList.map((c) => c.id);
   const paidByCampaign = new Map<string, number>();
   if (campaignIds.length > 0) {
@@ -156,17 +152,17 @@ export default async function PublicPage() {
 
   const showStats = org?.show_stats !== false;
 
+  // Hero background — dynamic URL requires inline style
+  const heroBg = org?.hero_image_url
+    ? `linear-gradient(to bottom, rgba(10,10,15,0.6), rgba(10,10,15,0.9)), url(${JSON.stringify(org.hero_image_url)}) center/cover no-repeat`
+    : "var(--surface)";
+
   return (
-    <main style={{ background: "var(--bg)", minHeight: "100vh" }}>
+    <main className="bg-[var(--bg)] min-h-screen">
       {/* Hero */}
       <section
-        className="relative"
-        style={{
-          background: org?.hero_image_url
-            ? `linear-gradient(to bottom, rgba(10,10,15,0.6), rgba(10,10,15,0.9)), url(${JSON.stringify(org.hero_image_url)}) center/cover no-repeat`
-            : "var(--surface)",
-          borderBottom: "1px solid var(--border)",
-        }}
+        className="relative border-b border-[var(--border)]"
+        style={{ background: heroBg }}
       >
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
           {org?.logo_url && (
@@ -177,18 +173,17 @@ export default async function PublicPage() {
               className="h-16 w-auto mx-auto mb-6 object-contain"
             />
           )}
-          <h1 className="text-4xl font-bold mb-4" style={{ color: "var(--text)" }}>
+          <h1 className="text-4xl font-bold mb-4 text-[var(--text)]">
             {org?.tagline ?? `${org?.name ?? tenant.name}의 후원 캠페인`}
           </h1>
           {org?.about && (
-            <p className="text-base max-w-2xl mx-auto mb-8" style={{ color: "var(--muted-foreground)" }}>
+            <p className="text-base max-w-2xl mx-auto mb-8 text-[var(--muted-foreground)]">
               {org.about.slice(0, 200)}{org.about.length > 200 ? "…" : ""}
             </p>
           )}
           <Link
             href="#campaigns"
-            className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: "var(--accent)" }}
+            className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold text-white bg-[var(--accent)] transition-opacity hover:opacity-90"
           >
             후원하기 →
           </Link>
@@ -197,23 +192,23 @@ export default async function PublicPage() {
 
       {/* 누적 후원 현황 */}
       {showStats && (totalRaised > 0 || uniqueDonors > 0) && (
-        <section style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+        <section className="bg-[var(--surface)] border-b border-[var(--border)]">
           <div className="max-w-4xl mx-auto px-6 py-10 text-center">
-            <h2 className="text-sm font-semibold uppercase tracking-widest mb-6" style={{ color: "var(--muted-foreground)" }}>
+            <h2 className="text-sm font-semibold uppercase tracking-widest mb-6 text-[var(--muted-foreground)]">
               후원 현황
             </h2>
             <div className="grid grid-cols-2 gap-6 max-w-sm mx-auto">
               <div>
-                <div className="text-3xl font-bold" style={{ color: "var(--accent)" }}>
+                <div className="text-3xl font-bold text-[var(--accent)]">
                   {uniqueDonors.toLocaleString("ko-KR")}명
                 </div>
-                <div className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>누적 후원자</div>
+                <div className="text-sm mt-1 text-[var(--muted-foreground)]">누적 후원자</div>
               </div>
               <div>
-                <div className="text-3xl font-bold" style={{ color: "var(--accent)" }}>
+                <div className="text-3xl font-bold text-[var(--accent)]">
                   {formatKRW(totalRaised)}
                 </div>
-                <div className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>누적 후원금</div>
+                <div className="text-sm mt-1 text-[var(--muted-foreground)]">누적 후원금</div>
               </div>
             </div>
           </div>
@@ -222,14 +217,14 @@ export default async function PublicPage() {
 
       {/* 캠페인 목록 */}
       <section id="campaigns" className="max-w-4xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: "var(--text)" }}>
+        <h2 className="text-2xl font-bold mb-2 text-center text-[var(--text)]">
           진행 중인 캠페인
         </h2>
-        <p className="text-sm text-center mb-10" style={{ color: "var(--muted-foreground)" }}>
+        <p className="text-sm text-center mb-10 text-[var(--muted-foreground)]">
           아래 캠페인에 참여하여 소중한 나눔을 실천해 보세요.
         </p>
         {campaignList.length === 0 ? (
-          <p className="text-center py-12" style={{ color: "var(--muted-foreground)" }}>
+          <p className="text-center py-12 text-[var(--muted-foreground)]">
             진행 중인 캠페인이 없습니다.
           </p>
         ) : (
@@ -240,23 +235,8 @@ export default async function PublicPage() {
                 ? Math.min(Math.round((raised / campaign.goal_amount) * 100), 100)
                 : null;
               return (
-                <Link key={campaign.id} href={`/campaigns/${campaign.slug}`} className="block group" style={{ textDecoration: "none" }}>
-                  <div
-                    className="rounded-xl border overflow-hidden h-full flex flex-col"
-                    style={{
-                      borderColor: "var(--border)",
-                      background: "var(--surface)",
-                      transition: "transform 0.2s, box-shadow 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLDivElement).style.transform = "scale(1.02)";
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 30px rgba(0,0,0,0.3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-                    }}
-                  >
+                <Link key={campaign.id} href={`/campaigns/${campaign.slug}`} className="block group no-underline">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden h-full flex flex-col transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg">
                     {/* 썸네일 또는 그라디언트 placeholder */}
                     {campaign.thumbnail_url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -266,41 +246,29 @@ export default async function PublicPage() {
                         className="w-full h-40 object-cover"
                       />
                     ) : (
-                      <div
-                        className="w-full h-40"
-                        style={{ background: "linear-gradient(135deg, var(--accent-soft), var(--surface-2))" }}
-                      />
+                      <div className="w-full h-40 bg-gradient-to-br from-[var(--accent-soft)] to-[var(--surface-2)]" />
                     )}
                     <div className="p-5 flex-1 flex flex-col">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3
-                          className="text-base font-semibold leading-snug"
-                          style={{ color: "var(--text)" }}
-                        >
+                        <h3 className="text-base font-semibold leading-snug text-[var(--text)]">
                           {campaign.title}
                         </h3>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {campaign.ended_at && (() => {
                             const daysLeft = Math.ceil((new Date(campaign.ended_at).getTime() - Date.now()) / 86400000);
                             return daysLeft >= 0 ? (
-                              <span
-                                className="text-xs font-semibold rounded-full px-2 py-0.5"
-                                style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                              >
+                              <span className="text-xs font-semibold rounded-full px-2 py-0.5 bg-[var(--accent-soft)] text-[var(--accent)]">
                                 D-{daysLeft}
                               </span>
                             ) : null;
                           })()}
-                          <Badge
-                            className="border-0 text-xs"
-                            style={{ background: "rgba(34,197,94,0.12)", color: "var(--positive)" }}
-                          >
+                          <Badge className="border-0 text-xs bg-green-500/10 text-green-500">
                             진행 중
                           </Badge>
                         </div>
                       </div>
                       {campaign.description && (
-                        <p className="text-sm line-clamp-2 mb-3 flex-1" style={{ color: "var(--muted-foreground)" }}>
+                        <p className="text-sm line-clamp-2 mb-3 flex-1 text-[var(--muted-foreground)]">
                           {campaign.description}
                         </p>
                       )}
@@ -308,28 +276,25 @@ export default async function PublicPage() {
                       {pct !== null && (
                         <div className="mt-auto mb-3">
                           <div className="flex justify-between text-xs mb-1">
-                            <span style={{ color: "var(--muted-foreground)" }}>
+                            <span className="text-[var(--muted-foreground)]">
                               {formatKRW(raised)}
                             </span>
-                            <span style={{ color: "var(--muted-foreground)" }}>
+                            <span className="text-[var(--muted-foreground)]">
                               {pct}%
                             </span>
                           </div>
-                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
+                          <div className="h-1.5 rounded-full overflow-hidden bg-[var(--surface-2)]">
                             <div
-                              className="h-full rounded-full"
-                              style={{ width: `${pct}%`, background: "var(--accent)" }}
+                              className="h-full rounded-full bg-[var(--accent)]"
+                              style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <div className="text-xs mt-1 text-right" style={{ color: "var(--muted-foreground)" }}>
+                          <div className="text-xs mt-1 text-right text-[var(--muted-foreground)]">
                             목표 {formatKRW(campaign.goal_amount ?? 0)}
                           </div>
                         </div>
                       )}
-                      <span
-                        className="text-sm font-semibold mt-auto"
-                        style={{ color: "var(--accent)" }}
-                      >
+                      <span className="text-sm font-semibold mt-auto text-[var(--accent)]">
                         후원하기 →
                       </span>
                     </div>
@@ -342,9 +307,9 @@ export default async function PublicPage() {
       </section>
 
       {/* 후원 방법 안내 */}
-      <section style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
+      <section className="bg-[var(--surface)] border-t border-[var(--border)]">
         <div className="max-w-4xl mx-auto px-6 py-14 text-center">
-          <h2 className="text-xl font-bold mb-8" style={{ color: "var(--text)" }}>후원 방법 안내</h2>
+          <h2 className="text-xl font-bold mb-8 text-[var(--text)]">후원 방법 안내</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
             {[
               {
@@ -379,14 +344,11 @@ export default async function PublicPage() {
               },
             ].map((s) => (
               <div key={s.step} className="flex flex-col items-center gap-3">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white"
-                  style={{ background: "var(--accent)" }}
-                >
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white bg-[var(--accent)]">
                   {s.icon}
                 </div>
-                <div className="font-semibold" style={{ color: "var(--text)" }}>{s.title}</div>
-                <div style={{ color: "var(--muted-foreground)" }}>{s.desc}</div>
+                <div className="font-semibold text-[var(--text)]">{s.title}</div>
+                <div className="text-[var(--muted-foreground)]">{s.desc}</div>
               </div>
             ))}
           </div>
@@ -395,11 +357,8 @@ export default async function PublicPage() {
 
       {/* 푸터 */}
       {org && (org.business_no || org.address || org.contact_email || org.contact_phone) && (
-        <footer
-          className="text-xs text-center py-8 px-6 space-y-1"
-          style={{ color: "var(--muted-foreground)", borderTop: "1px solid var(--border)" }}
-        >
-          <div className="font-medium" style={{ color: "var(--text)" }}>{org.name}</div>
+        <footer className="text-xs text-center py-8 px-6 space-y-1 text-[var(--muted-foreground)] border-t border-[var(--border)]">
+          <div className="font-medium text-[var(--text)]">{org.name}</div>
           {org.business_no && <div>사업자등록번호: {org.business_no}</div>}
           {org.address && <div>{org.address}</div>}
           <div className="flex justify-center gap-4 flex-wrap">

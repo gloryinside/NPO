@@ -27,10 +27,8 @@ export default function AmountSelector({
   };
 
   const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Strip non-numeric characters, allow only digits
     const digits = e.target.value.replace(/[^0-9]/g, '');
     const num = Number(digits);
-    // Format with commas for display
     const formatted = digits ? num.toLocaleString('ko-KR') : '';
     setCustomInput(formatted);
     if (digits && num >= 1000) {
@@ -48,21 +46,19 @@ export default function AmountSelector({
           const desc = amountDescriptions?.[String(preset)];
           return (
             <button
+              type="button"
               key={preset}
               onClick={() => handlePresetClick(preset)}
-              style={{
-                border: selected ? '2px solid var(--accent)' : '1px solid var(--border)',
-                background: selected ? 'var(--accent-soft)' : 'var(--surface-2)',
-                color: 'var(--text)',
-                minHeight: '44px',
-              }}
-              className="flex flex-col items-center justify-center gap-0.5 rounded-xl py-3 px-2 transition-all"
+              className={[
+                'flex flex-col items-center justify-center gap-0.5 rounded-xl py-3 px-2 min-h-[44px] transition-all text-[var(--text)]',
+                selected
+                  ? 'border-2 border-[var(--accent)] bg-[var(--accent-soft)]'
+                  : 'border border-[var(--border)] bg-[var(--surface-2)]',
+              ].join(' ')}
             >
               <span className="text-sm font-bold">{preset.toLocaleString('ko-KR')}원</span>
               {desc && (
-                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                  {desc}
-                </span>
+                <span className="text-xs text-[var(--muted-foreground)]">{desc}</span>
               )}
             </button>
           );
@@ -76,16 +72,16 @@ export default function AmountSelector({
           placeholder="직접 입력 (원)"
           value={customInput}
           onChange={handleCustomChange}
-          style={{
-            border: isCustomActive ? '2px solid var(--accent)' : '1px solid var(--border)',
-            background: 'var(--surface-2)',
-            color: 'var(--text)',
-            minHeight: '44px',
-            outline: 'none',
-          }}
-          className="w-full rounded-xl px-4 py-2 text-sm"
+          className={[
+            'w-full rounded-xl px-4 py-2 text-sm min-h-[44px] outline-none bg-[var(--surface-2)] text-[var(--text)]',
+            isCustomActive
+              ? 'border-2 border-[var(--accent)]'
+              : 'border border-[var(--border)]',
+          ].join(' ')}
         />
       )}
     </div>
   );
 }
+
+export { AmountSelector };
