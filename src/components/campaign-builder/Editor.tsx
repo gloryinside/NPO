@@ -5,8 +5,6 @@ import { Canvas } from './Canvas';
 import { Palette } from './Palette';
 import { PropsPanel } from './PropsPanel';
 
-type Viewport = 'desktop' | 'mobile';
-
 export function Editor({
   campaignId,
   campaignSlug,
@@ -20,22 +18,9 @@ export function Editor({
 }) {
   const [content, setContent] = useState<PageContent>(initialContent);
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
-  const [viewport, setViewport] = useState<Viewport>('desktop');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
-
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [previewToken, setPreviewToken] = useState<string | null>(null);
-  const [previewError, setPreviewError] = useState(false);
-
-  // Load preview token on mount
-  useEffect(() => {
-    fetch(`/api/admin/campaigns/${campaignId}/preview-token`, { method: 'POST' })
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((d) => setPreviewToken(d.token))
-      .catch(() => setPreviewError(true));
-  }, [campaignId]);
 
   // Autosave: 2-second debounce on content changes
   useEffect(() => {
@@ -54,7 +39,6 @@ export function Editor({
           body: JSON.stringify(content),
         });
         setSaveStatus('saved');
-        iframeRef.current?.contentWindow?.location.reload();
       } catch {
         setSaveStatus('unsaved');
       }
@@ -158,7 +142,7 @@ export function Editor({
         </div>
       </header>
 
-      {/* Body */}
+      {/* Body: Palette | Canvas | PropsPanel */}
       <div className="flex flex-1 overflow-hidden">
         <Palette
           campaignId={campaignId}
@@ -166,8 +150,8 @@ export function Editor({
           onAdd={handleAddBlock}
         />
 
-        {/* Canvas — fixed width */}
-        <main className="flex w-72 shrink-0 flex-col overflow-auto border-r p-3"
+        {/* Canvas */}
+        <main className="flex flex-1 flex-col overflow-auto border-r p-3"
           style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}>
           <p className="mb-2 text-center text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>
             블록 구성
@@ -181,64 +165,6 @@ export function Editor({
             onDuplicate={handleDuplicate}
           />
         </main>
-
-        {/* Preview iframe — flex-1 */}
-        <div className="relative flex flex-1 flex-col overflow-hidden"
-          style={{ background: 'var(--bg)' }}>
-          <div className="flex shrink-0 items-center justify-between border-b px-3 py-1.5"
-            style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-            <span className="text-xs font-semibold" style={{ color: 'var(--muted-foreground)' }}>
-              미리보기
-            </span>
-            <div className="flex rounded border text-xs" style={{ borderColor: 'var(--border)' }}>
-              <button
-                className={`px-2 py-0.5 transition-colors ${viewport === 'desktop' ? 'font-semibold' : ''}`}
-                style={{
-                  background: viewport === 'desktop' ? 'var(--accent-soft)' : 'transparent',
-                  color: viewport === 'desktop' ? 'var(--accent)' : 'var(--muted-foreground)',
-                }}
-                onClick={() => setViewport('desktop')}
-              >
-                데스크탑
-              </button>
-              <button
-                className={`px-2 py-0.5 transition-colors ${viewport === 'mobile' ? 'font-semibold' : ''}`}
-                style={{
-                  background: viewport === 'mobile' ? 'var(--accent-soft)' : 'transparent',
-                  color: viewport === 'mobile' ? 'var(--accent)' : 'var(--muted-foreground)',
-                }}
-                onClick={() => setViewport('mobile')}
-              >
-                모바일
-              </button>
-            </div>
-          </div>
-          <div className={`flex flex-1 overflow-auto ${viewport === 'mobile' ? 'justify-center bg-[var(--surface-2)] py-4' : ''}`}>
-            {previewError ? (
-              <div className="flex flex-1 items-center justify-center text-sm"
-                style={{ color: 'var(--muted-foreground)' }}>
-                미리보기를 불러올 수 없습니다
-              </div>
-            ) : !previewToken ? (
-              <div className="flex flex-1 items-center justify-center text-sm"
-                style={{ color: 'var(--muted-foreground)' }}>
-                미리보기 로딩 중…
-              </div>
-            ) : (
-              <iframe
-                ref={iframeRef}
-                src={`/campaigns/${campaignSlug}/preview?token=${previewToken}`}
-                className="border-0"
-                style={{
-                  width: viewport === 'mobile' ? '390px' : '100%',
-                  height: viewport === 'mobile' ? '844px' : '100%',
-                  background: 'white',
-                }}
-                title="캠페인 미리보기"
-              />
-            )}
-          </div>
-        </div>
 
         <PropsPanel block={selectedBlock} campaignId={campaignId} allBlocks={content.blocks} onChange={handleBlockChange} />
       </div>
