@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/retry-billing",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/billing-reminder",
+      "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/cron/issue-annual-receipts",
+      "schedule": "0 0 5 1 *"
     }
   ]
 }
