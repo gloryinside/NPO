@@ -57,8 +57,8 @@ export async function createBillingFailedNotification(
     });
   }
 
-  // 후원자에게 알림톡
-  notifyDonorBillingFailed({
+  // 후원자에게 알림톡 (fire-and-forget)
+  void notifyDonorBillingFailed({
     phone: memberPhone ?? null,
     name,
     amount,

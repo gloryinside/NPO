@@ -208,12 +208,13 @@ async function sendDonationConfirmedEmail(
     const memberEmail = memberRes.data?.email;
     if (!memberEmail) return; // no email on file — skip
 
+    const payType = (payment as unknown as { pay_method?: string | null }).pay_method === 'card_billing' ? 'regular' : 'onetime';
     notifyDonationThanks({
       phone: memberRes.data?.phone ?? null,
       email: memberEmail,
       name: memberRes.data?.name ?? '후원자',
       amount: Number(payment.amount),
-      type: 'onetime',
+      type: payType,
       orgName: orgRes.data?.name ?? '',
       campaignTitle: campaignRes.data?.title ?? null,
       paymentCode: payment.payment_code,

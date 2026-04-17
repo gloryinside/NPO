@@ -11,7 +11,7 @@ export async function issueAnnualReceipts(orgId: string, year: number): Promise<
 
   // 1. Fetch paid payments with receipt_opt_in for the year
   const startDate = `${year}-01-01`;
-  const endDate = `${year}-12-31`;
+  const endDate = `${year + 1}-01-01`;
 
   const { data: payments, error: payErr } = await supabase
     .from('payments')
@@ -20,7 +20,7 @@ export async function issueAnnualReceipts(orgId: string, year: number): Promise<
     .eq('pay_status', 'paid')
     .eq('receipt_opt_in', true)
     .gte('pay_date', startDate)
-    .lte('pay_date', endDate);
+    .lt('pay_date', endDate);
 
   if (payErr || !payments || payments.length === 0) return result;
 
@@ -64,6 +64,7 @@ export async function issueAnnualReceipts(orgId: string, year: number): Promise<
   const { count: existingCount } = await supabase
     .from('receipts')
     .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
     .eq('year', year);
 
   let seq = (existingCount ?? 0) + 1;

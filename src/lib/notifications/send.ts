@@ -81,7 +81,7 @@ export function notifyBillingFailed(params: BillingFailedParams): void {
   const amountStr = fmt(amount);
 
   void sendWithFallback(phone, TEMPLATES.BILLING_FAILED.code, {
-    name, amount: amountStr, reason,
+    name, amount: amountStr, reason, orgName,
   }, TEMPLATES.BILLING_FAILED.smsBody({ name, amount: amountStr, orgName }));
 }
 
@@ -99,6 +99,6 @@ export function notifyBillingUpcoming(params: BillingUpcomingParams): void {
   const amountStr = fmt(amount);
 
   void sendWithFallback(phone, TEMPLATES.BILLING_UPCOMING.code, {
-    name, date, amount: amountStr,
+    name, date, amount: amountStr, orgName,
   }, TEMPLATES.BILLING_UPCOMING.smsBody({ name, date, amount: amountStr, orgName }));
 }
