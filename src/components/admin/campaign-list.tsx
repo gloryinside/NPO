@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -53,11 +54,16 @@ function StatusBadge({ status }: { status: Campaign["status"] }) {
 }
 
 export function CampaignList({ campaigns: initialCampaigns }: Props) {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Campaign | undefined>(undefined);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (newCampaignId?: string) => {
+    if (newCampaignId) {
+      router.push(`/admin/campaigns/${newCampaignId}/edit`);
+      return;
+    }
     try {
       const res = await fetch("/api/admin/campaigns");
       if (res.ok) {
@@ -67,7 +73,7 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
     } catch {
       // silently fail refresh
     }
-  }, []);
+  }, [router]);
 
   const handleNew = () => {
     setEditTarget(undefined);
@@ -198,6 +204,17 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
                         }}
                       >
                         수정
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/admin/campaigns/${campaign.id}/edit`)}
+                        style={{
+                          borderColor: "var(--border)",
+                          color: "var(--text)",
+                        }}
+                      >
+                        페이지 편집
                       </Button>
                       <Button
                         size="sm"
