@@ -1,26 +1,44 @@
 /**
- * Creates a Supabase client that authenticates via the Authorization: Bearer
- * header on the incoming request. Used by campaign-builder API routes so they
- * work both in production (where the JS client passes a session token) and in
- * integration tests (which call route handlers directly with a Bearer token).
+ * Creates a Supabase client for API route handlers.
+ *
+ * Authentication order:
+ *   1. Authorization: Bearer header (integration tests, programmatic access)
+ *   2. Supabase auth cookies (browser fetch from Editor / admin UI)
  */
 import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import type { NextRequest } from 'next/server';
 
 export function createRequestClient(req: NextRequest) {
+  // 1. Try Bearer token first (tests, programmatic)
   const authHeader = req.headers.get('authorization') ?? '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
 
-  const client = createClient(
+  if (token) {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      },
+    );
+  }
+
+  // 2. Fallback to cookie-based auth (browser fetch)
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      global: {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll() {
+          // Route handlers can't set cookies on the incoming request — no-op.
+        },
       },
       auth: { persistSession: false, autoRefreshToken: false },
     },
   );
-
-  return client;
 }
