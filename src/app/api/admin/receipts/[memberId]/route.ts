@@ -4,7 +4,7 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generateReceiptCode } from "@/lib/codes";
 import { generateReceiptPdf, type ReceiptData } from "@/lib/receipt/pdf";
-import { sendReceiptIssued } from "@/lib/email";
+import { notifyReceiptIssued } from '@/lib/notifications/send';
 
 const RECEIPT_BUCKET = "receipts";
 
@@ -208,17 +208,16 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
 
   // 8) Email notification to donor (fire-and-forget)
   const memberEmail = (member as unknown as { email?: string | null }).email;
-  if (memberEmail) {
-    sendReceiptIssued({
-      to: memberEmail,
-      memberName: member.name,
-      orgName: org.name,
-      year,
-      totalAmount,
-      receiptCode,
-      pdfUrl,
-    });
-  }
+  notifyReceiptIssued({
+    phone: member.phone ?? null,
+    email: memberEmail ?? null,
+    name: member.name,
+    year,
+    pdfUrl,
+    orgName: org.name,
+    receiptCode,
+    totalAmount,
+  });
 
   // Node Buffer → ArrayBuffer slice (Next.js Response BodyInit compatible).
   const body = pdfBuffer.buffer.slice(

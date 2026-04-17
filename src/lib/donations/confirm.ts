@@ -2,7 +2,7 @@ import { revalidateTag } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { confirmTossPayment } from "@/lib/toss/client";
 import { getOrgTossKeys } from "@/lib/toss/keys";
-import { sendDonationConfirmed } from "@/lib/email";
+import { notifyDonationThanks } from '@/lib/notifications/send';
 import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
 
 export type ConfirmDonationInput = {
@@ -186,7 +186,7 @@ async function sendDonationConfirmedEmail(
       payment.member_id
         ? supabase
             .from("members")
-            .select("name, email")
+            .select("name, email, phone")
             .eq("org_id", payment.org_id)
             .eq("id", payment.member_id)
             .maybeSingle()
@@ -208,12 +208,14 @@ async function sendDonationConfirmedEmail(
     const memberEmail = memberRes.data?.email;
     if (!memberEmail) return; // no email on file — skip
 
-    sendDonationConfirmed({
-      to: memberEmail,
-      memberName: memberRes.data?.name ?? "후원자",
-      orgName: orgRes.data?.name ?? "",
-      campaignTitle: campaignRes.data?.title ?? null,
+    notifyDonationThanks({
+      phone: memberRes.data?.phone ?? null,
+      email: memberEmail,
+      name: memberRes.data?.name ?? '후원자',
       amount: Number(payment.amount),
+      type: 'onetime',
+      orgName: orgRes.data?.name ?? '',
+      campaignTitle: campaignRes.data?.title ?? null,
       paymentCode: payment.payment_code,
       approvedAt: payment.approved_at,
     });

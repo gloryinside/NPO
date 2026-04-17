@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send-email';
+import { notifyBillingFailed as notifyDonorBillingFailed } from '@/lib/notifications/send';
 
 async function lookupMember(memberId: string) {
   const supabase = createSupabaseAdminClient();
@@ -31,7 +32,7 @@ export async function createBillingFailedNotification(
   amount: number,
   failureMessage: string,
 ) {
-  const [{ name }, { orgName, contactEmail }] = await Promise.all([
+  const [{ name, phone: memberPhone }, { orgName, contactEmail }] = await Promise.all([
     lookupMember(memberId),
     lookupOrg(orgId),
   ]);
@@ -55,6 +56,15 @@ export async function createBillingFailedNotification(
       html: `<p>${title}</p><p>사유: ${failureMessage}</p><p>결제 ID: ${paymentId}</p>`,
     });
   }
+
+  // 후원자에게 알림톡
+  notifyDonorBillingFailed({
+    phone: memberPhone ?? null,
+    name,
+    amount,
+    reason: failureMessage,
+    orgName: orgName ?? '후원',
+  });
 }
 
 export async function createPledgeSuspendedNotification(
