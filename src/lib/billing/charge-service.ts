@@ -3,11 +3,11 @@ import { getOrgTossKeys } from '@/lib/toss/keys';
 import { chargeBillingKey } from './toss-billing';
 import { createBillingFailedNotification } from './notifications';
 
-export async function processMonthlyCharges(orgId: string) {
+export async function processMonthlyCharges(orgId: string): Promise<{ charged: number; failed: number }> {
   const keys = await getOrgTossKeys(orgId);
   if (!keys.tossSecretKey) {
     console.error(`[charge] org ${orgId}: tossSecretKey 없음`);
-    return;
+    return { charged: 0, failed: 0 };
   }
 
   const supabase = createSupabaseAdminClient();
@@ -25,9 +25,12 @@ export async function processMonthlyCharges(orgId: string) {
 
   if (error) {
     console.error(`[charge] org ${orgId}: 조회 실패`, error.message);
-    return;
+    return { charged: 0, failed: 0 };
   }
-  if (!payments?.length) return;
+  if (!payments?.length) return { charged: 0, failed: 0 };
+
+  let charged = 0;
+  let failed = 0;
 
   for (const payment of payments) {
     const promise = payment.promises as {
@@ -60,6 +63,7 @@ export async function processMonthlyCharges(orgId: string) {
           approved_at: new Date().toISOString(),
         })
         .eq('id', payment.id);
+      charged++;
     } else {
       await supabase
         .from('payments')
@@ -79,6 +83,9 @@ export async function processMonthlyCharges(orgId: string) {
         payment.amount,
         result.failureMessage,
       );
+      failed++;
     }
   }
+
+  return { charged, failed };
 }

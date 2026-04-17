@@ -12,11 +12,11 @@ const RETRY_INTERVALS_MS = [
   7 * 86400000, // retry_count 2 → +7일
 ];
 
-export async function processRetries(orgId: string) {
+export async function processRetries(orgId: string): Promise<{ retried: number; suspended: number }> {
   const keys = await getOrgTossKeys(orgId);
   if (!keys.tossSecretKey) {
     console.error(`[retry] org ${orgId}: tossSecretKey 없음`);
-    return;
+    return { retried: 0, suspended: 0 };
   }
 
   const supabase = createSupabaseAdminClient();
@@ -34,9 +34,12 @@ export async function processRetries(orgId: string) {
 
   if (error) {
     console.error(`[retry] org ${orgId}: 조회 실패`, error.message);
-    return;
+    return { retried: 0, suspended: 0 };
   }
-  if (!payments?.length) return;
+  if (!payments?.length) return { retried: 0, suspended: 0 };
+
+  let retried = 0;
+  let suspended = 0;
 
   for (const payment of payments) {
     const promise = payment.promises as {
@@ -70,6 +73,7 @@ export async function processRetries(orgId: string) {
           approved_at: new Date().toISOString(),
         })
         .eq('id', payment.id);
+      retried++;
     } else {
       const newRetryCount = (payment.retry_count ?? 0) + 1;
 
@@ -91,6 +95,7 @@ export async function processRetries(orgId: string) {
           promise.member_id,
           payment.amount,
         );
+        suspended++;
       } else {
         const nextRetryAt = new Date(
           Date.now() + RETRY_INTERVALS_MS[newRetryCount],
@@ -114,4 +119,6 @@ export async function processRetries(orgId: string) {
       }
     }
   }
+
+  return { retried, suspended };
 }
