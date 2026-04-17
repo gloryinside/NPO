@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { OtpLoginForm } from "@/components/donor/otp-login-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,6 +98,17 @@ export function DonorLoginForm() {
             {loading ? "로그인 중..." : "로그인"}
           </Button>
         </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <hr className="flex-1" style={{ borderColor: 'var(--border)' }} />
+          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>또는</span>
+          <hr className="flex-1" style={{ borderColor: 'var(--border)' }} />
+        </div>
+
+        <p className="mb-3 text-center text-sm font-medium" style={{ color: 'var(--text)' }}>
+          휴대폰 번호로 간편 로그인
+        </p>
+        <OtpLoginForm />
 
         <p className="mt-4 text-center text-sm text-[var(--muted-foreground)]">
           아직 계정이 없으신가요?{" "}
