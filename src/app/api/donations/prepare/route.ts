@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generatePaymentCode, generateMemberCode } from "@/lib/codes";
 import { getOrgTossKeys } from "@/lib/toss/keys";
 import { sendOfflineDonationReceived } from "@/lib/email";
+import { issueBillingKey } from "@/lib/billing/toss-billing";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 /**
@@ -59,6 +60,11 @@ export async function POST(req: NextRequest) {
     customFields,
     designation,
     idempotencyKey: clientIdempotencyKey,
+    cardNumber,
+    cardExpirationYear,
+    cardExpirationMonth,
+    cardPassword,
+    customerIdentityNumber,
   } = body as {
     campaignId?: string;
     amount?: number;
@@ -72,6 +78,11 @@ export async function POST(req: NextRequest) {
     customFields?: Record<string, unknown>;
     designation?: string;
     idempotencyKey?: string;
+    cardNumber?: string;
+    cardExpirationYear?: string;
+    cardExpirationMonth?: string;
+    cardPassword?: string;
+    customerIdentityNumber?: string;
   };
 
   // 오프라인 결제 수단 (계좌이체·CMS는 Toss PG 불필요)
@@ -332,6 +343,47 @@ export async function POST(req: NextRequest) {
       { error: "결제 준비 실패" },
       { status: 500 }
     );
+  }
+
+  // 6. 정기후원: 빌링키 발급 + promise 생성
+  const isRegular = donationType === 'regular';
+  if (isRegular && memberId) {
+    const todayDay = new Date().getDate();
+    const customerKey = randomUUID();
+    let billingKey: string | null = null;
+
+    // 카드 정보가 있으면 빌링키 발급 시도
+    if (cardNumber && cardExpirationYear && cardExpirationMonth && cardPassword && customerIdentityNumber) {
+      const keys = await getOrgTossKeys(tenant.id);
+      if (keys.tossSecretKey) {
+        const result = await issueBillingKey(keys.tossSecretKey, customerKey, {
+          cardNumber,
+          cardExpirationYear,
+          cardExpirationMonth,
+          cardPassword,
+          customerIdentityNumber,
+        });
+        if (result.success) {
+          billingKey = result.billingKey;
+        } else {
+          console.warn('[donations/prepare] 빌링키 발급 실패:', result.error);
+        }
+      }
+    }
+
+    // promise 생성 (빌링키 유무와 무관하게)
+    await supabase.from('promises').insert({
+      org_id: tenant.id,
+      member_id: memberId,
+      campaign_id: campaign.id,
+      type: 'regular',
+      amount,
+      pay_day: Math.min(todayDay, 28),
+      pay_method: payMethod ?? 'card',
+      status: 'active',
+      toss_billing_key: billingKey,
+      customer_key: billingKey ? customerKey : null,
+    });
   }
 
   // 오프라인 결제: Toss 리디렉션 없이 계좌 안내 정보 반환
