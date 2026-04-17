@@ -8,7 +8,17 @@ export function FormSettingsPanel({
   campaignId: string;
   initial: any;
 }) {
-  const [s, setS] = useState<any>(initial);
+  const [s, setS] = useState<any>({
+    amountPresets: [],
+    allowCustomAmount: false,
+    donationTypes: [],
+    paymentMethods: [],
+    requireReceipt: false,
+    termsBodyHtml: '',
+    designations: [],
+    customFields: [],
+    ...initial,
+  });
   const [saving, setSaving] = useState(false);
 
   const toggle = (list: string[], v: string) =>
