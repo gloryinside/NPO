@@ -109,6 +109,10 @@ export function Step2({
   const [identityName, setIdentityName] = useState('');
   const [ag, setAg] = useState({ terms: false, privacy: false, receipt: false, marketing: false });
   const [submitting, setSubmitting] = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardPassword, setCardPassword] = useState('');
+  const [cardBirth, setCardBirth] = useState('');
 
   // 본인인증 팝업 완료 후 URL 파라미터 감지
   useEffect(() => {
@@ -161,6 +165,13 @@ export function Step2({
         receiptOptIn: receipt,
         identityVerified: receipt ? identityVerified : undefined,
         idempotencyKey: state.idempotencyKey,
+        ...(state.type === 'regular' && method === 'card' ? {
+          cardNumber,
+          cardExpirationMonth: cardExpiry.split('/')[0],
+          cardExpirationYear: cardExpiry.split('/')[1],
+          cardPassword,
+          customerIdentityNumber: cardBirth,
+        } : {}),
       }),
     });
     setSubmitting(false);
@@ -210,6 +221,21 @@ export function Step2({
         value={method}
         onChange={setMethod}
       />
+
+      {state.type === 'regular' && method === 'card' && (
+        <div className="space-y-3 rounded-lg p-4" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <p className="text-xs font-medium" style={{ color: 'var(--text)' }}>정기결제 카드 정보</p>
+          <Input label="카드번호 (16자리)" value={cardNumber} onChange={(v) => setCardNumber(v.replace(/\D/g, '').slice(0, 16))} />
+          <div className="grid grid-cols-2 gap-2">
+            <Input label="유효기간 (MM/YY)" value={cardExpiry} onChange={(v) => setCardExpiry(v)} />
+            <Input label="비밀번호 앞 2자리" value={cardPassword} type="password" onChange={(v) => setCardPassword(v.replace(/\D/g, '').slice(0, 2))} />
+          </div>
+          <Input label="생년월일 (6자리)" value={cardBirth} onChange={(v) => setCardBirth(v.replace(/\D/g, '').slice(0, 6))} />
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            매월 자동결제를 위해 카드 정보가 필요합니다. 카드 정보는 저장되지 않으며 빌링키 발급에만 사용됩니다.
+          </p>
+        </div>
+      )}
 
       <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
         <input
