@@ -14,6 +14,8 @@ export type Member = {
   member_type: MemberType;
   join_path: string | null;
   note: string | null;
+  ci_hash?: string | null;
+  identity_verified_at?: string | null;
   /** 암호화된 주민등록번호 (pgp_sym_encrypt). 평문은 서버에서만 복호화. */
   id_number_encrypted?: string | null;
   created_at: string;
