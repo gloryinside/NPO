@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DonorPaymentsFilter } from "@/components/donor/donor-payments-filter";
+import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
 import { Suspense } from "react";
 
@@ -172,13 +173,16 @@ export default async function DonorPaymentsPage({
               <TableHead style={{ color: "var(--muted-foreground)" }}>
                 영수증
               </TableHead>
+              <TableHead style={{ color: "var(--muted-foreground)" }}>
+                관리
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="py-12 text-center"
                   style={{ color: "var(--muted-foreground)" }}
                 >
@@ -228,6 +232,12 @@ export default async function DonorPaymentsPage({
                         -
                       </span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    {p.pay_status === 'paid' && (() => {
+                      const daysSince = (Date.now() - new Date(p.pay_date).getTime()) / 86400000;
+                      return daysSince <= 7 ? <PaymentCancelButton paymentId={p.id} /> : null;
+                    })()}
                   </TableCell>
                 </TableRow>
               ))

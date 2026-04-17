@@ -1,8 +1,11 @@
-import { requireDonorSession } from "@/lib/auth";
+import { getDonorSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { PaymentWithRelations } from "@/types/payment";
 import type { PromiseWithRelations } from "@/types/promise";
 import { DonorProfileSection } from "@/components/donor/donor-profile-section";
+import { PledgeCancelButton } from "@/components/donor/pledge-cancel-button";
+import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 
 function formatAmount(value: number | null | undefined) {
   if (value == null) return "-";
@@ -19,7 +22,9 @@ function formatDate(value: string | null) {
 }
 
 export default async function DonorHomePage() {
-  const { member } = await requireDonorSession();
+  const session = await getDonorSession();
+  if (!session) redirect('/donor/login');
+  const { member, authMethod } = session;
   const supabase = createSupabaseAdminClient();
 
   // 활성 약정
@@ -147,6 +152,22 @@ export default async function DonorHomePage() {
         </a>
       </div>
 
+      {activePromises.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {activePromises.map((p) => (
+            <div key={p.id} className="flex items-center justify-between rounded-lg border px-4 py-3"
+              style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+              <div>
+                <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                  {p.campaigns?.title ?? '정기후원'}
+                </div>
+              </div>
+              <PledgeCancelButton pledgeId={p.id} />
+            </div>
+          ))}
+        </div>
+      )}
+
       <DonorProfileSection
         member={{
           id: member.id,
@@ -203,11 +224,17 @@ export default async function DonorHomePage() {
                       {formatDate(p.pay_date)}
                     </div>
                   </div>
-                  <div
-                    className="text-sm font-semibold"
-                    style={{ color: "var(--text)" }}
-                  >
-                    {formatAmount(p.amount)}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {formatAmount(p.amount)}
+                    </div>
+                    {p.pay_status === 'paid' && (() => {
+                      const daysSince = (Date.now() - new Date(p.pay_date).getTime()) / 86400000;
+                      return daysSince <= 7 ? <PaymentCancelButton paymentId={p.id} /> : null;
+                    })()}
                   </div>
                 </li>
               ))}
