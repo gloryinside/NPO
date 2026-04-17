@@ -242,31 +242,62 @@ export default async function PublicPage() {
               return (
                 <Link key={campaign.id} href={`/campaigns/${campaign.slug}`} className="block group" style={{ textDecoration: "none" }}>
                   <div
-                    className="rounded-xl border overflow-hidden h-full flex flex-col transition-shadow group-hover:shadow-lg"
-                    style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+                    className="rounded-xl border overflow-hidden h-full flex flex-col"
+                    style={{
+                      borderColor: "var(--border)",
+                      background: "var(--surface)",
+                      transition: "transform 0.2s, box-shadow 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.transform = "scale(1.02)";
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 30px rgba(0,0,0,0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.transform = "scale(1)";
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                    }}
                   >
-                    {campaign.thumbnail_url && (
+                    {/* 썸네일 또는 그라디언트 placeholder */}
+                    {campaign.thumbnail_url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={campaign.thumbnail_url}
                         alt={campaign.title}
                         className="w-full h-40 object-cover"
                       />
+                    ) : (
+                      <div
+                        className="w-full h-40"
+                        style={{ background: "linear-gradient(135deg, var(--accent-soft), var(--surface-2))" }}
+                      />
                     )}
                     <div className="p-5 flex-1 flex flex-col">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <h3
-                          className="text-base font-semibold leading-snug group-hover:opacity-80 transition-opacity"
+                          className="text-base font-semibold leading-snug"
                           style={{ color: "var(--text)" }}
                         >
                           {campaign.title}
                         </h3>
-                        <Badge
-                          className="shrink-0 border-0 text-xs"
-                          style={{ background: "rgba(34,197,94,0.12)", color: "var(--positive)" }}
-                        >
-                          진행 중
-                        </Badge>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {campaign.ended_at && (() => {
+                            const daysLeft = Math.ceil((new Date(campaign.ended_at).getTime() - Date.now()) / 86400000);
+                            return daysLeft >= 0 ? (
+                              <span
+                                className="text-xs font-semibold rounded-full px-2 py-0.5"
+                                style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                              >
+                                D-{daysLeft}
+                              </span>
+                            ) : null;
+                          })()}
+                          <Badge
+                            className="border-0 text-xs"
+                            style={{ background: "rgba(34,197,94,0.12)", color: "var(--positive)" }}
+                          >
+                            진행 중
+                          </Badge>
+                        </div>
                       </div>
                       {campaign.description && (
                         <p className="text-sm line-clamp-2 mb-3 flex-1" style={{ color: "var(--muted-foreground)" }}>
@@ -275,7 +306,7 @@ export default async function PublicPage() {
                       )}
                       {/* 목표 달성률 바 */}
                       {pct !== null && (
-                        <div className="mt-auto">
+                        <div className="mt-auto mb-3">
                           <div className="flex justify-between text-xs mb-1">
                             <span style={{ color: "var(--muted-foreground)" }}>
                               {formatKRW(raised)}
@@ -295,6 +326,12 @@ export default async function PublicPage() {
                           </div>
                         </div>
                       )}
+                      <span
+                        className="text-sm font-semibold mt-auto"
+                        style={{ color: "var(--accent)" }}
+                      >
+                        후원하기 →
+                      </span>
                     </div>
                   </div>
                 </Link>
@@ -310,16 +347,43 @@ export default async function PublicPage() {
           <h2 className="text-xl font-bold mb-8" style={{ color: "var(--text)" }}>후원 방법 안내</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
             {[
-              { step: "1", title: "캠페인 선택", desc: "후원하고 싶은 캠페인을 선택하세요." },
-              { step: "2", title: "정보 입력", desc: "이름과 연락처를 입력하고 후원 금액을 정합니다." },
-              { step: "3", title: "결제 완료", desc: "카드·계좌이체·CMS 자동이체로 간편하게 결제합니다." },
+              {
+                step: "1",
+                icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                  </svg>
+                ),
+                title: "캠페인 선택",
+                desc: "후원하고 싶은 캠페인을 선택하세요.",
+              },
+              {
+                step: "2",
+                icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                ),
+                title: "정보 입력",
+                desc: "이름과 연락처를 입력하고 후원 금액을 정합니다.",
+              },
+              {
+                step: "3",
+                icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                  </svg>
+                ),
+                title: "결제 완료",
+                desc: "카드·계좌이체·CMS 자동이체로 간편하게 결제합니다.",
+              },
             ].map((s) => (
               <div key={s.step} className="flex flex-col items-center gap-3">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-base"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white"
                   style={{ background: "var(--accent)" }}
                 >
-                  {s.step}
+                  {s.icon}
                 </div>
                 <div className="font-semibold" style={{ color: "var(--text)" }}>{s.title}</div>
                 <div style={{ color: "var(--muted-foreground)" }}>{s.desc}</div>
