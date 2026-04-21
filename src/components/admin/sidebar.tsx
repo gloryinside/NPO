@@ -41,7 +41,10 @@ const NAV: NavGroup[] = [
   {
     group: "캠페인",
     defaultOpen: true,
-    items: [{ label: "캠페인 목록", href: "/admin/campaigns" }],
+    items: [
+      { label: "캠페인 목록", href: "/admin/campaigns" },
+      { label: "랜딩페이지 편집", href: "/admin/landing" },
+    ],
   },
   {
     group: "보고서",

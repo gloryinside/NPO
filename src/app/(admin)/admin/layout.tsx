@@ -1,5 +1,6 @@
 import { requireAdminUser } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/sidebar";
+import { Toaster } from "sonner";
 
 export default async function AdminLayout({
   children,
@@ -25,6 +26,7 @@ export default async function AdminLayout({
       >
         {children}
       </main>
+      <Toaster position="bottom-right" />
     </div>
   );
 }

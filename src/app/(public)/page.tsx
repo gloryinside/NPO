@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,6 +11,8 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LandingRenderer } from "@/components/landing-builder/LandingRenderer";
+import type { LandingPageContent } from "@/types/landing";
 
 const FEATURES = [
   {
@@ -44,6 +47,7 @@ type OrgRow = {
   address: string | null;
   business_no: string | null;
   show_stats: boolean;
+  published_content: unknown;
 };
 
 type CampaignRow = {
@@ -111,7 +115,7 @@ export default async function PublicPage() {
     adminSupabase
       .from("orgs")
       .select(
-        "name, tagline, about, logo_url, hero_image_url, contact_email, contact_phone, address, business_no, show_stats"
+        "name, tagline, about, logo_url, hero_image_url, contact_email, contact_phone, address, business_no, show_stats, published_content"
       )
       .eq("id", tenant.id)
       .single(),
@@ -123,36 +127,75 @@ export default async function PublicPage() {
       .order("started_at", { ascending: false }),
     adminSupabase
       .from("payments")
-      .select("amount, member_id")
+      .select("amount, member_id, campaign_id")
       .eq("org_id", tenant.id)
       .eq("pay_status", "paid"),
   ]);
 
   const org = orgData as OrgRow | null;
   const campaignList = (campaigns as unknown as CampaignRow[]) ?? [];
-
   const statsRows = statsResult.data ?? [];
-  const totalRaised = statsRows.reduce((s: number, r: { amount: number | null }) => s + Number(r.amount ?? 0), 0);
-  const uniqueDonors = new Set(statsRows.map((r: { member_id: string | null }) => r.member_id).filter(Boolean)).size;
 
-  const campaignIds = campaignList.map((c) => c.id);
+  // ── published_content 섹션 유무 확인 ─────────────────────────────────
+  const publishedContent = org?.published_content as LandingPageContent | null | undefined;
+  const hasSections =
+    publishedContent &&
+    typeof publishedContent === "object" &&
+    "sections" in publishedContent &&
+    Array.isArray(publishedContent.sections) &&
+    publishedContent.sections.length > 0;
+
+  // ── 캠페인 모금액 집계 (섹션 렌더러 + 기본 렌더러 공통) ─────────────
   const paidByCampaign = new Map<string, number>();
-  if (campaignIds.length > 0) {
-    const { data: campaignPaid } = await adminSupabase
-      .from("payments")
-      .select("campaign_id, amount")
-      .eq("org_id", tenant.id)
-      .eq("pay_status", "paid")
-      .in("campaign_id", campaignIds);
-    for (const row of campaignPaid ?? []) {
+  for (const row of statsRows) {
+    if (row.campaign_id) {
       const k = row.campaign_id as string;
       paidByCampaign.set(k, (paidByCampaign.get(k) ?? 0) + Number(row.amount ?? 0));
     }
   }
 
+  const campaignRowsForRenderer = campaignList.map((c) => ({
+    id: c.id,
+    title: c.title,
+    slug: c.slug,
+    description: c.description,
+    goal_amount: c.goal_amount,
+    ended_at: c.ended_at,
+    thumbnail_url: c.thumbnail_url,
+    raised: paidByCampaign.get(c.id) ?? 0,
+  }));
+
+  // ── 섹션 빌더 렌더러로 표시 ───────────────────────────────────────────
+  if (hasSections) {
+    const footerOrg = org!;
+    return (
+      <main className="bg-[var(--bg)] min-h-screen">
+        <LandingRenderer
+          sections={publishedContent!.sections}
+          campaigns={campaignRowsForRenderer}
+        />
+
+        {/* 푸터 */}
+        {(footerOrg.business_no || footerOrg.address || footerOrg.contact_email || footerOrg.contact_phone) && (
+          <footer className="text-xs text-center py-8 px-6 space-y-1 text-[var(--muted-foreground)] border-t border-[var(--border)]">
+            <div className="font-medium text-[var(--text)]">{footerOrg.name}</div>
+            {footerOrg.business_no && <div>사업자등록번호: {footerOrg.business_no}</div>}
+            {footerOrg.address && <div>{footerOrg.address}</div>}
+            <div className="flex justify-center gap-4 flex-wrap">
+              {footerOrg.contact_phone && <span>전화: {footerOrg.contact_phone}</span>}
+              {footerOrg.contact_email && <span>이메일: {footerOrg.contact_email}</span>}
+            </div>
+          </footer>
+        )}
+      </main>
+    );
+  }
+
+  // ── 기본 정적 렌더러 (섹션 없음) ─────────────────────────────────────
+  const totalRaised = statsRows.reduce((s: number, r: { amount: number | null }) => s + Number(r.amount ?? 0), 0);
+  const uniqueDonors = new Set(statsRows.map((r: { member_id: string | null }) => r.member_id).filter(Boolean)).size;
   const showStats = org?.show_stats !== false;
 
-  // Hero background — dynamic URL requires inline style
   const heroBg = org?.hero_image_url
     ? `linear-gradient(to bottom, rgba(10,10,15,0.6), rgba(10,10,15,0.9)), url(${JSON.stringify(org.hero_image_url)}) center/cover no-repeat`
     : "var(--surface)";
@@ -161,8 +204,8 @@ export default async function PublicPage() {
     <main className="bg-[var(--bg)] min-h-screen">
       {/* Hero */}
       <section
-        className="relative border-b border-[var(--border)]"
-        style={{ background: heroBg }}
+        className="relative border-b border-[var(--border)] [background:var(--hero-bg)]"
+        style={{ '--hero-bg': heroBg } as React.CSSProperties}
       >
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
           {org?.logo_url && (
@@ -237,7 +280,6 @@ export default async function PublicPage() {
               return (
                 <Link key={campaign.id} href={`/campaigns/${campaign.slug}`} className="block group no-underline">
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden h-full flex flex-col transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg">
-                    {/* 썸네일 또는 그라디언트 placeholder */}
                     {campaign.thumbnail_url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
@@ -272,7 +314,6 @@ export default async function PublicPage() {
                           {campaign.description}
                         </p>
                       )}
-                      {/* 목표 달성률 바 */}
                       {pct !== null && (
                         <div className="mt-auto mb-3">
                           <div className="flex justify-between text-xs mb-1">
