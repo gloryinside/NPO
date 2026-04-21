@@ -30,9 +30,11 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from 'sonner'
 import { createSection } from '@/lib/landing-defaults'
-import { SECTION_CATALOG } from '@/types/landing'
+import { SECTION_CATALOG, SHARED_FIELDS } from '@/types/landing'
 import type { LandingSection, LandingSectionType, LandingPageContent } from '@/types/landing'
 import { LandingSectionSettingsSheet } from './LandingSectionSettingsSheet'
+import { VariantGalleryModal } from './VariantGalleryModal'
+import { getVariants } from '@/lib/landing-variants'
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -138,6 +140,8 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const [publishing, setPublishing] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
+  const [pickingVariantFor, setPickingVariantFor] = useState<LandingSectionType | null>(null)
+  const [variantChangeFor, setVariantChangeFor] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusRef = useRef<'saved' | 'unsaved' | 'saving'>('saved')
 
@@ -180,14 +184,56 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
     }
   }, [])
 
-  // ── 섹션 추가 ────────────────────────────────────────────────────────────
-  function handleAdd(type: LandingSectionType) {
+  // ── 섹션 추가 (Step 1: 타입 선택) ────────────────────────────────────────
+  function handlePickType(type: LandingSectionType) {
+    // Phase A: variants 등록된 type은 갤러리로, 아니면 기본 variant로 바로 추가
+    if (getVariants(type).length > 0) {
+      setShowCatalog(false)
+      setPickingVariantFor(type)
+    } else {
+      handleAddWithVariant(type, null)
+    }
+  }
+
+  // ── 섹션 추가 (Step 2: variant 선택 or 기본값) ───────────────────────────
+  function handleAddWithVariant(type: LandingSectionType, variantId: string | null) {
     const newSection = createSection(type, sections.length)
+    if (variantId) {
+      newSection.variant = variantId
+      const variant = getVariants(type).find((v) => v.id === variantId)
+      if (variant) newSection.data = variant.defaultData() as typeof newSection.data
+    }
     const updated = [...sections, newSection]
     setSections(updated)
     setShowCatalog(false)
+    setPickingVariantFor(null)
     setEditingId(newSection.id)
     scheduleSave(updated)
+  }
+
+  // ── Variant 전환 (기존 섹션의 variant 바꾸기) ────────────────────────────
+  function handleVariantChange(sectionId: string, newVariantId: string) {
+    const section = sections.find((s) => s.id === sectionId)
+    if (!section) return
+    const variant = getVariants(section.type).find((v) => v.id === newVariantId)
+    if (!variant) return
+
+    const shared = SHARED_FIELDS[section.type]
+    const newDefault = variant.defaultData() as Record<string, unknown>
+    const oldData = section.data as unknown as Record<string, unknown>
+    const merged: Record<string, unknown> = { ...newDefault }
+    for (const key of shared) {
+      if (oldData[key] !== undefined) merged[key] = oldData[key]
+    }
+
+    const updated = sections.map((s) =>
+      s.id === sectionId
+        ? { ...s, variant: newVariantId, data: merged as typeof s.data }
+        : s
+    )
+    setSections(updated)
+    scheduleSave(updated)
+    setVariantChangeFor(null)
   }
 
   // ── 섹션 삭제 ────────────────────────────────────────────────────────────
@@ -306,8 +352,20 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
           <button
             type="button"
             onClick={() => {
-              const template: LandingSectionType[] = ['hero', 'campaigns', 'cta']
-              const added = template.map((type, i) => createSection(type, i))
+              const template: Array<{ type: LandingSectionType; variant?: string }> = [
+                { type: 'hero', variant: 'hero-fullscreen-image' },
+                { type: 'campaigns' },
+                { type: 'cta', variant: 'cta-gradient' },
+              ]
+              const added = template.map(({ type, variant }, i) => {
+                const s = createSection(type, i)
+                if (variant) {
+                  s.variant = variant
+                  const descriptor = getVariants(type).find((v) => v.id === variant)
+                  if (descriptor) s.data = descriptor.defaultData() as typeof s.data
+                }
+                return s
+              })
               setSections(added)
               scheduleSave(added)
               setEditingId(added[0].id)
@@ -354,7 +412,7 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
               <button
                 type="button"
                 key={item.type}
-                onClick={() => handleAdd(item.type)}
+                onClick={() => handlePickType(item.type)}
                 className="flex items-start gap-3 rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3 text-left hover:opacity-80 transition-opacity"
               >
                 <span className="text-2xl">{item.emoji}</span>
@@ -383,8 +441,46 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
           open={!!editingId}
           onClose={() => setEditingId(null)}
           onSave={handleSaveSection}
+          onRequestVariantChange={() => setVariantChangeFor(editingSection.id)}
         />
       )}
+
+      {/* ── Variant 갤러리 (섹션 추가) ── */}
+      {pickingVariantFor && (
+        <VariantGalleryModal
+          type={pickingVariantFor}
+          onSelect={(variantId) => handleAddWithVariant(pickingVariantFor, variantId)}
+          onClose={() => setPickingVariantFor(null)}
+        />
+      )}
+
+      {/* ── Variant 전환 (기존 섹션) ── */}
+      {variantChangeFor && (() => {
+        const target = sections.find((s) => s.id === variantChangeFor)
+        if (!target) return null
+        return (
+          <VariantGalleryModal
+            type={target.type}
+            currentVariantId={target.variant}
+            onSelect={(variantId) => {
+              if (variantId === target.variant) {
+                setVariantChangeFor(null)
+                return
+              }
+              const shared = SHARED_FIELDS[target.type]
+              if (!confirm(
+                `Variant를 바꾸면 전용 입력값이 초기화됩니다.\n` +
+                `유지되는 필드: ${shared.join(', ')}\n` +
+                `계속하시겠습니까?`
+              )) {
+                return
+              }
+              handleVariantChange(variantChangeFor, variantId)
+            }}
+            onClose={() => setVariantChangeFor(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

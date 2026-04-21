@@ -22,15 +22,32 @@ import type {
   RichtextSectionData,
 } from '@/types/landing'
 import { ImageUploadField } from './ImageUploadField'
+import type {
+  HeroMinimalData, HeroSplitImageData, HeroFullscreenImageData,
+  HeroFullscreenVideoData, HeroGalleryData, HeroStatsOverlayData,
+} from '@/lib/landing-variants/hero-schemas'
+import type {
+  CtaBannerData, CtaGradientData, CtaSplitData, CtaUrgencyData, CtaFullscreenData,
+} from '@/lib/landing-variants/cta-schemas'
+import type { StatsBigData } from '@/lib/landing-variants/stats-schemas'
+import {
+  HeroMinimalForm, HeroSplitImageForm, HeroFullscreenImageForm,
+  HeroFullscreenVideoForm, HeroGalleryForm, HeroStatsOverlayForm,
+} from './variant-forms/hero-forms'
+import {
+  CtaBannerForm, CtaGradientForm, CtaSplitForm, CtaUrgencyForm, CtaFullscreenForm,
+} from './variant-forms/cta-forms'
+import { StatsBigForm } from './variant-forms/stats-forms'
 
 interface Props {
   section: LandingSection
   open: boolean
   onClose: () => void
   onSave: (id: string, data: LandingSection['data']) => void
+  onRequestVariantChange?: () => void
 }
 
-export function LandingSectionSettingsSheet({ section, open, onClose, onSave }: Props) {
+export function LandingSectionSettingsSheet({ section, open, onClose, onSave, onRequestVariantChange }: Props) {
   const [data, setData] = useState<LandingSection['data']>(section.data)
 
   if (!open) return null
@@ -76,12 +93,48 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave }: 
           </button>
         </div>
 
+        {/* Variant 전환 버튼 */}
+        {onRequestVariantChange && (
+          <div className="px-5 pt-3">
+            <button
+              type="button"
+              onClick={onRequestVariantChange}
+              className="w-full rounded-md border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--muted-foreground)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
+            >
+              🎨 Variant 전환 (현재: {section.variant})
+            </button>
+          </div>
+        )}
+
         {/* 폼 */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {section.type === 'hero' && (
+          {section.type === 'hero' && section.variant === 'hero-minimal' && (
+            <HeroMinimalForm data={data as HeroMinimalData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'hero' && section.variant === 'hero-split-image' && (
+            <HeroSplitImageForm data={data as HeroSplitImageData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'hero' && section.variant === 'hero-fullscreen-image' && (
+            <HeroFullscreenImageForm data={data as HeroFullscreenImageData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'hero' && section.variant === 'hero-fullscreen-video' && (
+            <HeroFullscreenVideoForm data={data as HeroFullscreenVideoData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'hero' && section.variant === 'hero-gallery' && (
+            <HeroGalleryForm data={data as HeroGalleryData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'hero' && section.variant === 'hero-stats-overlay' && (
+            <HeroStatsOverlayForm data={data as HeroStatsOverlayData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {/* hero legacy fallback (v1 데이터에 variant 없을 때) */}
+          {section.type === 'hero' && !section.variant.startsWith('hero-') && (
             <HeroForm data={data as HeroSectionData} onChange={d => setData(d)} />
           )}
-          {section.type === 'stats' && (
+
+          {section.type === 'stats' && section.variant === 'stats-big' && (
+            <StatsBigForm data={data as StatsBigData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'stats' && section.variant !== 'stats-big' && (
             <StatsForm data={data as StatsSectionData} onChange={d => setData(d)} />
           )}
           {section.type === 'impact' && (
@@ -96,7 +149,23 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave }: 
           {section.type === 'team' && (
             <TeamForm data={data as TeamSectionData} onChange={d => setData(d)} />
           )}
-          {section.type === 'cta' && (
+          {section.type === 'cta' && section.variant === 'cta-banner' && (
+            <CtaBannerForm data={data as CtaBannerData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'cta' && section.variant === 'cta-gradient' && (
+            <CtaGradientForm data={data as CtaGradientData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'cta' && section.variant === 'cta-split' && (
+            <CtaSplitForm data={data as CtaSplitData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'cta' && section.variant === 'cta-urgency' && (
+            <CtaUrgencyForm data={data as CtaUrgencyData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'cta' && section.variant === 'cta-fullscreen' && (
+            <CtaFullscreenForm data={data as CtaFullscreenData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {/* cta legacy fallback */}
+          {section.type === 'cta' && !section.variant.startsWith('cta-') && (
             <CtaForm data={data as CtaSectionData} onChange={patch} />
           )}
           {section.type === 'richtext' && (
