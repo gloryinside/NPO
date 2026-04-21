@@ -9,13 +9,18 @@
 
 export type LandingSectionType =
   | 'hero'            // 배경+헤드카피+CTA
-  | 'stats'           // 숫자 통계 (누적 후원액, 후원자 수 등)
-  | 'impact'          // 임팩트 스토리 (이미지+텍스트 블록)
+  | 'stats'           // 숫자 통계
+  | 'impact'          // 임팩트 스토리
   | 'campaigns'       // 진행 중인 캠페인 목록
   | 'donation-tiers'  // 후원 등급 안내
   | 'team'            // 팀/이사회 소개
   | 'cta'             // 후원 유도 배너
   | 'richtext'        // 자유 HTML
+  | 'testimonials'    // Phase B: 후원자 후기
+  | 'logos'           // Phase B: 파트너/언론 로고
+  | 'faq'             // Phase B: 자주 묻는 질문
+  | 'timeline'        // Phase C: 기관 연혁/활동
+  | 'gallery'         // Phase C: 활동 사진 갤러리
 
 // ─── 섹션별 데이터 타입 ───────────────────────────────────────────────────────
 
@@ -94,6 +99,33 @@ export interface RichtextSectionData {
   content: string              // HTML string
 }
 
+// ─── Phase B~C 신규 섹션 data (variant별 zod 스키마가 truth, 여기는 union 자리 확보만) ───
+
+export interface TestimonialsSectionData {
+  title?: string
+  items: Array<{ name: string; role?: string; quote: string; photoUrl?: string }>
+}
+
+export interface LogosSectionData {
+  title?: string
+  logos: Array<{ name: string; imageUrl: string; url?: string }>
+}
+
+export interface FaqSectionData {
+  title?: string
+  items: Array<{ q: string; a: string; category?: string }>
+}
+
+export interface TimelineSectionData {
+  title?: string
+  events: Array<{ year: string; title: string; body?: string; imageUrl?: string }>
+}
+
+export interface GallerySectionData {
+  title?: string
+  images: Array<{ url: string; alt: string; caption?: string }>
+}
+
 export type LandingSectionData =
   | HeroSectionData
   | StatsSectionData
@@ -103,6 +135,11 @@ export type LandingSectionData =
   | TeamSectionData
   | CtaSectionData
   | RichtextSectionData
+  | TestimonialsSectionData
+  | LogosSectionData
+  | FaqSectionData
+  | TimelineSectionData
+  | GallerySectionData
 
 // ─── 섹션 레코드 ──────────────────────────────────────────────────────────────
 
@@ -133,6 +170,11 @@ export const SHARED_FIELDS: Record<LandingSectionType, readonly string[]> = {
   team:             ['title', 'members'],
   cta:              ['headline', 'body', 'buttonText', 'buttonUrl'],
   richtext:         ['title', 'content'],
+  testimonials:     ['title', 'items'],
+  logos:            ['title', 'logos'],
+  faq:              ['title', 'items'],
+  timeline:         ['title', 'events'],
+  gallery:          ['title', 'images'],
 }
 
 // ─── 섹션 카탈로그 (에디터 팔레트용) ──────────────────────────────────────────
@@ -149,6 +191,11 @@ export const SECTION_CATALOG: SectionCatalogItem[] = [
   { type: 'stats',          emoji: '📊', label: '통계',            desc: '누적 후원자 수, 모금액 등 숫자 지표' },
   { type: 'impact',         emoji: '💚', label: '임팩트 스토리',   desc: '이미지와 텍스트로 활동 성과를 소개' },
   { type: 'campaigns',      emoji: '📋', label: '캠페인 목록',     desc: '현재 진행 중인 캠페인 자동 표시' },
+  { type: 'testimonials',   emoji: '💬', label: '후원자 후기',     desc: '실제 후원자들의 목소리로 신뢰 강화' },
+  { type: 'logos',          emoji: '🏢', label: '파트너/언론',     desc: '협력 기관, 언론 보도 로고 띠' },
+  { type: 'faq',            emoji: '❓', label: '자주 묻는 질문',  desc: '후원 관련 궁금증을 미리 해소' },
+  { type: 'timeline',       emoji: '📅', label: '연혁/타임라인',   desc: '기관의 발자취와 활동 이정표' },
+  { type: 'gallery',        emoji: '🖼️', label: '갤러리',          desc: '활동 사진을 다양한 레이아웃으로' },
   { type: 'donation-tiers', emoji: '🏆', label: '후원 등급',       desc: '금액별 후원 등급과 혜택 안내' },
   { type: 'team',           emoji: '👥', label: '팀 소개',         desc: '이사진, 운영진 등 팀원 카드' },
   { type: 'cta',            emoji: '💛', label: 'CTA 배너',        desc: '후원 참여 유도 강조 배너' },

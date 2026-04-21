@@ -82,6 +82,51 @@ export function getDefaultSectionData(type: LandingSectionType): LandingSection[
         title: '',
         content: '<p>내용을 입력하세요.</p>',
       }
+    case 'testimonials':
+      return {
+        title: '후원자 후기',
+        items: [
+          { name: '김○○', role: '정기 후원자', quote: '작은 도움이 모여 큰 변화가 된다는 걸 직접 봤습니다.' },
+          { name: '이○○', role: '일시 후원자', quote: '투명한 활동 보고가 신뢰를 주었습니다.' },
+        ],
+      }
+    case 'logos':
+      return {
+        title: '함께하는 파트너',
+        logos: [
+          { name: 'Partner 1', imageUrl: 'https://placehold.co/200x80?text=Partner+1' },
+          { name: 'Partner 2', imageUrl: 'https://placehold.co/200x80?text=Partner+2' },
+          { name: 'Partner 3', imageUrl: 'https://placehold.co/200x80?text=Partner+3' },
+          { name: 'Partner 4', imageUrl: 'https://placehold.co/200x80?text=Partner+4' },
+        ],
+      }
+    case 'faq':
+      return {
+        title: '자주 묻는 질문',
+        items: [
+          { q: '기부금 영수증은 언제 받을 수 있나요?', a: '연말 국세청 간소화 서비스로 자동 제공됩니다.' },
+          { q: '정기 후원 해지는 어떻게 하나요?', a: '마이페이지에서 언제든 해지 가능합니다.' },
+        ],
+      }
+    case 'timeline':
+      return {
+        title: '우리의 발자취',
+        events: [
+          { year: '2020', title: '기관 설립', body: '비영리 단체로 출범했습니다.' },
+          { year: '2022', title: '누적 1억 모금', body: '후원자 500명이 함께했습니다.' },
+          { year: '2024', title: '해외 사업 확장', body: '동남아 3개국으로 활동 영역을 넓혔습니다.' },
+        ],
+      }
+    case 'gallery':
+      return {
+        title: '활동 현장',
+        images: [
+          { url: 'https://picsum.photos/seed/g-a/800/600', alt: '활동 현장 1' },
+          { url: 'https://picsum.photos/seed/g-b/800/600', alt: '활동 현장 2' },
+          { url: 'https://picsum.photos/seed/g-c/800/600', alt: '활동 현장 3' },
+          { url: 'https://picsum.photos/seed/g-d/800/600', alt: '활동 현장 4' },
+        ],
+      }
   }
 }
 
@@ -94,6 +139,11 @@ const DEFAULT_VARIANT_SUFFIX: Record<LandingSectionType, string> = {
   team: 'grid',
   cta: 'banner',
   richtext: 'plain',
+  testimonials: 'cards',
+  logos: 'grid',
+  faq: 'accordion',
+  timeline: 'vertical',
+  gallery: 'grid',
 }
 
 export function createSection(type: LandingSectionType, sortOrder: number): LandingSection {

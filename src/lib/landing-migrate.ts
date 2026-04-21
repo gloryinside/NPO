@@ -9,6 +9,11 @@ const DEFAULT_VARIANT: Record<LandingSectionType, string> = {
   team: 'team-grid',
   cta: 'cta-banner',
   richtext: 'richtext-plain',
+  testimonials: 'testimonials-cards',
+  logos: 'logos-grid',
+  faq: 'faq-accordion',
+  timeline: 'timeline-vertical',
+  gallery: 'gallery-grid',
 }
 
 /**
