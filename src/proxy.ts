@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveTenant } from "@/lib/tenant/resolver";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const host = req.headers.get("host") || "";
   const tenant = await resolveTenant(host);
 
