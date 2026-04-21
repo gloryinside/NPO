@@ -9,6 +9,7 @@ import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { EMPTY_PAGE_CONTENT } from '@/lib/landing-defaults'
 import { migrateToV2 } from '@/lib/landing-migrate'
+import { validateSections } from '@/lib/landing-variants/validate'
 import type { LandingPageContent, LandingSection } from '@/types/landing'
 
 const BUCKET = 'campaign-assets'
@@ -86,6 +87,12 @@ export async function PATCH(req: NextRequest) {
 
   // G-41: sortOrder 정규화 (0, 1, 2, ...)
   const normalizedSections = pageContent.sections.map((s, i) => ({ ...s, sortOrder: i }))
+
+  // Phase A: variant zod 검증 — 실패 시 저장 거부
+  const issues = validateSections(normalizedSections)
+  if (issues.length > 0) {
+    return NextResponse.json({ error: 'validation_failed', issues }, { status: 400 })
+  }
 
   const supabase = createSupabaseAdminClient()
 

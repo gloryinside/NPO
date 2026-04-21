@@ -6,8 +6,10 @@
  * body가 없으면 기존처럼 현재 page_content를 스냅샷.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { validateSections } from '@/lib/landing-variants/validate'
 import type { LandingSection } from '@/types/landing'
 
 export async function POST(req: NextRequest) {
@@ -28,7 +30,14 @@ export async function POST(req: NextRequest) {
 
   if (body.sections && Array.isArray(body.sections)) {
     const normalizedSections = body.sections.map((s, i) => ({ ...s, sortOrder: i }))
-    const content = { schemaVersion: 1, sections: normalizedSections }
+
+    // Phase A: variant zod 검증
+    const issues = validateSections(normalizedSections)
+    if (issues.length > 0) {
+      return NextResponse.json({ error: 'validation_failed', issues }, { status: 400 })
+    }
+
+    const content = { schemaVersion: 2, sections: normalizedSections }
 
     const { error } = await supabase
       .from('orgs')
@@ -43,6 +52,7 @@ export async function POST(req: NextRequest) {
     if (error)
       return NextResponse.json({ error: error.message }, { status: 500 })
 
+    revalidatePath('/')
     return NextResponse.json({ ok: true, publishedAt: now })
   }
 
@@ -68,5 +78,6 @@ export async function POST(req: NextRequest) {
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 })
 
+  revalidatePath('/')
   return NextResponse.json({ ok: true, publishedAt: now })
 }
