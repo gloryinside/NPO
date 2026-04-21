@@ -35,6 +35,7 @@ import type { LandingSection, LandingSectionType, LandingPageContent } from '@/t
 import { LandingSectionSettingsSheet } from './LandingSectionSettingsSheet'
 import { VariantGalleryModal } from './VariantGalleryModal'
 import { VariantChangeConfirmDialog } from './VariantChangeConfirmDialog'
+import { LivePreviewPanel } from './LivePreviewPanel'
 import { getVariants, findVariant } from '@/lib/landing-variants'
 import '@/lib/landing-variants/register-all'
 import { checkMissingAssets } from '@/lib/landing-variants/asset-check'
@@ -163,6 +164,8 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
   const [variantChangeFor, setVariantChangeFor] = useState<string | null>(null)
   // G-52: confirm() → 커스텀 다이얼로그로
   const [pendingVariantChange, setPendingVariantChange] = useState<{ sectionId: string; newVariantId: string } | null>(null)
+  // G-75: Live preview iframe
+  const [showPreview, setShowPreview] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusRef = useRef<'saved' | 'unsaved' | 'saving'>('saved')
 
@@ -342,14 +345,22 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPreview((v) => !v)}
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:opacity-80 transition-opacity"
+            title="편집 중인 콘텐츠 미리보기 (관리자만)"
+          >
+            {showPreview ? '미리보기 닫기' : '미리보기 →'}
+          </button>
           <a
             href="/?draft=1"
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:opacity-80 transition-opacity"
-            title="편집 중인 콘텐츠 미리보기 (관리자만)"
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--accent)] transition-colors"
+            title="새 탭에서 열기"
           >
-            미리보기 →
+            ↗
           </a>
           <button
             type="button"
@@ -515,6 +526,14 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
           />
         )
       })()}
+
+      {/* ── G-75: Live preview iframe 패널 ── */}
+      {showPreview && (
+        <LivePreviewPanel
+          saveStatus={saveStatus}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   )
 }
