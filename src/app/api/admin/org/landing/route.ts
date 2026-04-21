@@ -3,17 +3,17 @@
  * PATCH /api/admin/org/landing  — 섹션 배열 저장 (자동저장용)
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminUser } from '@/lib/auth'
-import { requireTenant } from '@/lib/tenant/context'
+import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { EMPTY_PAGE_CONTENT } from '@/lib/landing-defaults'
 import type { LandingPageContent } from '@/types/landing'
 
 export async function GET() {
-  await requireAdminUser()
-  const tenant = await requireTenant()
-  const supabase = createSupabaseAdminClient()
+  const guard = await requireAdminApi()
+  if (!guard.ok) return guard.response
+  const { tenant } = guard.ctx
 
+  const supabase = createSupabaseAdminClient()
   const { data, error } = await supabase
     .from('orgs')
     .select('page_content, published_content, published_at')
@@ -37,8 +37,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  await requireAdminUser()
-  const tenant = await requireTenant()
+  const guard = await requireAdminApi()
+  if (!guard.ok) return guard.response
+  const { tenant } = guard.ctx
 
   const body = await req.json()
   const { pageContent } = body as { pageContent: LandingPageContent }

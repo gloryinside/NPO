@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getAdminUser } from "@/lib/auth";
 import {
   Card,
   CardHeader,
@@ -48,6 +49,7 @@ type OrgRow = {
   business_no: string | null;
   show_stats: boolean;
   published_content: unknown;
+  page_content: unknown;
 };
 
 type CampaignRow = {
@@ -62,8 +64,14 @@ type CampaignRow = {
   thumbnail_url: string | null;
 };
 
-export default async function PublicPage() {
+export default async function PublicPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ draft?: string }>;
+}) {
   const tenant = await getTenant();
+  const { draft } = await searchParams;
+  const isDraftRequest = draft === "1";
 
   // ── 플랫폼 랜딩 (테넌트 없음) ────────────────────────────────────────
   if (!tenant) {
@@ -115,7 +123,7 @@ export default async function PublicPage() {
     adminSupabase
       .from("orgs")
       .select(
-        "name, tagline, about, logo_url, hero_image_url, contact_email, contact_phone, address, business_no, show_stats, published_content"
+        "name, tagline, about, logo_url, hero_image_url, contact_email, contact_phone, address, business_no, show_stats, published_content, page_content"
       )
       .eq("id", tenant.id)
       .single(),
@@ -136,14 +144,21 @@ export default async function PublicPage() {
   const campaignList = (campaigns as unknown as CampaignRow[]) ?? [];
   const statsRows = statsResult.data ?? [];
 
-  // ── published_content 섹션 유무 확인 ─────────────────────────────────
-  const publishedContent = org?.published_content as LandingPageContent | null | undefined;
+  // ── draft 모드: 관리자 세션이면서 ?draft=1 일 때 편집 중 콘텐츠를 미리보기 ──
+  // 일반 방문자는 항상 published_content만 본다.
+  const adminUser = isDraftRequest ? await getAdminUser() : null;
+  const useDraft = isDraftRequest && adminUser?.user_metadata?.role === "admin";
+
+  const sourceContent = useDraft
+    ? (org?.page_content as LandingPageContent | null | undefined)
+    : (org?.published_content as LandingPageContent | null | undefined);
+
   const hasSections =
-    publishedContent &&
-    typeof publishedContent === "object" &&
-    "sections" in publishedContent &&
-    Array.isArray(publishedContent.sections) &&
-    publishedContent.sections.length > 0;
+    sourceContent &&
+    typeof sourceContent === "object" &&
+    "sections" in sourceContent &&
+    Array.isArray(sourceContent.sections) &&
+    sourceContent.sections.length > 0;
 
   // ── 캠페인 모금액 집계 (섹션 렌더러 + 기본 렌더러 공통) ─────────────
   const paidByCampaign = new Map<string, number>();
@@ -170,8 +185,13 @@ export default async function PublicPage() {
     const footerOrg = org!;
     return (
       <main className="bg-[var(--bg)] min-h-screen">
+        {useDraft && (
+          <div className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 text-xs text-center py-2 px-4 border-b border-yellow-500/20">
+            📝 편집 중인 콘텐츠 미리보기 (아직 공개되지 않음)
+          </div>
+        )}
         <LandingRenderer
-          sections={publishedContent!.sections}
+          sections={sourceContent!.sections}
           campaigns={campaignRowsForRenderer}
         />
 

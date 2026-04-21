@@ -3,13 +3,13 @@
  * page_content → published_content 스냅샷으로 게시
  */
 import { NextResponse } from 'next/server'
-import { requireAdminUser } from '@/lib/auth'
-import { requireTenant } from '@/lib/tenant/context'
+import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 
 export async function POST() {
-  await requireAdminUser()
-  const tenant = await requireTenant()
+  const guard = await requireAdminApi()
+  if (!guard.ok) return guard.response
+  const { tenant } = guard.ctx
   const supabase = createSupabaseAdminClient()
 
   // 현재 page_content 조회

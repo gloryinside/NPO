@@ -239,9 +239,10 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <a
-            href="/"
+            href="/?draft=1"
             target="_blank"
             className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+            title="편집 중인 콘텐츠 미리보기 (관리자만)"
           >
             미리보기 →
           </a>
