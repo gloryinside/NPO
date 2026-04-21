@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { EMPTY_PAGE_CONTENT } from '@/lib/landing-defaults'
+import { migrateToV2 } from '@/lib/landing-migrate'
 import type { LandingPageContent, LandingSection } from '@/types/landing'
 
 const BUCKET = 'campaign-assets'
@@ -55,11 +56,12 @@ export async function GET() {
   if (error || !data)
     return NextResponse.json({ error: '기관 정보를 찾을 수 없습니다.' }, { status: 404 })
 
-  const pageContent: LandingPageContent =
+  const rawPageContent: LandingPageContent =
     data.page_content && typeof data.page_content === 'object' &&
     'sections' in (data.page_content as object)
       ? (data.page_content as LandingPageContent)
       : EMPTY_PAGE_CONTENT
+  const pageContent = migrateToV2(rawPageContent)
 
   return NextResponse.json({
     pageContent,

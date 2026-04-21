@@ -13,7 +13,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LandingRenderer } from "@/components/landing-builder/LandingRenderer";
+import { migrateToV2 } from "@/lib/landing-migrate";
 import type { LandingPageContent } from "@/types/landing";
+
+export const revalidate = 60;
 
 const FEATURES = [
   {
@@ -191,7 +194,7 @@ export default async function PublicPage({
           </div>
         )}
         <LandingRenderer
-          sections={sourceContent!.sections}
+          sections={migrateToV2(sourceContent!).sections}
           campaigns={campaignRowsForRenderer}
         />
 
