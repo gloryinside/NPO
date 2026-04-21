@@ -1,10 +1,26 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { loadTossPayments } from '@tosspayments/payment-sdk';
 import { sanitizeHtml } from '@/lib/campaign-builder/sanitize-html';
 import PayMethodSelector from '@/components/public/donation/PayMethodSelector';
 import AgreementSection from '@/components/public/donation/AgreementSection';
 import type { WizardState } from '../WizardClient';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
+
+// 위저드 결제 플로우:
+// - offline (transfer/cms/manual): prepare 응답만으로 완료 → Step3
+// - regular + card: prepare 내부에서 billingKey 발급 → Step3 (즉시 청구 아님, 다음 pay_day부터)
+// - onetime + online (card/kakaopay/naverpay/payco/virtual): Toss SDK requestPayment 호출 → /donate/success
+// Toss 메서드 이름 매핑은 Toss v1 SDK 규약 따름.
+// Toss payment-sdk v1 타입이 허용하는 PaymentMethodType만 매핑한다.
+// 카카오페이/네이버페이/페이코 등 간편결제는 "카드" 위젯 내부 옵션 또는
+// 별도 appScheme/easyPay 플로우가 필요하므로 Phase 3에서 별도 처리.
+const TOSS_METHOD_MAP = {
+  card: '카드',
+  virtual: '가상계좌',
+} as const;
+
+type TossMethodKey = keyof typeof TOSS_METHOD_MAP;
 
 declare global {
   interface Window {
@@ -179,17 +195,61 @@ export function Step2({
 
     const data = (await res.json()) as {
       offline?: boolean;
-      checkoutUrl?: string;
+      orderId?: string;
       paymentCode?: string;
+      amount?: number;
+      orderName?: string;
+      tossClientKey?: string;
+      billingKeyFailed?: boolean;
     };
 
-    if (data.offline || !data.checkoutUrl) {
+    // 오프라인 결제(transfer/cms/manual) — 계좌 안내 후 Step3로 이동
+    if (data.offline) {
       setState({ ...state, donorInfo: info, paymentMethod: method, customFields, receiptOptIn: receipt, paymentCode: data.paymentCode });
       onDone();
       return;
     }
 
-    window.location.href = data.checkoutUrl;
+    // 정기 후원은 prepare 내부에서 billingKey 발급으로 완료 — 즉시 Toss 결제 없음
+    if (state.type === 'regular') {
+      if (data.billingKeyFailed) {
+        alert('카드 등록에 실패했습니다. 카드 정보를 확인한 뒤 다시 시도해 주세요.');
+        return;
+      }
+      setState({ ...state, donorInfo: info, paymentMethod: method, customFields, receiptOptIn: receipt, paymentCode: data.paymentCode });
+      onDone();
+      return;
+    }
+
+    // 일시 후원 + 온라인 결제수단 — Toss SDK 호출
+    if (!data.tossClientKey || !data.orderId || !data.amount) {
+      alert('결제 준비 응답이 올바르지 않습니다.');
+      return;
+    }
+
+    if (!(method in TOSS_METHOD_MAP)) {
+      alert('지원하지 않는 결제수단입니다.');
+      return;
+    }
+    const tossMethod = TOSS_METHOD_MAP[method as TossMethodKey];
+
+    try {
+      const tossPayments = await loadTossPayments(data.tossClientKey);
+      await tossPayments.requestPayment(tossMethod, {
+        amount: data.amount,
+        orderId: data.orderId,
+        orderName: data.orderName ?? campaign.title,
+        customerName: info.name.trim(),
+        customerEmail: info.email.trim() || undefined,
+        successUrl: `${window.location.origin}/donate/success`,
+        failUrl: `${window.location.origin}/donate/fail`,
+      });
+      // requestPayment는 페이지 리디렉션을 유발하므로 여기 이후 코드는 일반적으로 실행되지 않음.
+      // 사용자가 취소한 경우 Toss SDK가 promise reject하며 catch 블록으로 진입.
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '결제 진행 중 오류가 발생했습니다.';
+      alert(msg);
+    }
   }
 
   // termsBodyHtml is admin-authored HTML passed through sanitizeHtml (DOMPurify) before render.

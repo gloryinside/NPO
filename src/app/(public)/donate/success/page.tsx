@@ -1,153 +1,102 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { confirmDonation } from "@/lib/donations/confirm";
+import { redirect } from 'next/navigation';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getDonorSession } from '@/lib/auth';
+import { confirmDonation } from '@/lib/donations/confirm';
+import { Step3 } from '@/app/donate/wizard/steps/Step3';
+import type { WizardState } from '@/app/donate/wizard/WizardClient';
+import StepProgressBar from '@/components/public/donation/StepProgressBar';
 
-function formatAmount(n: number): string {
-  return new Intl.NumberFormat("ko-KR").format(n);
-}
+type SP = Promise<{ paymentKey?: string; orderId?: string; amount?: string }>;
 
-function ErrorBlock({ message }: { message: string }) {
-  return (
-    <div className="max-w-lg mx-auto px-4 py-16 text-center">
-      <div
-        className="rounded-xl border p-8"
-        style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-        }}
-      >
-        <p
-          className="mb-2 text-2xl font-bold"
-          style={{ color: "var(--negative)" }}
-        >
-          결제 확인 실패
-        </p>
-        <p className="mb-6 text-sm" style={{ color: "var(--muted-foreground)" }}>
-          {message}
-        </p>
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center rounded-lg px-6 py-2 text-sm font-semibold"
-          style={{
-            background: "var(--accent)",
-            color: "#ffffff",
-          }}
-        >
-          홈으로
-        </Link>
-      </div>
-    </div>
-  );
-}
+export default async function DonateSuccessPage({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams;
+  const paymentKey = sp.paymentKey;
+  const orderId = sp.orderId;
+  const amount = sp.amount ? Number(sp.amount) : NaN;
 
-export default async function DonateSuccessPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    paymentKey?: string;
-    orderId?: string;
-    amount?: string;
-  }>;
-}) {
-  const params = await searchParams;
-  const paymentKey = params.paymentKey;
-  const orderId = params.orderId;
-  const amount = Number(params.amount ?? 0);
-
-  if (!paymentKey || !orderId || !amount) {
-    return <ErrorBlock message="잘못된 요청입니다." />;
+  if (!paymentKey || !orderId || !Number.isFinite(amount) || amount <= 0) {
+    const qs = new URLSearchParams();
+    if (orderId) qs.set('orderId', orderId);
+    qs.set('message', '결제 파라미터가 올바르지 않습니다.');
+    redirect(`/donate/fail?${qs.toString()}`);
   }
 
-  let payment;
+  // confirmDonation은 멱등 — 같은 URL 새로고침해도 재승인 호출 없이 기존 결과 반환
+  let confirmed;
   try {
-    payment = await confirmDonation({ paymentKey, orderId, amount });
+    confirmed = await confirmDonation({ paymentKey, orderId, amount });
   } catch (err) {
-    return (
-      <ErrorBlock
-        message={err instanceof Error ? err.message : "결제 승인 실패"}
-      />
-    );
+    const msg = err instanceof Error ? err.message : '결제 승인 실패';
+    const qs = new URLSearchParams({ orderId, message: msg });
+    redirect(`/donate/fail?${qs.toString()}`);
   }
 
-  // If the donation came from a wizard campaign, redirect back to the wizard completion step
-  if (payment.campaign_slug) {
-    redirect(`/donate/wizard?campaign=${payment.campaign_slug}&completed=1`);
-  }
+  const supabase = createSupabaseAdminClient();
+
+  // Step3가 필요한 데이터 재구성 — campaign slug, member email, donation type, pay_method
+  const [paymentRes, campaignRes, memberRes] = await Promise.all([
+    supabase
+      .from('payments')
+      .select('pay_method, receipt_opt_in, promise_id, campaign_id, member_id')
+      .eq('id', confirmed.id)
+      .maybeSingle(),
+    confirmed.campaign_id
+      ? supabase
+          .from('campaigns')
+          .select('slug, title, form_settings')
+          .eq('id', confirmed.campaign_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    confirmed.member_id
+      ? supabase
+          .from('members')
+          .select('name, email')
+          .eq('id', confirmed.member_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const payment = paymentRes.data as {
+    pay_method: string | null;
+    receipt_opt_in: boolean | null;
+    promise_id: string | null;
+  } | null;
+
+  const campaign = campaignRes.data as {
+    slug: string;
+    title: string;
+    form_settings: { completeRedirectUrl?: string | null } | null;
+  } | null;
+
+  const member = memberRes.data as { name: string; email: string | null } | null;
+
+  // 정기/일시 판별 — promise_id가 있으면 regular
+  const donationType: 'regular' | 'onetime' = payment?.promise_id ? 'regular' : 'onetime';
+
+  const state: WizardState = {
+    type: donationType,
+    amount: Number(confirmed.amount),
+    donorInfo: member ? { name: member.name, email: member.email ?? '' } : undefined,
+    paymentMethod: payment?.pay_method ?? undefined,
+    receiptOptIn: payment?.receipt_opt_in ?? false,
+    paymentCode: confirmed.payment_code,
+    idempotencyKey: orderId,
+  };
+
+  const session = await getDonorSession();
+  const campaignSlug = campaign?.slug ?? confirmed.campaign_slug ?? '';
+  const settings = { completeRedirectUrl: campaign?.form_settings?.completeRedirectUrl ?? null };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-16 text-center">
-      <div
-        className="rounded-xl border p-8"
-        style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-        }}
-      >
-        <p
-          className="mb-2 text-3xl font-bold"
-          style={{ color: "var(--positive)" }}
-        >
-          감사합니다!
-        </p>
-        <p
-          className="mb-8 text-base"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          후원이 완료되었습니다.
-        </p>
-
-        <dl
-          className="mb-8 flex flex-col gap-3 rounded-lg border p-4 text-left text-sm"
-          style={{
-            background: "var(--surface-2)",
-            borderColor: "var(--border)",
-          }}
-        >
-          <div className="flex justify-between">
-            <dt style={{ color: "var(--muted-foreground)" }}>결제번호</dt>
-            <dd style={{ color: "var(--text)" }}>{payment.payment_code}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt style={{ color: "var(--muted-foreground)" }}>결제금액</dt>
-            <dd style={{ color: "var(--text)" }}>
-              {formatAmount(Number(payment.amount))}원
-            </dd>
-          </div>
-          {payment.pg_method && (
-            <div className="flex justify-between">
-              <dt style={{ color: "var(--muted-foreground)" }}>결제수단</dt>
-              <dd style={{ color: "var(--text)" }}>{payment.pg_method}</dd>
-            </div>
-          )}
-        </dl>
-
-        <div className="flex items-center justify-center gap-3">
-          <Link
-            href={payment.campaign_slug ? `/campaigns/${payment.campaign_slug}` : "/"}
-            className="inline-flex items-center justify-center rounded-lg px-6 py-2 text-sm font-semibold"
-            style={{
-              background: "var(--accent)",
-              color: "#ffffff",
-            }}
-          >
-            캠페인으로 돌아가기
-          </Link>
-          {payment.receipt_url && (
-            <a
-              href={payment.receipt_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-lg border px-6 py-2 text-sm font-semibold"
-              style={{
-                borderColor: "var(--border)",
-                color: "var(--text)",
-              }}
-            >
-              영수증 보기
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
+    <main className="mx-auto max-w-xl px-4 py-8">
+      <h1 className="mb-6 text-xl font-bold text-[var(--text)]">{campaign?.title ?? '후원 완료'}</h1>
+      <StepProgressBar steps={['후원 선택', '정보 입력', '결제 완료']} currentStep={2} />
+      <Step3
+        campaign={{ slug: campaignSlug }}
+        settings={settings}
+        state={state}
+        isLoggedIn={!!session}
+      />
+    </main>
   );
 }
