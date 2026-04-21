@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import type { GalleryBaseData } from '@/lib/landing-variants/gallery-schemas'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
+import { supabaseImage } from '../../shared/supabase-image'
 
 export function GalleryLightbox({ data }: { data: GalleryBaseData }) {
   const { title, images } = data
@@ -31,7 +32,8 @@ export function GalleryLightbox({ data }: { data: GalleryBaseData }) {
                 aria-label={`확대: ${img.alt}`}
                 className="block w-full overflow-hidden bg-[var(--surface)] group" style={{ borderRadius: 'var(--radius-card)' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.url} alt={img.alt}
+                <img src={supabaseImage(img.url, { width: 400, quality: 75 })} alt={img.alt}
+                  loading="lazy"
                   className="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-500" />
               </button>
             </MotionFadeUp>
@@ -54,7 +56,7 @@ export function GalleryLightbox({ data }: { data: GalleryBaseData }) {
             className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl">→</button>
           <div className="max-w-5xl w-full flex flex-col items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={current.url} alt={current.alt} className="max-h-[80vh] w-auto object-contain" />
+            <img src={supabaseImage(current.url, { width: 1920, quality: 85 })} alt={current.alt} className="max-h-[80vh] w-auto object-contain" />
             {current.caption && <p className="text-white/80 text-sm text-center">{current.caption}</p>}
             <p className="text-white/50 text-xs">{idx + 1} / {images.length}</p>
           </div>

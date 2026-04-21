@@ -1,5 +1,6 @@
 import type { GalleryBaseData } from '@/lib/landing-variants/gallery-schemas'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
+import { supabaseImage } from '../../shared/supabase-image'
 
 export function GalleryGrid({ data }: { data: GalleryBaseData }) {
   const { title, images } = data
@@ -12,7 +13,8 @@ export function GalleryGrid({ data }: { data: GalleryBaseData }) {
             <MotionFadeUp key={i} delay={i * 0.03}>
               <figure className="overflow-hidden bg-[var(--surface)]" style={{ borderRadius: 'var(--radius-card)' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.url} alt={img.alt}
+                <img src={supabaseImage(img.url, { width: 400, quality: 75 })} alt={img.alt}
+                  loading="lazy"
                   className="w-full aspect-square object-cover hover:scale-105 transition-transform duration-500" />
                 {img.caption && <figcaption className="px-3 py-2 text-xs text-[var(--muted-foreground)]">{img.caption}</figcaption>}
               </figure>

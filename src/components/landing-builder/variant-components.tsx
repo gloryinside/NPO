@@ -87,6 +87,13 @@ import { RichtextPlain } from './sections/richtext/RichtextPlain'
 import { RichtextBoxed } from './sections/richtext/RichtextBoxed'
 import { RichtextQuote } from './sections/richtext/RichtextQuote'
 
+// G-61 안전망: v1 동작을 보존한 legacy 컴포넌트 별칭.
+// 스테이징에서 회귀 발견 시 DB의 section.variant를 'legacy-*'로 변경해 즉시 복원 가능.
+import { ImpactSection } from './sections/ImpactSection'
+import { DonationTiersSection } from './sections/DonationTiersSection'
+import { TeamSection } from './sections/TeamSection'
+import { RichtextSection } from './sections/RichtextSection'
+
 /**
  * variant id → React component. 각 컴포넌트는 자기만의 data 타입을 가지므로
  * 타입 안전성을 위해 LandingRenderer는 unknown 래퍼로 호출한다.
@@ -167,4 +174,9 @@ export const VARIANT_COMPONENTS: Record<string, ComponentType<any>> = {
   'richtext-plain': RichtextPlain,
   'richtext-boxed': RichtextBoxed,
   'richtext-quote': RichtextQuote,
+  // G-61 legacy 별칭 — 스테이징 회귀 발견 시 수동 전환 통로
+  'legacy-impact': ImpactSection,
+  'legacy-tiers': DonationTiersSection,
+  'legacy-team': TeamSection,
+  'legacy-richtext': RichtextSection,
 }

@@ -26,7 +26,16 @@ const WEIGHT_COLOR: Record<VisualWeight, string> = {
 
 export function VariantGalleryModal({ type, currentVariantId, onSelect, onClose }: Props) {
   const variants = getVariants(type)
-  const [filter, setFilter] = useState<'all' | VisualWeight>('all')
+  // G-72: variant 수가 6개 이상이면 첫 방문 시 'bold'로 필터링 (신규 섹션 추가)
+  // 편집 모드(currentVariantId 존재)에서는 현재 variant의 weight로 초기화 — 유사 옵션부터 보임
+  const initialFilter: 'all' | VisualWeight = (() => {
+    if (currentVariantId) {
+      const current = variants.find((v) => v.id === currentVariantId)
+      if (current) return current.visualWeight
+    }
+    return variants.length >= 6 ? 'bold' : 'all'
+  })()
+  const [filter, setFilter] = useState<'all' | VisualWeight>(initialFilter)
   const filtered = filter === 'all' ? variants : variants.filter((v) => v.visualWeight === filter)
 
   return (

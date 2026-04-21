@@ -34,8 +34,10 @@ import { SECTION_CATALOG, SHARED_FIELDS } from '@/types/landing'
 import type { LandingSection, LandingSectionType, LandingPageContent } from '@/types/landing'
 import { LandingSectionSettingsSheet } from './LandingSectionSettingsSheet'
 import { VariantGalleryModal } from './VariantGalleryModal'
-import { getVariants } from '@/lib/landing-variants'
+import { VariantChangeConfirmDialog } from './VariantChangeConfirmDialog'
+import { getVariants, findVariant } from '@/lib/landing-variants'
 import '@/lib/landing-variants/register-all'
+import { checkMissingAssets } from '@/lib/landing-variants/asset-check'
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -77,6 +79,8 @@ function SortableRow({
   }
 
   const catalog = SECTION_CATALOG.find(c => c.type === section.type)
+  // G-51: 필수 에셋 미입력 시 경고 배지
+  const assetCheck = checkMissingAssets(section)
 
   return (
     <div
@@ -98,8 +102,22 @@ function SortableRow({
       {/* 섹션 아이콘 + 이름 */}
       <span className="text-xl">{catalog?.emoji ?? '📄'}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[var(--text)] truncate">{catalog?.label ?? section.type}</p>
-        <p className="text-xs text-[var(--muted-foreground)] truncate">{catalog?.desc}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-[var(--text)] truncate">{catalog?.label ?? section.type}</p>
+          {assetCheck.missing && (
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/30"
+              title={`필수 에셋 미입력: ${assetCheck.fields.join(', ')}`}
+            >
+              ⚠️ 에셋 필요
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-[var(--muted-foreground)] truncate">
+          {assetCheck.missing
+            ? `${assetCheck.fields.join(', ')} 입력 필요`
+            : catalog?.desc}
+        </p>
       </div>
 
       {/* 액션 버튼 */}
@@ -143,6 +161,8 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
   const [showCatalog, setShowCatalog] = useState(false)
   const [pickingVariantFor, setPickingVariantFor] = useState<LandingSectionType | null>(null)
   const [variantChangeFor, setVariantChangeFor] = useState<string | null>(null)
+  // G-52: confirm() → 커스텀 다이얼로그로
+  const [pendingVariantChange, setPendingVariantChange] = useState<{ sectionId: string; newVariantId: string } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusRef = useRef<'saved' | 'unsaved' | 'saving'>('saved')
 
@@ -456,7 +476,7 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
       )}
 
       {/* ── Variant 전환 (기존 섹션) ── */}
-      {variantChangeFor && (() => {
+      {variantChangeFor && !pendingVariantChange && (() => {
         const target = sections.find((s) => s.id === variantChangeFor)
         if (!target) return null
         return (
@@ -468,17 +488,30 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
                 setVariantChangeFor(null)
                 return
               }
-              const shared = SHARED_FIELDS[target.type]
-              if (!confirm(
-                `Variant를 바꾸면 전용 입력값이 초기화됩니다.\n` +
-                `유지되는 필드: ${shared.join(', ')}\n` +
-                `계속하시겠습니까?`
-              )) {
-                return
-              }
-              handleVariantChange(variantChangeFor, variantId)
+              // G-52: confirm() 대신 커스텀 다이얼로그
+              setPendingVariantChange({ sectionId: variantChangeFor, newVariantId: variantId })
             }}
             onClose={() => setVariantChangeFor(null)}
+          />
+        )
+      })()}
+
+      {/* ── G-52: Variant 전환 확인 커스텀 다이얼로그 ── */}
+      {pendingVariantChange && (() => {
+        const target = sections.find((s) => s.id === pendingVariantChange.sectionId)
+        if (!target) return null
+        const fromDesc = findVariant(target.variant) ?? null
+        const toDesc = findVariant(pendingVariantChange.newVariantId) ?? null
+        return (
+          <VariantChangeConfirmDialog
+            from={fromDesc}
+            to={toDesc}
+            preserved={SHARED_FIELDS[target.type]}
+            onConfirm={() => {
+              handleVariantChange(pendingVariantChange.sectionId, pendingVariantChange.newVariantId)
+              setPendingVariantChange(null)
+            }}
+            onCancel={() => setPendingVariantChange(null)}
           />
         )
       })()}

@@ -7,11 +7,22 @@ export const CampaignsBase = z.object({
   maxCount: z.number().int().min(1).max(12).optional().default(3),
 })
 
-export const CampaignsGrid = CampaignsBase
-export const CampaignsFeatured = CampaignsBase
-export const CampaignsCarousel = CampaignsBase
-export const CampaignsList = CampaignsBase
-export const CampaignsMasonry = CampaignsBase
+// variant별 maxCount 범위 (G-62) — UI 폼과 스키마 일치
+export const CampaignsGrid = CampaignsBase.extend({
+  maxCount: z.number().int().min(2).max(6).optional().default(3),
+})
+export const CampaignsFeatured = CampaignsBase.extend({
+  maxCount: z.number().int().min(3).max(5).optional().default(4),
+})
+export const CampaignsCarousel = CampaignsBase.extend({
+  maxCount: z.number().int().min(4).max(12).optional().default(6),
+})
+export const CampaignsList = CampaignsBase.extend({
+  maxCount: z.number().int().min(2).max(6).optional().default(3),
+})
+export const CampaignsMasonry = CampaignsBase.extend({
+  maxCount: z.number().int().min(4).max(12).optional().default(6),
+})
 
 export type CampaignsBaseData = z.infer<typeof CampaignsBase>
 

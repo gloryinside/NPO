@@ -23,6 +23,8 @@ export function validateSections(sections: LandingSection[]): ValidationIssue[] 
       const legacyDefaults = new Set([
         'impact-alternating', 'campaigns-grid', 'tiers-cards',
         'team-grid', 'richtext-plain',
+        // G-61 legacy 별칭
+        'legacy-impact', 'legacy-tiers', 'legacy-team', 'legacy-richtext',
       ])
       if (legacyDefaults.has(s.variant)) continue
       issues.push({ sectionId: s.id, variant: s.variant, error: 'unknown_variant' })

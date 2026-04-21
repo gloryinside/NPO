@@ -20,12 +20,29 @@ function BeforeAfterSlider({
 
   return (
     <div ref={ref}
-      className="relative w-full aspect-video overflow-hidden cursor-ew-resize select-none bg-[var(--surface-2)]"
-      style={{ borderRadius: 'var(--radius-card)' }}
-      onPointerDown={(e) => { dragging.current = true; updateFromClientX(e.clientX) }}
+      className="relative w-full aspect-video overflow-hidden cursor-ew-resize select-none bg-[var(--surface-2)] touch-none"
+      style={{ borderRadius: 'var(--radius-card)', touchAction: 'none' }}
+      onPointerDown={(e) => {
+        dragging.current = true
+        // 모바일: 슬라이더 드래그 시 페이지 스크롤 방지
+        e.currentTarget.setPointerCapture(e.pointerId)
+        updateFromClientX(e.clientX)
+      }}
       onPointerMove={(e) => { if (dragging.current) updateFromClientX(e.clientX) }}
-      onPointerUp={() => { dragging.current = false }}
+      onPointerUp={(e) => {
+        dragging.current = false
+        try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* noop */ }
+      }}
+      onPointerCancel={() => { dragging.current = false }}
       onPointerLeave={() => { dragging.current = false }}
+      onKeyDown={(e) => {
+        // 키보드 접근성: 화살표로 ±5%, Home/End로 0/100
+        if (e.key === 'ArrowLeft') { setPos((p) => Math.max(0, p - 5)); e.preventDefault() }
+        else if (e.key === 'ArrowRight') { setPos((p) => Math.min(100, p + 5)); e.preventDefault() }
+        else if (e.key === 'Home') { setPos(0); e.preventDefault() }
+        else if (e.key === 'End') { setPos(100); e.preventDefault() }
+      }}
+      tabIndex={0}
       role="slider"
       aria-label="Before/After 비교"
       aria-valuemin={0}
