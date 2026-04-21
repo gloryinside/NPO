@@ -22,6 +22,25 @@ import { StatsCards } from './sections/stats/StatsCards'
 import { StatsCountup } from './sections/stats/StatsCountup'
 import { StatsBig } from './sections/stats/StatsBig'
 
+// Phase B: testimonials
+import { TestimonialsCards } from './sections/testimonials/TestimonialsCards'
+import { TestimonialsCarousel } from './sections/testimonials/TestimonialsCarousel'
+import { TestimonialsWall } from './sections/testimonials/TestimonialsWall'
+import { TestimonialsQuoteLarge } from './sections/testimonials/TestimonialsQuoteLarge'
+import { TestimonialsVideo } from './sections/testimonials/TestimonialsVideo'
+
+// Phase B: logos
+import { LogosGrid } from './sections/logos/LogosGrid'
+import { LogosMarquee } from './sections/logos/LogosMarquee'
+import { LogosPress } from './sections/logos/LogosPress'
+import { LogosPartners } from './sections/logos/LogosPartners'
+
+// Phase B: faq
+import { FaqAccordion } from './sections/faq/FaqAccordion'
+import { FaqTwoColumn } from './sections/faq/FaqTwoColumn'
+import { FaqCategorized } from './sections/faq/FaqCategorized'
+import { FaqSearch } from './sections/faq/FaqSearch'
+
 // Legacy (Phase B~D에서 각 섹션별 variant 추가 예정)
 import { ImpactSection } from './sections/ImpactSection'
 import { CampaignsSection } from './sections/CampaignsSection'
@@ -54,6 +73,22 @@ export const VARIANT_COMPONENTS: Record<string, ComponentType<any>> = {
   'stats-cards': StatsCards,
   'stats-countup': StatsCountup,
   'stats-big': StatsBig,
+  // testimonials (Phase B)
+  'testimonials-cards': TestimonialsCards,
+  'testimonials-carousel': TestimonialsCarousel,
+  'testimonials-wall': TestimonialsWall,
+  'testimonials-quote-large': TestimonialsQuoteLarge,
+  'testimonials-video': TestimonialsVideo,
+  // logos (Phase B)
+  'logos-grid': LogosGrid,
+  'logos-marquee': LogosMarquee,
+  'logos-press': LogosPress,
+  'logos-partners': LogosPartners,
+  // faq (Phase B)
+  'faq-accordion': FaqAccordion,
+  'faq-two-column': FaqTwoColumn,
+  'faq-categorized': FaqCategorized,
+  'faq-search': FaqSearch,
   // legacy default variants
   'impact-alternating': ImpactSection,
   'campaigns-grid': CampaignsSection,

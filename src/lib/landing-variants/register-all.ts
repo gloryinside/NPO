@@ -6,6 +6,12 @@
  * 별도 파일로 분리한 이유: index.ts가 registry를 export하기 전에
  * 하위 variant 파일이 registerVariants를 호출하면 TDZ 에러 발생.
  */
+// Phase A
 import './hero'
 import './cta'
 import './stats'
+
+// Phase B
+import './testimonials'
+import './logos'
+import './faq'

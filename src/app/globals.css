@@ -170,6 +170,13 @@ html, body {
 }
 .animate-ken-burns { animation: ken-burns 20s ease-in-out infinite; }
 
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 40s linear infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-ken-burns { animation: none !important; }
+  .animate-ken-burns,
+  .animate-marquee { animation: none !important; }
 }

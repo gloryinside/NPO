@@ -38,6 +38,18 @@ import {
   CtaBannerForm, CtaGradientForm, CtaSplitForm, CtaUrgencyForm, CtaFullscreenForm,
 } from './variant-forms/cta-forms'
 import { StatsBigForm } from './variant-forms/stats-forms'
+import type {
+  TestimonialsCardsData, TestimonialsCarouselData, TestimonialsWallData,
+  TestimonialsQuoteLargeData, TestimonialsVideoData,
+} from '@/lib/landing-variants/testimonials-schemas'
+import {
+  TestimonialsCardsForm, TestimonialsCarouselForm, TestimonialsWallForm,
+  TestimonialsQuoteLargeForm, TestimonialsVideoForm,
+} from './variant-forms/testimonials-forms'
+import type { LogosBaseData } from '@/lib/landing-variants/logos-schemas'
+import { LogosForm } from './variant-forms/logos-forms'
+import type { FaqBaseData } from '@/lib/landing-variants/faq-schemas'
+import { FaqForm } from './variant-forms/faq-forms'
 
 interface Props {
   section: LandingSection
@@ -168,6 +180,36 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
           {section.type === 'cta' && !section.variant.startsWith('cta-') && (
             <CtaForm data={data as CtaSectionData} onChange={patch} />
           )}
+          {/* Phase B: testimonials */}
+          {section.type === 'testimonials' && section.variant === 'testimonials-cards' && (
+            <TestimonialsCardsForm data={data as TestimonialsCardsData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'testimonials' && section.variant === 'testimonials-carousel' && (
+            <TestimonialsCarouselForm data={data as TestimonialsCarouselData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'testimonials' && section.variant === 'testimonials-wall' && (
+            <TestimonialsWallForm data={data as TestimonialsWallData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'testimonials' && section.variant === 'testimonials-quote-large' && (
+            <TestimonialsQuoteLargeForm data={data as TestimonialsQuoteLargeData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'testimonials' && section.variant === 'testimonials-video' && (
+            <TestimonialsVideoForm data={data as TestimonialsVideoData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+
+          {/* Phase B: logos (모든 variant 공통 LogosForm) */}
+          {section.type === 'logos' && (
+            <LogosForm data={data as LogosBaseData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+
+          {/* Phase B: faq */}
+          {section.type === 'faq' && section.variant === 'faq-categorized' && (
+            <FaqForm data={data as FaqBaseData} onChange={d => setData(d as LandingSection['data'])} showCategory />
+          )}
+          {section.type === 'faq' && section.variant !== 'faq-categorized' && (
+            <FaqForm data={data as FaqBaseData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+
           {section.type === 'richtext' && (
             <RichtextForm data={data as RichtextSectionData} onChange={patch} />
           )}
