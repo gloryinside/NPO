@@ -64,11 +64,20 @@ export async function GET() {
       : EMPTY_PAGE_CONTENT
   const pageContent = migrateToV2(rawPageContent)
 
-  return NextResponse.json({
-    pageContent,
-    publishedAt: data.published_at ?? null,
-    hasPublished: !!data.published_at,
-  })
+  // G-56: 어드민 전용이라 public 캐시는 쓰지 않고 private + max-age 30초.
+  // PATCH 직후 stale 응답 방지를 위해 must-revalidate.
+  return NextResponse.json(
+    {
+      pageContent,
+      publishedAt: data.published_at ?? null,
+      hasPublished: !!data.published_at,
+    },
+    {
+      headers: {
+        'Cache-Control': 'private, max-age=30, must-revalidate',
+      },
+    },
+  )
 }
 
 export async function PATCH(req: NextRequest) {
