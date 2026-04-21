@@ -85,10 +85,22 @@ export function getDefaultSectionData(type: LandingSectionType): LandingSection[
   }
 }
 
+const DEFAULT_VARIANT_SUFFIX: Record<LandingSectionType, string> = {
+  hero: 'minimal',
+  stats: 'grid',
+  impact: 'alternating',
+  campaigns: 'grid',
+  'donation-tiers': 'cards',
+  team: 'grid',
+  cta: 'banner',
+  richtext: 'plain',
+}
+
 export function createSection(type: LandingSectionType, sortOrder: number): LandingSection {
   return {
     id: nanoid(),
     type,
+    variant: `${type === 'donation-tiers' ? 'tiers' : type}-${DEFAULT_VARIANT_SUFFIX[type]}`,
     sortOrder,
     isVisible: true,
     data: getDefaultSectionData(type),

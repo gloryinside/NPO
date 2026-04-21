@@ -109,6 +109,7 @@ export type LandingSectionData =
 export interface LandingSection {
   id: string
   type: LandingSectionType
+  variant: string            // v2 NEW: 'hero-minimal' | 'hero-fullscreen-video' | ...
   sortOrder: number
   isVisible: boolean
   data: LandingSectionData
@@ -117,8 +118,21 @@ export interface LandingSection {
 // ─── page_content 루트 구조 ───────────────────────────────────────────────────
 
 export interface LandingPageContent {
-  schemaVersion: 1
+  schemaVersion: 1 | 2
   sections: LandingSection[]
+}
+
+// ─── SHARED_FIELDS ─ variant 전환 시 보존될 공통 필드 ──────────────────────────
+
+export const SHARED_FIELDS: Record<LandingSectionType, readonly string[]> = {
+  hero:             ['headline', 'subheadline', 'ctaText', 'ctaUrl', 'textAlign'],
+  stats:            ['title', 'items'],
+  impact:           ['title', 'blocks'],
+  campaigns:        ['title', 'subtitle', 'maxCount', 'showProgress'],
+  'donation-tiers': ['title', 'subtitle', 'tiers'],
+  team:             ['title', 'members'],
+  cta:              ['headline', 'body', 'buttonText', 'buttonUrl'],
+  richtext:         ['title', 'content'],
 }
 
 // ─── 섹션 카탈로그 (에디터 팔레트용) ──────────────────────────────────────────
