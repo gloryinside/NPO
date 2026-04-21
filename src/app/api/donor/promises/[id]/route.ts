@@ -45,7 +45,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   // Verify ownership: promise must belong to this member in this org
   const { data: promise, error: findErr } = await supabase
     .from("promises")
-    .select("id, status, member_id, org_id")
+    .select("id, status, member_id, org_id, toss_billing_key, type")
     .eq("id", id)
     .eq("member_id", session.member.id)
     .eq("org_id", session.member.org_id)
@@ -78,6 +78,14 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (action === "resume" && promise.status !== "suspended") {
     return NextResponse.json(
       { error: "일시중지 상태의 약정만 재개할 수 있습니다." },
+      { status: 400 }
+    );
+  }
+
+  // resume: 정기후원인데 billingKey가 없으면 카드 재등록 필요 신호 반환
+  if (action === "resume" && promise.type === "regular" && !promise.toss_billing_key) {
+    return NextResponse.json(
+      { error: "결제 수단이 등록되지 않았습니다. 관리자에게 카드 재등록을 요청해주세요.", code: "BILLING_KEY_MISSING" },
       { status: 400 }
     );
   }

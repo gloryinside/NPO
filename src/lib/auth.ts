@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -42,7 +43,7 @@ export type DonorSession = {
  * members 테이블은 admin-only RLS이므로 service-role 클라이언트로
  * supabase_uid + org_id 두 조건을 모두 만족하는 행만 조회한다.
  */
-export async function getDonorSession(): Promise<DonorSession | null> {
+export const getDonorSession = cache(async (): Promise<DonorSession | null> => {
   const tenant = await getTenant();
   if (!tenant) return null;
 
@@ -83,7 +84,7 @@ export async function getDonorSession(): Promise<DonorSession | null> {
   }
 
   return null;
-}
+});
 
 /**
  * 인증 필수 — 미로그인/미연결 시 /donor/login 으로 redirect.

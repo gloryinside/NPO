@@ -110,7 +110,11 @@ export default function DonorPromisesPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error ?? "처리 중 오류가 발생했습니다.");
+        if (data.code === "BILLING_KEY_MISSING") {
+          alert("결제 수단이 등록되지 않아 재개할 수 없습니다.\n관리자에게 카드 재등록을 요청해주세요.");
+        } else {
+          alert(data.error ?? "처리 중 오류가 발생했습니다.");
+        }
         return;
       }
       await fetchPromises();

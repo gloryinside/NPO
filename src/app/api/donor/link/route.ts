@@ -47,13 +47,12 @@ export async function POST() {
     return NextResponse.json({ ok: true, member_id: existing.id });
   }
 
-  // 같은 테넌트에서 이메일이 일치하고 아직 연결되지 않은 member 검색
+  // 같은 테넌트에서 이메일이 일치하는 member 검색 (uid 연결 여부 무관)
   const { data: member, error } = await admin
     .from("members")
-    .select("id")
+    .select("id, supabase_uid")
     .eq("org_id", tenant.id)
     .eq("email", email)
-    .is("supabase_uid", null)
     .maybeSingle();
 
   if (error) {
@@ -71,6 +70,19 @@ export async function POST() {
       },
       { status: 404 }
     );
+  }
+
+  // 이미 다른 계정에 연결된 경우 — uid 덮어쓰기 방지
+  if (member.supabase_uid && member.supabase_uid !== user.id) {
+    return NextResponse.json(
+      { error: "이미 다른 계정으로 연결된 이메일입니다. 해당 계정으로 로그인해주세요." },
+      { status: 409 }
+    );
+  }
+
+  // 이미 이 계정에 연결된 경우 — idempotent
+  if (member.supabase_uid === user.id) {
+    return NextResponse.json({ ok: true, member_id: member.id });
   }
 
   const { error: updateError } = await admin

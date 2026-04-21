@@ -189,12 +189,19 @@ export async function POST(req: NextRequest) {
   if (phone) {
     const { data: byPhone } = await supabase
       .from("members")
-      .select("id")
+      .select("id, email")
       .eq("org_id", tenant.id)
       .eq("phone", phone)
       .maybeSingle();
     if (byPhone?.id) {
       memberId = byPhone.id as string;
+      // phone 매칭 성공 시 email이 새로 제공됐고 기존과 다르면 갱신
+      if (email && byPhone.email !== email) {
+        await supabase
+          .from("members")
+          .update({ email, updated_at: new Date().toISOString() })
+          .eq("id", memberId);
+      }
     }
   }
 
@@ -347,6 +354,8 @@ export async function POST(req: NextRequest) {
 
   // 6. 정기후원: 빌링키 발급 + promise 생성
   const isRegular = donationType === 'regular';
+  let regularBillingKeyFailed = false;
+
   if (isRegular && memberId) {
     const todayDay = new Date().getDate();
     const customerKey = randomUUID();
@@ -367,11 +376,14 @@ export async function POST(req: NextRequest) {
           billingKey = result.billingKey;
         } else {
           console.warn('[donations/prepare] 빌링키 발급 실패:', result.error);
+          regularBillingKeyFailed = true;
         }
       }
     }
 
-    // promise 생성 (빌링키 유무와 무관하게)
+    // billingKey 발급 실패 시 promise는 pending_billing 상태로 생성 —
+    // active로 두면 processMonthlyCharges가 null billingKey로 청구를 시도해 매월 실패함.
+    // pending_billing 상태는 관리자가 카드 재등록 후 active로 전환.
     await supabase.from('promises').insert({
       org_id: tenant.id,
       member_id: memberId,
@@ -380,7 +392,7 @@ export async function POST(req: NextRequest) {
       amount,
       pay_day: Math.min(todayDay, 28),
       pay_method: payMethod ?? 'card',
-      status: 'active',
+      status: billingKey ? 'active' : 'pending_billing',
       toss_billing_key: billingKey,
       customer_key: billingKey ? customerKey : null,
     });
@@ -442,5 +454,6 @@ export async function POST(req: NextRequest) {
     memberEmail: email,
     orderName: campaign.title,
     tossClientKey,
+    ...(regularBillingKeyFailed ? { billingKeyFailed: true } : {}),
   });
 }
