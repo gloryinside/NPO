@@ -1,5 +1,5 @@
 'use client'
-import { useReducedMotion } from 'framer-motion'
+import { useReducedMotion } from './useReducedMotion'
 
 interface Props {
   imageUrl: string

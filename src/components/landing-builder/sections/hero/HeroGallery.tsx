@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useReducedMotion } from 'framer-motion'
+import { useReducedMotion } from '../../shared/useReducedMotion'
 import type { HeroGalleryData } from '@/lib/landing-variants/hero-schemas'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
 
