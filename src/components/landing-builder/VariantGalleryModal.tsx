@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { LandingSectionType } from '@/types/landing'
 import { getVariants } from '@/lib/landing-variants'
+import '@/lib/landing-variants/register-all'
 import type { VisualWeight } from '@/lib/landing-variants/types'
 
 interface Props {

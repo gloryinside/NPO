@@ -35,6 +35,7 @@ import type { LandingSection, LandingSectionType, LandingPageContent } from '@/t
 import { LandingSectionSettingsSheet } from './LandingSectionSettingsSheet'
 import { VariantGalleryModal } from './VariantGalleryModal'
 import { getVariants } from '@/lib/landing-variants'
+import '@/lib/landing-variants/register-all'
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 

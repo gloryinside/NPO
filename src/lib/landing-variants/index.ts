@@ -18,8 +18,3 @@ export function findVariant(variantId: string): VariantDescriptor | undefined {
   }
   return undefined
 }
-
-// 구체 variant 파일들 import (side-effect: registerVariants 호출)
-import './hero'
-import './cta'
-import './stats'

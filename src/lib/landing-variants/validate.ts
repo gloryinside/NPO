@@ -1,5 +1,6 @@
 import type { LandingSection } from '@/types/landing'
 import { findVariant } from './index'
+import './register-all'  // 모든 variant를 registry에 등록
 
 export interface ValidationIssue {
   sectionId: string
