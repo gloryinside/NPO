@@ -48,7 +48,7 @@ export function TiersPricingTable({ data }: { data: TiersPricingTableData }) {
                       ))}
                     </ul>
                   )}
-                  <a href="#campaigns"
+                  <a href={tier.url || '#campaigns'}
                     className="mt-auto inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                     style={{ background: recommended ? 'var(--accent)' : 'var(--surface-2)', color: recommended ? '#fff' : 'var(--text)' }}>
                     이 등급으로 후원하기

@@ -6,6 +6,8 @@ const Tier = z.object({
   label: z.string().min(1).max(40),
   description: z.string().max(300),
   benefits: z.array(z.string().max(80)).max(10).optional(),
+  /** 이 등급으로 바로 후원하는 CTA 링크. 비어 있으면 섹션 기본 (#campaigns) */
+  url: z.string().max(500).optional(),
 })
 
 export const TiersBase = z.object({

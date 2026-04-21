@@ -50,6 +50,9 @@ export function TiersComparisonForm({ data, onChange }: { data: TiersBaseData; o
             onChange={(e) => updateTier(i, { benefits: e.target.value.split('\n').filter((s) => s.trim()) })}
             placeholder="월간 리포트&#10;연말 감사장&#10;현장 방문" />
         </Field>
+        <Field label="후원 URL (선택, 비어 있으면 #campaigns)">
+          <input className={inputCls} value={tier.url ?? ''} onChange={(e) => updateTier(i, { url: e.target.value })} placeholder="/donate/wizard?amount=30000" />
+        </Field>
       </div>
     ))}
     <button type="button" onClick={addTier} className={addBtnCls}>+ 등급 추가</button>
@@ -97,6 +100,11 @@ export function TiersRecommendedForm({
               value={(tier.benefits ?? []).join('\n')}
               onChange={(e) => updateTier(i, { benefits: e.target.value.split('\n').filter((s) => s.trim()) })}
               placeholder="월간 리포트&#10;연말 감사장" />
+          </Field>
+        )}
+        {showBenefits && (
+          <Field label="후원 URL (선택, 비어 있으면 #campaigns)">
+            <input className={inputCls} value={tier.url ?? ''} onChange={(e) => updateTier(i, { url: e.target.value })} placeholder="/donate/wizard?amount=30000" />
           </Field>
         )}
       </div>
