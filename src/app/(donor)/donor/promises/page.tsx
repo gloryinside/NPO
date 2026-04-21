@@ -32,6 +32,7 @@ const STATUS_LABEL: Record<PromiseStatus, string> = {
   suspended: "일시중지",
   cancelled: "해지",
   completed: "완료",
+  pending_billing: "결제수단 등록 대기",
 };
 
 const TYPE_LABEL: Record<PromiseType, string> = {
@@ -44,10 +45,12 @@ const STATUS_BADGE_CLS: Record<PromiseStatus, string> = {
   suspended: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
   cancelled: "bg-[rgba(239,68,68,0.15)] text-[var(--negative)]",
   completed: "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]",
+  pending_billing: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
 };
 
 const STATUS_ORDER: PromiseStatus[] = [
   "active",
+  "pending_billing",
   "suspended",
   "completed",
   "cancelled",

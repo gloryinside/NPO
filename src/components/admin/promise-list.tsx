@@ -44,6 +44,7 @@ const STATUS_LABEL: Record<PromiseStatus, string> = {
   suspended: "일시중지",
   cancelled: "해지",
   completed: "완료",
+  pending_billing: "결제수단 대기",
 };
 
 const TYPE_LABEL: Record<PromiseType, string> = {
@@ -57,6 +58,7 @@ function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
     suspended: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
     cancelled: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
     completed: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
+    pending_billing: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">

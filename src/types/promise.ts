@@ -3,7 +3,8 @@ export type PromiseStatus =
   | "active"
   | "suspended"
   | "cancelled"
-  | "completed";
+  | "completed"
+  | "pending_billing";
 
 export type Promise = {
   id: string;
