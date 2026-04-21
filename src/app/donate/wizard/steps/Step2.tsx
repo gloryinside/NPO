@@ -276,6 +276,14 @@ export function Step2({
         methods={settings.paymentMethods}
         value={method}
         onChange={setMethod}
+        disabledMethods={
+          state.type === 'onetime'
+            ? settings.paymentMethods.filter((m) => {
+                const s = m as string
+                return !(s in TOSS_METHOD_MAP) && s !== 'transfer' && s !== 'cms'
+              })
+            : []
+        }
       />
 
       {state.type === 'regular' && method === 'card' && (

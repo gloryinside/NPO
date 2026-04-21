@@ -65,7 +65,7 @@ export function CampaignsSection({ data, campaigns }: Props) {
                               <span className="text-xs font-semibold rounded-full px-2 py-0.5 bg-[var(--accent-soft)] text-[var(--accent)]">D-{d}</span>
                             ) : null
                           })()}
-                          <Badge className="border-0 text-xs bg-green-500/10 text-green-500">진행 중</Badge>
+                          <Badge className="border-0 text-xs bg-[var(--positive)]/10 text-[var(--positive)]">진행 중</Badge>
                         </div>
                       </div>
                       {campaign.description && (

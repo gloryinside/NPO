@@ -168,7 +168,7 @@ export default async function AdminReceiptsPage({
               <div className="mb-1 text-xs text-[var(--muted-foreground)]">{title}</div>
               <div
                 className={`text-xl font-bold ${
-                  negative ? "text-red-500" : positive ? "text-green-500" : "text-[var(--text)]"
+                  negative ? "text-[var(--negative)]" : positive ? "text-[var(--positive)]" : "text-[var(--text)]"
                 }`}
               >
                 {value}
@@ -177,7 +177,7 @@ export default async function AdminReceiptsPage({
           ))}
         </div>
         {noIdCount > 0 && (
-          <div className="mb-6 rounded-lg border border-yellow-500 bg-yellow-500/10 px-4 py-3 text-sm text-[var(--text)]">
+          <div className="mb-6 rounded-lg border border-[var(--warning)] bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--text)]">
             ⚠️ 주민번호 미등록 후원자 <strong>{noIdCount}명</strong>은 국세청 간소화 자료에서 제외됩니다.
           </div>
         )}

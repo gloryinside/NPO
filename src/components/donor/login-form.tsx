@@ -63,7 +63,7 @@ function EmailPasswordForm() {
           className="border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] placeholder:text-[var(--muted-foreground)]"
         />
       </div>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-[var(--negative)]">{error}</p>}
       <Button
         type="submit"
         disabled={loading}

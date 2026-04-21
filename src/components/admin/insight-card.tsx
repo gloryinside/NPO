@@ -5,18 +5,18 @@ const SEVERITY_CLASSES: Record<
   { card: string; action: string; icon: string }
 > = {
   danger: {
-    card: "border-l-4 border-l-red-500 border border-red-500/20 bg-red-500/5",
-    action: "border-red-500 text-red-500",
+    card: "border-l-4 border-l-[var(--negative)] border border-[var(--negative)]/20 bg-[var(--negative)]/5",
+    action: "border-[var(--negative)] text-[var(--negative)]",
     icon: "🔴",
   },
   warning: {
-    card: "border-l-4 border-l-yellow-500 border border-yellow-500/20 bg-yellow-500/5",
-    action: "border-yellow-500 text-yellow-500",
+    card: "border-l-4 border-l-[var(--warning)] border border-[var(--warning)]/20 bg-[var(--warning)]/5",
+    action: "border-[var(--warning)] text-[var(--warning)]",
     icon: "🟡",
   },
   positive: {
-    card: "border-l-4 border-l-green-500 border border-green-500/20 bg-green-500/5",
-    action: "border-green-500 text-green-500",
+    card: "border-l-4 border-l-[var(--positive)] border border-[var(--positive)]/20 bg-[var(--positive)]/5",
+    action: "border-[var(--positive)] text-[var(--positive)]",
     icon: "🟢",
   },
   info: {

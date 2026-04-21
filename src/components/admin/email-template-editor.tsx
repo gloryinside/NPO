@@ -217,7 +217,7 @@ export function EmailTemplateEditor({ scenario, label, variables, initialSubject
           </div>
 
           {message && (
-            <div className={`text-sm px-3 py-2 rounded-lg ${message.type === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+            <div className={`text-sm px-3 py-2 rounded-lg ${message.type === 'success' ? 'bg-[var(--positive)]/10 text-[var(--positive)]' : 'bg-[var(--negative)]/10 text-[var(--negative)]'}`}>
               {message.text}
             </div>
           )}

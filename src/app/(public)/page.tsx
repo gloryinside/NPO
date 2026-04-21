@@ -186,7 +186,7 @@ export default async function PublicPage({
     return (
       <main className="bg-[var(--bg)] min-h-screen">
         {useDraft && (
-          <div className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 text-xs text-center py-2 px-4 border-b border-yellow-500/20">
+          <div className="bg-[var(--warning)]/10 text-[var(--warning)] text-xs text-center py-2 px-4 border-b border-[var(--warning)]/20">
             📝 편집 중인 콘텐츠 미리보기 (아직 공개되지 않음)
           </div>
         )}
@@ -324,7 +324,7 @@ export default async function PublicPage({
                               </span>
                             ) : null;
                           })()}
-                          <Badge className="border-0 text-xs bg-green-500/10 text-green-500">
+                          <Badge className="border-0 text-xs bg-[var(--positive)]/10 text-[var(--positive)]">
                             진행 중
                           </Badge>
                         </div>

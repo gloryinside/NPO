@@ -554,13 +554,13 @@ export default async function StatsPage({
                             <span className="text-[var(--muted-foreground)]">{c.campaignTitle}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-green-500">
+                        <td className="px-4 py-3 text-right font-semibold text-[var(--positive)]">
                           {formatKRW(c.paidAmount)}
                         </td>
                         <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">
                           {c.paidCount.toLocaleString("ko-KR")}건
                         </td>
-                        <td className={`px-4 py-3 text-right font-medium ${c.unpaidAmount > 0 ? "text-red-500" : "text-[var(--muted-foreground)]"}`}>
+                        <td className={`px-4 py-3 text-right font-medium ${c.unpaidAmount > 0 ? "text-[var(--negative)]" : "text-[var(--muted-foreground)]"}`}>
                           {c.unpaidAmount > 0 ? formatKRW(c.unpaidAmount) : "-"}
                         </td>
                         <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">
@@ -570,10 +570,10 @@ export default async function StatsPage({
                           <span className={[
                             "text-xs font-semibold px-2 py-0.5 rounded",
                             c.rate >= 90
-                              ? "bg-green-500/10 text-green-500"
+                              ? "bg-[var(--positive)]/10 text-[var(--positive)]"
                               : c.rate >= 70
-                                ? "bg-yellow-500/10 text-yellow-500"
-                                : "bg-red-500/10 text-red-500",
+                                ? "bg-[var(--warning)]/10 text-[var(--warning)]"
+                                : "bg-[var(--negative)]/10 text-[var(--negative)]",
                           ].join(" ")}>
                             {c.rate}%
                           </span>
@@ -596,7 +596,7 @@ export default async function StatsPage({
           </CardHeader>
           <CardContent>
             {churnRisk.length === 0 ? (
-              <p className="text-sm text-center py-6 text-green-500">✓ 이탈 위험 후원자가 없습니다.</p>
+              <p className="text-sm text-center py-6 text-[var(--positive)]">✓ 이탈 위험 후원자가 없습니다.</p>
             ) : (
               <>
                 <p className="text-xs mb-4 text-[var(--muted-foreground)]">
@@ -625,12 +625,12 @@ export default async function StatsPage({
                           <td className="px-4 py-3 text-center">
                             <span className={[
                               "text-xs font-semibold px-2 py-0.5 rounded",
-                              m.unpaidCount >= 3 ? "bg-red-500/10 text-red-500" : "bg-yellow-500/10 text-yellow-500",
+                              m.unpaidCount >= 3 ? "bg-[var(--negative)]/10 text-[var(--negative)]" : "bg-[var(--warning)]/10 text-[var(--warning)]",
                             ].join(" ")}>
                               {m.unpaidCount}회
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold text-red-500">
+                          <td className="px-4 py-3 text-right font-semibold text-[var(--negative)]">
                             {formatKRW(m.totalUnpaid)}
                           </td>
                           <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">
@@ -765,9 +765,9 @@ export default async function StatsPage({
                     {reportRows.map((r, idx) => (
                       <tr key={r.month} className={idx > 0 ? "border-t border-[var(--border)]" : ""}>
                         <td className="px-4 py-3 font-medium text-[var(--text)]">{r.month}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-green-500">{formatKRW(r.paidAmt)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-[var(--positive)]">{formatKRW(r.paidAmt)}</td>
                         <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">{r.paid.toLocaleString("ko-KR")}건</td>
-                        <td className={`px-4 py-3 text-right ${r.unpaidAmt > 0 ? "text-red-500" : "text-[var(--muted-foreground)]"}`}>
+                        <td className={`px-4 py-3 text-right ${r.unpaidAmt > 0 ? "text-[var(--negative)]" : "text-[var(--muted-foreground)]"}`}>
                           {r.unpaidAmt > 0 ? formatKRW(r.unpaidAmt) : "-"}
                         </td>
                         <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">
@@ -776,9 +776,9 @@ export default async function StatsPage({
                         <td className="px-4 py-3 text-right">
                           <span className={[
                             "text-xs font-semibold px-2 py-0.5 rounded",
-                            r.rate >= 90 ? "bg-green-500/10 text-green-500"
-                              : r.rate >= 70 ? "bg-yellow-500/10 text-yellow-500"
-                              : "bg-red-500/10 text-red-500",
+                            r.rate >= 90 ? "bg-[var(--positive)]/10 text-[var(--positive)]"
+                              : r.rate >= 70 ? "bg-[var(--warning)]/10 text-[var(--warning)]"
+                              : "bg-[var(--negative)]/10 text-[var(--negative)]",
                           ].join(" ")}>
                             {r.rate}%
                           </span>
@@ -789,13 +789,13 @@ export default async function StatsPage({
                   <tfoot>
                     <tr className="border-t-2 border-[var(--border)] bg-[var(--surface-2)]">
                       <td className="px-4 py-3 text-xs font-semibold text-[var(--muted-foreground)]">합계</td>
-                      <td className="px-4 py-3 text-right font-bold text-green-500">
+                      <td className="px-4 py-3 text-right font-bold text-[var(--positive)]">
                         {formatKRW(reportRows.reduce((s, r) => s + r.paidAmt, 0))}
                       </td>
                       <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">
                         {reportRows.reduce((s, r) => s + r.paid, 0).toLocaleString("ko-KR")}건
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-red-500">
+                      <td className="px-4 py-3 text-right font-bold text-[var(--negative)]">
                         {formatKRW(reportRows.reduce((s, r) => s + r.unpaidAmt, 0))}
                       </td>
                       <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">
@@ -898,7 +898,7 @@ export default async function StatsPage({
                     <tr key={m.memberId} className={idx > 0 ? "border-t border-[var(--border)]" : ""}>
                       <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">{idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-[var(--text)]">{m.memberName}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-green-500">
+                      <td className="px-4 py-3 text-right font-semibold text-[var(--positive)]">
                         {formatKRW(m.totalPaid)}
                       </td>
                       <td className="px-4 py-3 text-center text-xs text-[var(--muted-foreground)]">
@@ -939,7 +939,7 @@ function SummaryCard({
         <CardTitle className="text-sm text-[var(--muted-foreground)]">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className={`text-xl font-bold ${negative ? "text-red-500" : "text-[var(--text)]"}`}>
+        <p className={`text-xl font-bold ${negative ? "text-[var(--negative)]" : "text-[var(--text)]"}`}>
           {value}
         </p>
       </CardContent>

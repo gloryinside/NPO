@@ -13,7 +13,9 @@ export default async function DonateFailPage({ searchParams }: { searchParams: S
     try {
       await cancelDonation(orderId, message);
     } catch (err) {
-      console.error('[donate/fail] cancelDonation failed:', err);
+      // cancelDonation 실패 시 DB에 pending payment가 잔존할 수 있음.
+      // cron /api/cron/cancel-stale-payments 가 30분 경과 pending을 정리한다.
+      console.error('[donate/fail] cancelDonation failed — orderId:', orderId, err);
     }
   }
 

@@ -81,17 +81,17 @@ export function NtsExportPanel({ year, summary, logs }: Props) {
         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
           <div>
             <div className="text-xs text-[var(--muted-foreground)]">영수증 발급 완료</div>
-            <div className="mt-1 text-lg font-bold text-green-500">{summary.issuedCount}명</div>
+            <div className="mt-1 text-lg font-bold text-[var(--positive)]">{summary.issuedCount}명</div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted-foreground)]">미발급</div>
-            <div className={`mt-1 text-lg font-bold ${summary.pendingCount > 0 ? "text-yellow-500" : "text-[var(--muted-foreground)]"}`}>
+            <div className={`mt-1 text-lg font-bold ${summary.pendingCount > 0 ? "text-[var(--warning)]" : "text-[var(--muted-foreground)]"}`}>
               {summary.pendingCount}명
             </div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted-foreground)]">주민번호 미등록 (자동제외)</div>
-            <div className={`mt-1 text-lg font-bold ${summary.noIdCount > 0 ? "text-red-500" : "text-[var(--muted-foreground)]"}`}>
+            <div className={`mt-1 text-lg font-bold ${summary.noIdCount > 0 ? "text-[var(--negative)]" : "text-[var(--muted-foreground)]"}`}>
               {summary.noIdCount}명
             </div>
           </div>
@@ -105,13 +105,13 @@ export function NtsExportPanel({ year, summary, logs }: Props) {
       </div>
 
       {summary.noIdCount > 0 && (
-        <div className="rounded-lg border border-yellow-500 bg-yellow-500/10 px-4 py-3 text-sm text-[var(--text)]">
+        <div className="rounded-lg border border-[var(--warning)] bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--text)]">
           ⚠️ 주민번호 미등록 <strong>{summary.noIdCount}명</strong>은 전산매체 파일에서 제외됩니다.
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+        <div className="rounded-lg border border-[var(--negative)] bg-[var(--negative)]/10 px-4 py-3 text-sm text-[var(--negative)]">
           ❌ {error}
         </div>
       )}

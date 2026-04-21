@@ -84,7 +84,7 @@ export function LoginForm() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-[var(--negative)]">{error}</p>
           )}
 
           <Button

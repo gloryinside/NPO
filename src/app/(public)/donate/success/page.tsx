@@ -37,7 +37,7 @@ export default async function DonateSuccessPage({ searchParams }: { searchParams
   const [paymentRes, campaignRes, memberRes] = await Promise.all([
     supabase
       .from('payments')
-      .select('pay_method, receipt_opt_in, promise_id, campaign_id, member_id')
+      .select('pay_method, receipt_opt_in, promise_id, campaign_id, member_id, designation, custom_fields')
       .eq('id', confirmed.id)
       .maybeSingle(),
     confirmed.campaign_id
@@ -60,6 +60,8 @@ export default async function DonateSuccessPage({ searchParams }: { searchParams
     pay_method: string | null;
     receipt_opt_in: boolean | null;
     promise_id: string | null;
+    designation: string | null;
+    custom_fields: Record<string, unknown> | null;
   } | null;
 
   const campaign = campaignRes.data as {
@@ -81,6 +83,8 @@ export default async function DonateSuccessPage({ searchParams }: { searchParams
     receiptOptIn: payment?.receipt_opt_in ?? false,
     paymentCode: confirmed.payment_code,
     idempotencyKey: orderId,
+    designation: payment?.designation ?? undefined,
+    customFields: payment?.custom_fields ?? undefined,
   };
 
   const session = await getDonorSession();

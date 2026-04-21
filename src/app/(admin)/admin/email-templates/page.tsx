@@ -56,7 +56,7 @@ export default async function EmailTemplatesPage() {
                     {isCustom ? '커스텀' : '기본'}
                   </span>
                   {!isActive && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--negative)]/10 text-[var(--negative)] font-medium">
                       비활성
                     </span>
                   )}

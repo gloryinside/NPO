@@ -15,6 +15,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -22,6 +23,7 @@ import {
 import {
   SortableContext,
   useSortable,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable'
@@ -137,26 +139,46 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
   const [publishing, setPublishing] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveStatusRef = useRef<'saved' | 'unsaved' | 'saving'>('saved')
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   // ── 자동저장 (2초 debounce) ──────────────────────────────────────────────
   const scheduleSave = useCallback((updated: LandingSection[]) => {
+    saveStatusRef.current = 'unsaved'
     setSaveStatus('unsaved')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
+      saveStatusRef.current = 'saving'
       setSaveStatus('saving')
       try {
         await savePageContent({ schemaVersion: 1, sections: updated })
+        saveStatusRef.current = 'saved'
         setSaveStatus('saved')
       } catch {
+        saveStatusRef.current = 'unsaved'
         setSaveStatus('unsaved')
         toast.error('자동 저장에 실패했습니다.')
       }
     }, 2000)
   }, [])
 
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
+  // G-38: 미저장 변경사항이 있을 때 페이지 이탈 경고
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (saveStatusRef.current !== 'saved') {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   // ── 섹션 추가 ────────────────────────────────────────────────────────────
   function handleAdd(type: LandingSectionType) {
@@ -204,23 +226,24 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
 
   // ── 게시 ─────────────────────────────────────────────────────────────────
   async function handlePublish() {
-    // 미저장 변경사항 먼저 저장
+    // G-43: debounce 취소 후 sections를 body에 포함해 단일 요청으로 저장+게시
     if (debounceRef.current) clearTimeout(debounceRef.current)
+    saveStatusRef.current = 'saving'
     setSaveStatus('saving')
-    try {
-      await savePageContent({ schemaVersion: 1, sections })
-      setSaveStatus('saved')
-    } catch {
-      toast.error('게시 전 저장에 실패했습니다.')
-      return
-    }
-
     setPublishing(true)
     try {
-      const res = await fetch('/api/admin/org/landing/publish', { method: 'POST' })
+      const res = await fetch('/api/admin/org/landing/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sections }),
+      })
       if (!res.ok) throw new Error()
+      saveStatusRef.current = 'saved'
+      setSaveStatus('saved')
       toast.success('랜딩페이지가 게시되었습니다.')
     } catch {
+      saveStatusRef.current = 'unsaved'
+      setSaveStatus('unsaved')
       toast.error('게시에 실패했습니다.')
     } finally {
       setPublishing(false)
@@ -275,10 +298,25 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
 
       {/* ── 섹션 목록 ── */}
       {sections.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--surface)] py-16 text-center">
-          <p className="text-3xl mb-2">📄</p>
+        <div className="rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--surface)] py-12 text-center space-y-4 px-4">
+          <p className="text-3xl">📄</p>
           <p className="text-sm text-[var(--text)]">아직 섹션이 없습니다.</p>
-          <p className="text-xs mt-1 text-[var(--muted-foreground)]">아래 버튼으로 첫 섹션을 추가해보세요.</p>
+          <p className="text-xs text-[var(--muted-foreground)]">추천 템플릿으로 빠르게 시작하거나, 아래 버튼으로 직접 섹션을 추가해보세요.</p>
+          {/* G-44: 추천 템플릿 (히어로 → 캠페인 → CTA) */}
+          <button
+            type="button"
+            onClick={() => {
+              const template: LandingSectionType[] = ['hero', 'campaigns', 'cta']
+              const added = template.map((type, i) => createSection(type, i))
+              setSections(added)
+              scheduleSave(added)
+              setEditingId(added[0].id)
+            }}
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)' }}
+          >
+            🚀 추천 템플릿으로 시작하기
+          </button>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

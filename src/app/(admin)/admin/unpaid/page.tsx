@@ -115,7 +115,7 @@ function SummaryCards({
         <div key={label} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
           <div className="mb-1 text-xs text-[var(--muted-foreground)]">{label}</div>
           <div
-            className={`text-xl font-bold ${negative ? "text-red-500" : "text-[var(--text)]"}`}
+            className={`text-xl font-bold ${negative ? "text-[var(--negative)]" : "text-[var(--text)]"}`}
           >
             {value}
           </div>
