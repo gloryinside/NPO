@@ -62,6 +62,14 @@
   --sidebar-border:                var(--border);
   --sidebar-ring:                  var(--accent);
 
+  /* ===== landing variant tokens ===== */
+  --gradient-1: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent), #000 30%));
+  --gradient-soft: linear-gradient(180deg, var(--surface), var(--surface-2));
+  --shadow-hero: 0 20px 60px -20px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 4px 20px -4px rgb(0 0 0 / 0.08);
+  --radius-hero: 24px;
+  --radius-card: 16px;
+
   color-scheme: dark;
 }
 
@@ -138,4 +146,30 @@ html, body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ===== landing variant typography ===== */
+.text-display {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.text-hero {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+/* ===== landing variant motion ===== */
+@keyframes ken-burns {
+  0%   { transform: scale(1)    translate(0, 0); }
+  50%  { transform: scale(1.08) translate(-1%, -1%); }
+  100% { transform: scale(1)    translate(0, 0); }
+}
+.animate-ken-burns { animation: ken-burns 20s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ken-burns { animation: none !important; }
 }
