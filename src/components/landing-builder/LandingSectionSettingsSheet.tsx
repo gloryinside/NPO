@@ -50,6 +50,18 @@ import type { LogosBaseData } from '@/lib/landing-variants/logos-schemas'
 import { LogosForm } from './variant-forms/logos-forms'
 import type { FaqBaseData } from '@/lib/landing-variants/faq-schemas'
 import { FaqForm } from './variant-forms/faq-forms'
+import type {
+  ImpactAlternatingData, ImpactZigzagData, ImpactCardsData, ImpactStorytellingData,
+  ImpactBeforeAfterData,
+} from '@/lib/landing-variants/impact-schemas'
+import {
+  ImpactAlternatingForm, ImpactZigzagForm, ImpactCardsForm, ImpactStorytellingForm,
+  ImpactBeforeAfterForm,
+} from './variant-forms/impact-forms'
+import type { TimelineBaseData } from '@/lib/landing-variants/timeline-schemas'
+import { TimelineForm } from './variant-forms/timeline-forms'
+import type { GalleryBaseData } from '@/lib/landing-variants/gallery-schemas'
+import { GalleryForm } from './variant-forms/gallery-forms'
 
 interface Props {
   section: LandingSection
@@ -149,7 +161,24 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
           {section.type === 'stats' && section.variant !== 'stats-big' && (
             <StatsForm data={data as StatsSectionData} onChange={d => setData(d)} />
           )}
-          {section.type === 'impact' && (
+          {/* Phase C: impact variants */}
+          {section.type === 'impact' && section.variant === 'impact-alternating' && (
+            <ImpactAlternatingForm data={data as ImpactAlternatingData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'impact' && section.variant === 'impact-zigzag' && (
+            <ImpactZigzagForm data={data as ImpactZigzagData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'impact' && section.variant === 'impact-cards' && (
+            <ImpactCardsForm data={data as ImpactCardsData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'impact' && section.variant === 'impact-storytelling' && (
+            <ImpactStorytellingForm data={data as ImpactStorytellingData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'impact' && section.variant === 'impact-before-after' && (
+            <ImpactBeforeAfterForm data={data as ImpactBeforeAfterData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {/* impact legacy fallback */}
+          {section.type === 'impact' && !section.variant.startsWith('impact-') && (
             <ImpactForm data={data as ImpactSectionData} onChange={d => setData(d)} />
           )}
           {section.type === 'campaigns' && (
@@ -208,6 +237,19 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
           )}
           {section.type === 'faq' && section.variant !== 'faq-categorized' && (
             <FaqForm data={data as FaqBaseData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+
+          {/* Phase C: timeline (milestones만 이미지 보여줌) */}
+          {section.type === 'timeline' && section.variant === 'timeline-milestones' && (
+            <TimelineForm data={data as TimelineBaseData} onChange={d => setData(d as LandingSection['data'])} showImage />
+          )}
+          {section.type === 'timeline' && section.variant !== 'timeline-milestones' && (
+            <TimelineForm data={data as TimelineBaseData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+
+          {/* Phase C: gallery (모든 variant 공통 GalleryForm) */}
+          {section.type === 'gallery' && (
+            <GalleryForm data={data as GalleryBaseData} onChange={d => setData(d as LandingSection['data'])} />
           )}
 
           {section.type === 'richtext' && (

@@ -41,8 +41,27 @@ import { FaqTwoColumn } from './sections/faq/FaqTwoColumn'
 import { FaqCategorized } from './sections/faq/FaqCategorized'
 import { FaqSearch } from './sections/faq/FaqSearch'
 
-// Legacy (Phase B~D에서 각 섹션별 variant 추가 예정)
-import { ImpactSection } from './sections/ImpactSection'
+// Phase C: impact
+import { ImpactAlternating } from './sections/impact/ImpactAlternating'
+import { ImpactZigzag } from './sections/impact/ImpactZigzag'
+import { ImpactCards } from './sections/impact/ImpactCards'
+import { ImpactStorytelling } from './sections/impact/ImpactStorytelling'
+import { ImpactBeforeAfter } from './sections/impact/ImpactBeforeAfter'
+
+// Phase C: timeline
+import { TimelineVertical } from './sections/timeline/TimelineVertical'
+import { TimelineAlternating } from './sections/timeline/TimelineAlternating'
+import { TimelineHorizontal } from './sections/timeline/TimelineHorizontal'
+import { TimelineMilestones } from './sections/timeline/TimelineMilestones'
+
+// Phase C: gallery
+import { GalleryGrid } from './sections/gallery/GalleryGrid'
+import { GalleryMasonry } from './sections/gallery/GalleryMasonry'
+import { GalleryLightbox } from './sections/gallery/GalleryLightbox'
+import { GalleryCarousel } from './sections/gallery/GalleryCarousel'
+import { GalleryFullbleed } from './sections/gallery/GalleryFullbleed'
+
+// Legacy (Phase D에서 campaigns/tiers/team/richtext variant 추가 예정)
 import { CampaignsSection } from './sections/CampaignsSection'
 import { DonationTiersSection } from './sections/DonationTiersSection'
 import { TeamSection } from './sections/TeamSection'
@@ -89,8 +108,24 @@ export const VARIANT_COMPONENTS: Record<string, ComponentType<any>> = {
   'faq-two-column': FaqTwoColumn,
   'faq-categorized': FaqCategorized,
   'faq-search': FaqSearch,
-  // legacy default variants
-  'impact-alternating': ImpactSection,
+  // impact (Phase C — 신규 variant가 기존 ImpactSection을 대체)
+  'impact-alternating': ImpactAlternating,
+  'impact-zigzag': ImpactZigzag,
+  'impact-cards': ImpactCards,
+  'impact-storytelling': ImpactStorytelling,
+  'impact-before-after': ImpactBeforeAfter,
+  // timeline (Phase C)
+  'timeline-vertical': TimelineVertical,
+  'timeline-alternating': TimelineAlternating,
+  'timeline-horizontal': TimelineHorizontal,
+  'timeline-milestones': TimelineMilestones,
+  // gallery (Phase C)
+  'gallery-grid': GalleryGrid,
+  'gallery-masonry': GalleryMasonry,
+  'gallery-lightbox': GalleryLightbox,
+  'gallery-carousel': GalleryCarousel,
+  'gallery-fullbleed': GalleryFullbleed,
+  // legacy default variants (Phase D에서 대체 예정)
   'campaigns-grid': CampaignsSection,
   'tiers-cards': DonationTiersSection,
   'team-grid': TeamSection,

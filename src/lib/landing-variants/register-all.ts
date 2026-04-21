@@ -15,3 +15,8 @@ import './stats'
 import './testimonials'
 import './logos'
 import './faq'
+
+// Phase C
+import './impact'
+import './timeline'
+import './gallery'
