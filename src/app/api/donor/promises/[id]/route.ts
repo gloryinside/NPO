@@ -112,6 +112,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       .select("id, status, amount")
       .single();
 
+    // 이 약정에 연결된 미청구 pending payment 금액도 함께 갱신 —
+    // processMonthlyCharges가 payment.amount를 참조하므로 (promise.amount 아님)
+    // 동기화하지 않으면 변경 전 금액으로 청구된다.
+    await supabase
+      .from("payments")
+      .update({ amount: newAmount })
+      .eq("promise_id", id)
+      .eq("pay_status", "pending")
+      .is("toss_payment_key", null);
+
     if (updateErr || !updated) {
       return NextResponse.json(
         { error: updateErr?.message ?? "업데이트 실패" },
