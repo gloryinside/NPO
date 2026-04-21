@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="300" height="200">
+  <rect width="300" height="200" fill="#f1f5f9"/>
+  <g fill="#fff" stroke="#e2e8f0">
+    <rect x="20" y="30" width="80" height="140" rx="6"/>
+    <rect x="110" y="30" width="80" height="140" rx="6"/>
+    <rect x="200" y="30" width="80" height="140" rx="6"/>
+  </g>
+  <g fill="#cbd5e1">
+    <rect x="30" y="40" width="60" height="60" rx="4"/>
+    <rect x="120" y="40" width="60" height="60" rx="4"/>
+    <rect x="210" y="40" width="60" height="60" rx="4"/>
+  </g>
+  <g fill="#1a3a5c">
+    <rect x="30" y="110" width="50" height="5" rx="2"/>
+    <rect x="120" y="110" width="50" height="5" rx="2"/>
+    <rect x="210" y="110" width="50" height="5" rx="2"/>
+  </g>
+  <g fill="#e2e8f0">
+    <rect x="30" y="130" width="60" height="4" rx="2"/>
+    <rect x="120" y="130" width="60" height="4" rx="2"/>
+    <rect x="210" y="130" width="60" height="4" rx="2"/>
+  </g>
+  <g fill="#1a3a5c">
+    <rect x="30" y="130" width="40" height="4" rx="2"/>
+    <rect x="120" y="130" width="30" height="4" rx="2"/>
+    <rect x="210" y="130" width="50" height="4" rx="2"/>
+  </g>
+</svg>

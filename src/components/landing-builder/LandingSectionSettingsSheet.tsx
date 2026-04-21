@@ -62,6 +62,10 @@ import type { TimelineBaseData } from '@/lib/landing-variants/timeline-schemas'
 import { TimelineForm } from './variant-forms/timeline-forms'
 import type { GalleryBaseData } from '@/lib/landing-variants/gallery-schemas'
 import { GalleryForm } from './variant-forms/gallery-forms'
+import type { TiersRecommendedData, TiersPricingTableData } from '@/lib/landing-variants/tiers-schemas'
+import { TiersRecommendedForm } from './variant-forms/tiers-forms'
+import type { RichtextQuoteData } from '@/lib/landing-variants/richtext-schemas'
+import { RichtextQuoteForm } from './variant-forms/richtext-forms'
 
 interface Props {
   section: LandingSection
@@ -184,7 +188,14 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
           {section.type === 'campaigns' && (
             <CampaignsForm data={data as CampaignsSectionData} onChange={patch} />
           )}
-          {section.type === 'donation-tiers' && (
+          {/* Phase D: donation-tiers */}
+          {section.type === 'donation-tiers' && section.variant === 'tiers-recommended' && (
+            <TiersRecommendedForm data={data as TiersRecommendedData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'donation-tiers' && section.variant === 'tiers-pricing-table' && (
+            <TiersRecommendedForm data={data as TiersPricingTableData} onChange={d => setData(d as LandingSection['data'])} showBenefits />
+          )}
+          {section.type === 'donation-tiers' && section.variant !== 'tiers-recommended' && section.variant !== 'tiers-pricing-table' && (
             <DonationTiersForm data={data as DonationTiersSectionData} onChange={d => setData(d)} />
           )}
           {section.type === 'team' && (
@@ -252,7 +263,11 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
             <GalleryForm data={data as GalleryBaseData} onChange={d => setData(d as LandingSection['data'])} />
           )}
 
-          {section.type === 'richtext' && (
+          {/* Phase D: richtext-quote 전용 폼 */}
+          {section.type === 'richtext' && section.variant === 'richtext-quote' && (
+            <RichtextQuoteForm data={data as RichtextQuoteData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'richtext' && section.variant !== 'richtext-quote' && (
             <RichtextForm data={data as RichtextSectionData} onChange={patch} />
           )}
         </div>

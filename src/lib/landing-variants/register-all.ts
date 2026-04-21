@@ -20,3 +20,9 @@ import './faq'
 import './impact'
 import './timeline'
 import './gallery'
+
+// Phase D
+import './campaigns'
+import './tiers'
+import './team'
+import './richtext'

@@ -61,11 +61,31 @@ import { GalleryLightbox } from './sections/gallery/GalleryLightbox'
 import { GalleryCarousel } from './sections/gallery/GalleryCarousel'
 import { GalleryFullbleed } from './sections/gallery/GalleryFullbleed'
 
-// Legacy (Phase D에서 campaigns/tiers/team/richtext variant 추가 예정)
+// Phase D: campaigns (기존 CampaignsSection을 campaigns-grid default로 유지)
 import { CampaignsSection } from './sections/CampaignsSection'
-import { DonationTiersSection } from './sections/DonationTiersSection'
-import { TeamSection } from './sections/TeamSection'
-import { RichtextSection } from './sections/RichtextSection'
+import { CampaignsFeatured } from './sections/campaigns/CampaignsFeatured'
+import { CampaignsCarousel } from './sections/campaigns/CampaignsCarousel'
+import { CampaignsList } from './sections/campaigns/CampaignsList'
+import { CampaignsMasonry } from './sections/campaigns/CampaignsMasonry'
+
+// Phase D: donation-tiers
+import { TiersCards } from './sections/donation-tiers/TiersCards'
+import { TiersComparison } from './sections/donation-tiers/TiersComparison'
+import { TiersRecommended } from './sections/donation-tiers/TiersRecommended'
+import { TiersHorizontal } from './sections/donation-tiers/TiersHorizontal'
+import { TiersPricingTable } from './sections/donation-tiers/TiersPricingTable'
+
+// Phase D: team
+import { TeamGrid } from './sections/team/TeamGrid'
+import { TeamCards } from './sections/team/TeamCards'
+import { TeamFeatured } from './sections/team/TeamFeatured'
+import { TeamCarousel } from './sections/team/TeamCarousel'
+import { TeamOrgChart } from './sections/team/TeamOrgChart'
+
+// Phase D: richtext
+import { RichtextPlain } from './sections/richtext/RichtextPlain'
+import { RichtextBoxed } from './sections/richtext/RichtextBoxed'
+import { RichtextQuote } from './sections/richtext/RichtextQuote'
 
 /**
  * variant id → React component. 각 컴포넌트는 자기만의 data 타입을 가지므로
@@ -125,9 +145,26 @@ export const VARIANT_COMPONENTS: Record<string, ComponentType<any>> = {
   'gallery-lightbox': GalleryLightbox,
   'gallery-carousel': GalleryCarousel,
   'gallery-fullbleed': GalleryFullbleed,
-  // legacy default variants (Phase D에서 대체 예정)
+  // campaigns (Phase D)
   'campaigns-grid': CampaignsSection,
-  'tiers-cards': DonationTiersSection,
-  'team-grid': TeamSection,
-  'richtext-plain': RichtextSection,
+  'campaigns-featured': CampaignsFeatured,
+  'campaigns-carousel': CampaignsCarousel,
+  'campaigns-list': CampaignsList,
+  'campaigns-masonry': CampaignsMasonry,
+  // donation-tiers (Phase D)
+  'tiers-cards': TiersCards,
+  'tiers-comparison': TiersComparison,
+  'tiers-recommended': TiersRecommended,
+  'tiers-horizontal': TiersHorizontal,
+  'tiers-pricing-table': TiersPricingTable,
+  // team (Phase D)
+  'team-grid': TeamGrid,
+  'team-cards': TeamCards,
+  'team-featured': TeamFeatured,
+  'team-carousel': TeamCarousel,
+  'team-org-chart': TeamOrgChart,
+  // richtext (Phase D)
+  'richtext-plain': RichtextPlain,
+  'richtext-boxed': RichtextBoxed,
+  'richtext-quote': RichtextQuote,
 }
