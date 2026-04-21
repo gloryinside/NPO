@@ -24,7 +24,11 @@ export default async function LandingBuilderPage() {
       : EMPTY_PAGE_CONTENT;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
+    <div>
+      <h1 className="text-2xl font-bold text-[var(--text)] mb-1">랜딩페이지 편집</h1>
+      <p className="text-sm text-[var(--muted-foreground)] mb-8">
+        기관 홈페이지에 노출될 섹션을 구성하고 게시하세요.
+      </p>
       <LandingSectionEditor initialPageContent={pageContent} />
     </div>
   );

@@ -77,13 +77,14 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
+      className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
     >
       {/* 드래그 핸들 */}
       <button
+        type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        className="cursor-grab text-[var(--muted-foreground)] hover:text-[var(--text)] active:cursor-grabbing select-none"
         aria-label="순서 변경"
       >
         ⠿
@@ -92,28 +93,31 @@ function SortableRow({
       {/* 섹션 아이콘 + 이름 */}
       <span className="text-xl">{catalog?.emoji ?? '📄'}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{catalog?.label ?? section.type}</p>
-        <p className="text-xs text-muted-foreground truncate">{catalog?.desc}</p>
+        <p className="text-sm font-medium text-[var(--text)] truncate">{catalog?.label ?? section.type}</p>
+        <p className="text-xs text-[var(--muted-foreground)] truncate">{catalog?.desc}</p>
       </div>
 
       {/* 액션 버튼 */}
       <div className="flex items-center gap-1">
         <button
+          type="button"
           onClick={() => onToggleVisible(section.id)}
-          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+          className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--text)] transition-colors"
           title={section.isVisible ? '숨기기' : '표시'}
         >
-          {section.isVisible ? '👁 표시' : '🚫 숨김'}
+          {section.isVisible ? '표시' : '숨김'}
         </button>
         <button
+          type="button"
           onClick={() => onEdit(section.id)}
-          className="rounded-md px-2 py-1 text-xs bg-muted hover:bg-muted/80 transition-colors"
+          className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-xs text-[var(--text)] hover:opacity-80 transition-opacity"
         >
           편집
         </button>
         <button
+          type="button"
           onClick={() => onDelete(section.id)}
-          className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50 transition-colors"
+          className="rounded-md border border-[rgba(239,68,68,0.4)] bg-[rgba(239,68,68,0.08)] px-2.5 py-1 text-xs text-[var(--negative)] hover:opacity-80 transition-opacity"
         >
           삭제
         </button>
@@ -227,41 +231,54 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* ── 상단 헤더 ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">랜딩페이지 편집</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {saveStatus === 'saved' && '✅ 저장됨'}
-            {saveStatus === 'unsaved' && '⏳ 변경사항 있음'}
-            {saveStatus === 'saving' && '💾 저장 중...'}
-          </p>
+      {/* ── 툴바: 저장 상태 + 미리보기 + 게시 ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3">
+        <div className="flex items-center gap-2 text-xs">
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full"
+            style={{
+              background:
+                saveStatus === 'saved'
+                  ? 'var(--positive)'
+                  : saveStatus === 'saving'
+                    ? 'var(--warning)'
+                    : 'var(--muted-foreground)',
+            }}
+          />
+          <span className="text-[var(--muted-foreground)]">
+            {saveStatus === 'saved' && '저장됨'}
+            {saveStatus === 'unsaved' && '변경사항이 있습니다'}
+            {saveStatus === 'saving' && '저장 중…'}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <a
             href="/?draft=1"
             target="_blank"
-            className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+            rel="noopener noreferrer"
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:opacity-80 transition-opacity"
             title="편집 중인 콘텐츠 미리보기 (관리자만)"
           >
             미리보기 →
           </a>
           <button
+            type="button"
             onClick={handlePublish}
             disabled={publishing}
-            className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="rounded-md px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)' }}
           >
-            {publishing ? '게시 중...' : '게시하기'}
+            {publishing ? '게시 중…' : '게시하기'}
           </button>
         </div>
       </div>
 
       {/* ── 섹션 목록 ── */}
       {sections.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-border py-16 text-center text-muted-foreground">
+        <div className="rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--surface)] py-16 text-center">
           <p className="text-3xl mb-2">📄</p>
-          <p className="text-sm">아직 섹션이 없습니다.</p>
-          <p className="text-xs mt-1">아래 버튼으로 첫 섹션을 추가해보세요.</p>
+          <p className="text-sm text-[var(--text)]">아직 섹션이 없습니다.</p>
+          <p className="text-xs mt-1 text-[var(--muted-foreground)]">아래 버튼으로 첫 섹션을 추가해보세요.</p>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -283,27 +300,29 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
 
       {/* ── 섹션 추가 ── */}
       {showCatalog ? (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">추가할 섹션 선택</p>
+            <p className="text-sm font-medium text-[var(--text)]">추가할 섹션 선택</p>
             <button
+              type="button"
               onClick={() => setShowCatalog(false)}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--text)]"
             >
               닫기 ✕
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {SECTION_CATALOG.map(item => (
               <button
+                type="button"
                 key={item.type}
                 onClick={() => handleAdd(item.type)}
-                className="flex items-start gap-3 rounded-lg border border-border p-3 text-left hover:bg-muted/50 transition-colors"
+                className="flex items-start gap-3 rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3 text-left hover:opacity-80 transition-opacity"
               >
                 <span className="text-2xl">{item.emoji}</span>
                 <div>
-                  <p className="text-sm font-medium">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  <p className="text-sm font-medium text-[var(--text)]">{item.label}</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">{item.desc}</p>
                 </div>
               </button>
             ))}
@@ -311,8 +330,9 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
         </div>
       ) : (
         <button
+          type="button"
           onClick={() => setShowCatalog(true)}
-          className="w-full rounded-xl border-2 border-dashed border-border py-3 text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-600 transition-colors"
+          className="w-full rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--surface)] py-3 text-sm text-[var(--muted-foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
         >
           + 섹션 추가
         </button>

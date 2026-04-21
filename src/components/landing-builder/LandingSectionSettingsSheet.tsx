@@ -44,17 +44,36 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave }: 
     setData(prev => ({ ...prev, ...partial }))
   }
 
+  const catalogLabel = SECTION_LABELS[section.type] ?? section.type
+
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* 오버레이 */}
-      <div className="flex-1 bg-black/30" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="닫기"
+        className="flex-1 bg-black/40"
+        onClick={onClose}
+      />
 
       {/* 시트 패널 */}
-      <div className="w-full max-w-md bg-background border-l border-border flex flex-col shadow-2xl overflow-hidden">
+      <div
+        className="w-full max-w-md border-l flex flex-col overflow-hidden"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+      >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="font-semibold text-sm">섹션 편집 — {section.type}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+          <div>
+            <p className="text-xs text-[var(--muted-foreground)]">섹션 편집</p>
+            <h3 className="text-base font-semibold text-[var(--text)] mt-0.5">{catalogLabel}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-[var(--muted-foreground)] hover:text-[var(--text)] text-lg"
+          >
+            ✕
+          </button>
         </div>
 
         {/* 폼 */}
@@ -86,16 +105,19 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave }: 
         </div>
 
         {/* 푸터 */}
-        <div className="flex gap-2 px-5 py-4 border-t border-border">
+        <div className="flex gap-2 px-5 py-4 border-t border-[var(--border)]">
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 rounded-lg border border-border py-2 text-sm hover:bg-muted transition-colors"
+            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] py-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--text)] transition-colors"
           >
             취소
           </button>
           <button
+            type="button"
             onClick={handleSave}
-            className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="flex-1 rounded-md py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+            style={{ background: 'var(--accent)' }}
           >
             저장
           </button>
@@ -105,19 +127,34 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave }: 
   )
 }
 
+// SectionType 별 한글 라벨
+const SECTION_LABELS: Record<string, string> = {
+  hero: '히어로',
+  stats: '통계',
+  impact: '임팩트',
+  campaigns: '캠페인',
+  'donation-tiers': '후원 등급',
+  team: '팀 소개',
+  cta: 'CTA',
+  richtext: '자유 HTML',
+}
+
 // ─── 섹션별 폼 컴포넌트 ───────────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <label className="text-xs font-medium text-[var(--muted-foreground)]">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputCls = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inputCls = 'w-full rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]'
 const textareaCls = `${inputCls} min-h-[80px] resize-y`
+const repeatGroupCls = 'rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3 space-y-2'
+const removeBtnCls = 'text-xs text-[var(--negative)] hover:opacity-80 transition-opacity'
+const addBtnCls = 'w-full rounded-md border-2 border-dashed border-[var(--border)] py-2 text-xs text-[var(--muted-foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors'
 
 function HeroForm({ data, onChange }: { data: HeroSectionData; onChange: (d: HeroSectionData) => void }) {
   const p = (partial: Partial<HeroSectionData>) => onChange({ ...data, ...partial })
@@ -175,10 +212,10 @@ function StatsForm({ data, onChange }: { data: StatsSectionData; onChange: (d: S
       <input className={inputCls} value={data.title ?? ''} onChange={e => onChange({ ...data, title: e.target.value })} />
     </Field>
     {data.items.map((item, i) => (
-      <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+      <div key={i} className={repeatGroupCls}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">항목 {i + 1}</span>
-          <button onClick={() => removeItem(i)} className="text-xs text-red-500">삭제</button>
+          <span className="text-xs font-medium text-[var(--muted-foreground)]">항목 {i + 1}</span>
+          <button type="button" onClick={() => removeItem(i)} className={removeBtnCls}>삭제</button>
         </div>
         <Field label="아이콘 (이모지)">
           <input className={inputCls} value={item.icon ?? ''} onChange={e => updateItem(i, { icon: e.target.value })} placeholder="📊" />
@@ -191,7 +228,7 @@ function StatsForm({ data, onChange }: { data: StatsSectionData; onChange: (d: S
         </Field>
       </div>
     ))}
-    <button onClick={addItem} className="w-full rounded-lg border-2 border-dashed border-border py-2 text-xs text-muted-foreground hover:border-blue-400 transition-colors">
+    <button type="button" onClick={addItem} className={addBtnCls}>
       + 항목 추가
     </button>
   </>
@@ -210,10 +247,10 @@ function ImpactForm({ data, onChange }: { data: ImpactSectionData; onChange: (d:
       <input className={inputCls} value={data.title ?? ''} onChange={e => onChange({ ...data, title: e.target.value })} />
     </Field>
     {data.blocks.map((block, i) => (
-      <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+      <div key={i} className={repeatGroupCls}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">블록 {i + 1}</span>
-          <button onClick={() => removeBlock(i)} className="text-xs text-red-500">삭제</button>
+          <span className="text-xs font-medium text-[var(--muted-foreground)]">블록 {i + 1}</span>
+          <button type="button" onClick={() => removeBlock(i)} className={removeBtnCls}>삭제</button>
         </div>
         <Field label="헤드라인"><input className={inputCls} value={block.headline} onChange={e => updateBlock(i, { headline: e.target.value })} /></Field>
         <Field label="본문"><textarea className={textareaCls} value={block.body} onChange={e => updateBlock(i, { body: e.target.value })} /></Field>
@@ -227,7 +264,7 @@ function ImpactForm({ data, onChange }: { data: ImpactSectionData; onChange: (d:
         </Field>
       </div>
     ))}
-    <button onClick={addBlock} className="w-full rounded-lg border-2 border-dashed border-border py-2 text-xs text-muted-foreground hover:border-blue-400 transition-colors">
+    <button type="button" onClick={addBlock} className={addBtnCls}>
       + 블록 추가
     </button>
   </>
@@ -242,8 +279,8 @@ function CampaignsForm({ data, onChange }: { data: CampaignsSectionData; onChang
         {[2, 3, 4, 6].map(n => <option key={n} value={n}>{n}개</option>)}
       </select>
     </Field>
-    <label className="flex items-center gap-2 text-sm cursor-pointer">
-      <input type="checkbox" checked={data.showProgress ?? true} onChange={e => onChange({ showProgress: e.target.checked })} className="accent-blue-600" />
+    <label className="flex items-center gap-2 text-sm cursor-pointer text-[var(--text)]">
+      <input type="checkbox" checked={data.showProgress ?? true} onChange={e => onChange({ showProgress: e.target.checked })} className="accent-[var(--accent)]" />
       진행률 바 표시
     </label>
   </>
@@ -261,10 +298,10 @@ function DonationTiersForm({ data, onChange }: { data: DonationTiersSectionData;
     <Field label="섹션 제목"><input className={inputCls} value={data.title ?? ''} onChange={e => onChange({ ...data, title: e.target.value })} /></Field>
     <Field label="서브 타이틀"><input className={inputCls} value={data.subtitle ?? ''} onChange={e => onChange({ ...data, subtitle: e.target.value })} /></Field>
     {data.tiers.map((tier, i) => (
-      <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+      <div key={i} className={repeatGroupCls}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">등급 {i + 1}</span>
-          <button onClick={() => removeTier(i)} className="text-xs text-red-500">삭제</button>
+          <span className="text-xs font-medium text-[var(--muted-foreground)]">등급 {i + 1}</span>
+          <button type="button" onClick={() => removeTier(i)} className={removeBtnCls}>삭제</button>
         </div>
         <Field label="아이콘"><input className={inputCls} value={tier.icon ?? ''} onChange={e => updateTier(i, { icon: e.target.value })} placeholder="🌱" /></Field>
         <Field label="금액 (원)"><input type="number" className={inputCls} value={tier.amount} onChange={e => updateTier(i, { amount: Number(e.target.value) })} /></Field>
@@ -272,7 +309,7 @@ function DonationTiersForm({ data, onChange }: { data: DonationTiersSectionData;
         <Field label="설명"><textarea className={textareaCls} value={tier.description} onChange={e => updateTier(i, { description: e.target.value })} /></Field>
       </div>
     ))}
-    <button onClick={addTier} className="w-full rounded-lg border-2 border-dashed border-border py-2 text-xs text-muted-foreground hover:border-blue-400 transition-colors">
+    <button type="button" onClick={addTier} className={addBtnCls}>
       + 등급 추가
     </button>
   </>
@@ -289,10 +326,10 @@ function TeamForm({ data, onChange }: { data: TeamSectionData; onChange: (d: Tea
   return <>
     <Field label="섹션 제목"><input className={inputCls} value={data.title ?? ''} onChange={e => onChange({ ...data, title: e.target.value })} /></Field>
     {data.members.map((member, i) => (
-      <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+      <div key={i} className={repeatGroupCls}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">멤버 {i + 1}</span>
-          <button onClick={() => removeMember(i)} className="text-xs text-red-500">삭제</button>
+          <span className="text-xs font-medium text-[var(--muted-foreground)]">멤버 {i + 1}</span>
+          <button type="button" onClick={() => removeMember(i)} className={removeBtnCls}>삭제</button>
         </div>
         <Field label="이름"><input className={inputCls} value={member.name} onChange={e => updateMember(i, { name: e.target.value })} /></Field>
         <Field label="직책"><input className={inputCls} value={member.role} onChange={e => updateMember(i, { role: e.target.value })} /></Field>
@@ -300,7 +337,7 @@ function TeamForm({ data, onChange }: { data: TeamSectionData; onChange: (d: Tea
         <Field label="사진"><ImageUploadField value={member.photoUrl ?? ''} onChange={url => updateMember(i, { photoUrl: url })} /></Field>
       </div>
     ))}
-    <button onClick={addMember} className="w-full rounded-lg border-2 border-dashed border-border py-2 text-xs text-muted-foreground hover:border-blue-400 transition-colors">
+    <button type="button" onClick={addMember} className={addBtnCls}>
       + 멤버 추가
     </button>
   </>
