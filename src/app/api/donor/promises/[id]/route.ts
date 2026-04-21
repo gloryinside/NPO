@@ -33,9 +33,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   }
 
   const action = body.action;
-  if (action !== "suspend" && action !== "cancel" && action !== "changeAmount") {
+  if (action !== "suspend" && action !== "cancel" && action !== "changeAmount" && action !== "resume") {
     return NextResponse.json(
-      { error: "action 은 suspend, cancel, changeAmount 중 하나여야 합니다." },
+      { error: "action 은 suspend, cancel, resume, changeAmount 중 하나여야 합니다." },
       { status: 400 }
     );
   }
@@ -75,6 +75,13 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     );
   }
 
+  if (action === "resume" && promise.status !== "suspended") {
+    return NextResponse.json(
+      { error: "일시중지 상태의 약정만 재개할 수 있습니다." },
+      { status: 400 }
+    );
+  }
+
   // changeAmount: active 약정의 금액 변경
   if (action === "changeAmount") {
     const newAmount = Number(body.amount);
@@ -108,7 +115,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   const nowIso = new Date().toISOString();
   const updates: Record<string, unknown> = {
-    status: action === "cancel" ? "cancelled" : "suspended",
+    status: action === "cancel" ? "cancelled" : action === "resume" ? "active" : "suspended",
     updated_at: nowIso,
   };
   if (action === "cancel") {

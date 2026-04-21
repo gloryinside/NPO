@@ -81,7 +81,7 @@ export default async function DonorReceiptsPage() {
                   </span>
                   {r.pdf_url ? (
                     <a
-                      href={r.pdf_url}
+                      href={`/api/donor/receipts/${r.id}/download`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--surface-2)] border-[var(--accent)] text-[var(--accent)]"

@@ -22,10 +22,12 @@ export type WizardState = {
 export function WizardClient({
   campaign,
   settings,
+  isLoggedIn,
   prefill,
 }: {
   campaign: { id: string; slug: string; title: string; orgId: string };
   settings: FormSettings;
+  isLoggedIn: boolean;
   prefill: { type?: string; amount?: number; designation?: string; completed?: boolean };
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(prefill.completed ? 3 : 1);
@@ -63,7 +65,7 @@ export function WizardClient({
           onDone={() => setStep(3)}
         />
       )}
-      {step === 3 && <Step3 campaign={campaign} settings={settings} state={state} />}
+      {step === 3 && <Step3 campaign={campaign} settings={settings} state={state} isLoggedIn={isLoggedIn} />}
 
       {step === 1 && (
         <StickyCtaButton

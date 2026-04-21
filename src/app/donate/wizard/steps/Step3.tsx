@@ -12,10 +12,12 @@ export function Step3({
   campaign,
   settings,
   state,
+  isLoggedIn,
 }: {
   campaign: { slug: string };
   settings: { completeRedirectUrl?: string | null };
   state: WizardState;
+  isLoggedIn: boolean;
 }) {
   useEffect(() => {
     window.gtag?.('event', 'purchase', { value: state.amount, currency: 'KRW' });
@@ -76,6 +78,48 @@ export function Step3({
       {settings.completeRedirectUrl && (
         <p className="text-xs text-[var(--muted-foreground)]">잠시 후 자동으로 이동합니다…</p>
       )}
+
+      {!settings.completeRedirectUrl && (
+        <div className="mt-2 w-full rounded-xl border p-5 text-left bg-[var(--surface-2)] border-[var(--border)]">
+          {isLoggedIn ? (
+            <>
+              <p className="text-sm font-medium text-[var(--text)]">후원 내역 확인하기</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">마이페이지에서 납입 내역과 영수증을 확인할 수 있습니다.</p>
+              <a
+                href="/donor"
+                className="mt-3 inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                style={{ background: 'var(--accent)' }}
+              >
+                마이페이지 바로가기
+              </a>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-[var(--text)]">후원 내역을 마이페이지에서 확인하세요</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">계정을 만들면 납입 내역, 약정 관리, 영수증 다운로드를 이용할 수 있습니다.</p>
+              <a
+                href={
+                  state.donorInfo?.email
+                    ? `/donor/signup?email=${encodeURIComponent(state.donorInfo.email)}`
+                    : '/donor/signup'
+                }
+                className="mt-3 inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                style={{ background: 'var(--accent)' }}
+              >
+                계정 만들기
+              </a>
+              <a
+                href="/donor/login"
+                className="ml-3 mt-3 inline-block text-sm"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                이미 계정이 있어요
+              </a>
+            </>
+          )}
+        </div>
+      )}
+
       <a
         href={`/campaigns/${campaign.slug}`}
         className="inline-block rounded px-4 py-2 text-sm border border-[var(--border)] text-[var(--muted-foreground)]"

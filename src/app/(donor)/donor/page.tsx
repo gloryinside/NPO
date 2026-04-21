@@ -51,6 +51,18 @@ export default async function DonorHomePage() {
   const recentPayments =
     (recentPaymentsData as unknown as PaymentWithRelations[]) ?? [];
 
+  // 최근 영수증 1건
+  const { data: latestReceiptData } = await supabase
+    .from('receipts')
+    .select('id, year, total_amount, pdf_url')
+    .eq('org_id', member.org_id)
+    .eq('member_id', member.id)
+    .order('year', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const latestReceipt = latestReceiptData as { id: string; year: number; total_amount: number; pdf_url: string | null } | null;
+
   // 누적 후원액 (paid 상태만)
   const { data: paidSumData } = await supabase
     .from("payments")
@@ -166,6 +178,41 @@ export default async function DonorHomePage() {
             </div>
           ))}
         </div>
+      )}
+
+      {latestReceipt && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
+              기부금 영수증
+            </h2>
+            <a href="/donor/receipts" className="text-sm" style={{ color: 'var(--accent)' }}>
+              전체 보기 →
+            </a>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-4"
+            style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+            <div>
+              <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                {latestReceipt.year}년 기부금 영수증
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                {formatAmount(latestReceipt.total_amount)}
+              </div>
+            </div>
+            {latestReceipt.pdf_url && (
+              <a
+                href={`/api/donor/receipts/${latestReceipt.id}/download`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+              >
+                PDF 다운로드
+              </a>
+            )}
+          </div>
+        </section>
       )}
 
       <DonorProfileSection

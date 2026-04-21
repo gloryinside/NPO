@@ -98,8 +98,8 @@ export default function DonorPromisesPage() {
     fetchPromises();
   }, [fetchPromises]);
 
-  async function handleAction(id: string, action: "suspend" | "cancel") {
-    const label = action === "cancel" ? "해지" : "일시중지";
+  async function handleAction(id: string, action: "suspend" | "cancel" | "resume") {
+    const label = action === "cancel" ? "해지" : action === "resume" ? "재개" : "일시중지";
     if (!confirm(`약정을 ${label}하시겠습니까?`)) return;
     setActioning(id);
     try {
@@ -316,6 +316,16 @@ export default function DonorPromisesPage() {
                             일시중지
                           </button>
                         </>
+                      )}
+                      {isSuspended && (
+                        <button
+                          type="button"
+                          disabled={actioning === p.id}
+                          onClick={() => handleAction(p.id, "resume")}
+                          className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-opacity hover:opacity-80 disabled:opacity-50"
+                        >
+                          재개
+                        </button>
                       )}
                       <button
                         type="button"

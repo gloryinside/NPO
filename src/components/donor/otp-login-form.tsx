@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Phase = 'phone' | 'code';
@@ -12,6 +12,27 @@ export function OtpLoginForm() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  function startCooldown() {
+    setResendCooldown(60);
+    timerRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   async function handleSendOtp() {
     setError(null);
@@ -27,7 +48,9 @@ export function OtpLoginForm() {
         setError(data.error ?? '발송 실패');
         return;
       }
+      setCode('');
       setPhase('code');
+      startCooldown();
     } catch {
       setError('오류가 발생했습니다.');
     } finally {
@@ -62,6 +85,14 @@ export function OtpLoginForm() {
     }
   }
 
+  function handleBack() {
+    setPhase('phone');
+    setCode('');
+    setError(null);
+    if (timerRef.current) clearInterval(timerRef.current);
+    setResendCooldown(0);
+  }
+
   return (
     <div className="space-y-3">
       {phase === 'phone' ? (
@@ -75,6 +106,7 @@ export function OtpLoginForm() {
             style={{ background: 'var(--surface-2)', borderColor: 'var(--border)', color: 'var(--text)' }}
           />
           <button
+            type="button"
             onClick={handleSendOtp}
             disabled={loading || phone.replace(/-/g, '').length < 10}
             className="w-full rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
@@ -86,7 +118,7 @@ export function OtpLoginForm() {
       ) : (
         <>
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-            {phone}으로 발송된 인증번호를 입력하세요.
+            <span className="font-medium" style={{ color: 'var(--text)' }}>{phone}</span>으로 발송된 인증번호를 입력하세요.
           </p>
           <input
             type="text"
@@ -95,10 +127,12 @@ export function OtpLoginForm() {
             placeholder="인증번호 6자리"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            autoFocus
             className="w-full rounded-lg border px-3 py-2 text-sm text-center tracking-widest outline-none"
             style={{ background: 'var(--surface-2)', borderColor: 'var(--border)', color: 'var(--text)' }}
           />
           <button
+            type="button"
             onClick={handleVerify}
             disabled={loading || code.length !== 6}
             className="w-full rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
@@ -106,13 +140,25 @@ export function OtpLoginForm() {
           >
             {loading ? '확인 중…' : '로그인'}
           </button>
-          <button
-            onClick={() => { setPhase('phone'); setCode(''); setError(null); }}
-            className="w-full text-sm"
-            style={{ color: 'var(--muted-foreground)' }}
-          >
-            번호 다시 입력
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="text-sm"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              번호 다시 입력
+            </button>
+            <button
+              type="button"
+              onClick={handleSendOtp}
+              disabled={loading || resendCooldown > 0}
+              className="text-sm disabled:opacity-40"
+              style={{ color: resendCooldown > 0 ? 'var(--muted-foreground)' : 'var(--accent)' }}
+            >
+              {resendCooldown > 0 ? `재발송 (${resendCooldown}초)` : '재발송'}
+            </button>
+          </div>
         </>
       )}
       {error && <p className="text-sm" style={{ color: 'var(--negative)' }}>{error}</p>}

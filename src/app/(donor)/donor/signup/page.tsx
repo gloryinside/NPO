@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { getDonorSession } from "@/lib/auth";
 import { DonorSignupForm } from "@/components/donor/signup-form";
 
@@ -8,5 +9,9 @@ export default async function DonorSignupPage() {
     redirect("/donor");
   }
 
-  return <DonorSignupForm />;
+  return (
+    <Suspense fallback={null}>
+      <DonorSignupForm />
+    </Suspense>
+  );
 }

@@ -3,12 +3,22 @@ import { z } from 'zod';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getTenant } from '@/lib/tenant/context';
 import { sendSms } from '@/lib/sms/nhn-client';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 const BodySchema = z.object({
   phone: z.string().regex(/^01[016789]\d{7,8}$/, '올바른 휴대폰 번호를 입력하세요.'),
 });
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req.headers);
+  const ipLimit = rateLimit(`otp:send:ip:${ip}`, 10, 60_000);
+  if (!ipLimit.allowed) {
+    return NextResponse.json(
+      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(ipLimit.retryAfterMs / 1000)) } },
+    );
+  }
+
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });
 
