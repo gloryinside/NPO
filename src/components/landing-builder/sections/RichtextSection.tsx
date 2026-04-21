@@ -1,14 +1,18 @@
+import DOMPurify from 'isomorphic-dompurify'
 import type { RichtextSectionData } from '@/types/landing'
 
 interface Props {
   data: RichtextSectionData
 }
 
-// content는 관리자(신뢰된 사용자)만 편집 가능한 HTML입니다.
-// 외부 사용자 입력이 절대 이 필드에 도달하지 않도록 API에서 관리자 인증을 강제합니다.
-/* eslint-disable-next-line */
+// Defense in depth: 관리자만 편집 가능하지만 계정 탈취·다중 관리자 시나리오 대비
+// DOMPurify로 sanitize한 HTML만 렌더한다. script·on* 핸들러·javascript: URL 제거.
 export function RichtextSection({ data }: Props) {
   const { title, content } = data
+  const safeHtml = DOMPurify.sanitize(content, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['style', 'form', 'input', 'button'],
+  })
 
   return (
     <section className="border-b border-[var(--border)]">
@@ -18,8 +22,8 @@ export function RichtextSection({ data }: Props) {
         )}
         <div
           className="prose prose-neutral max-w-none dark:prose-invert"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: admin-only content
-          dangerouslySetInnerHTML={{ __html: content }}
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify above
+          dangerouslySetInnerHTML={{ __html: safeHtml }}
         />
       </div>
     </section>

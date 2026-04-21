@@ -21,6 +21,7 @@ import type {
   CtaSectionData,
   RichtextSectionData,
 } from '@/types/landing'
+import { ImageUploadField } from './ImageUploadField'
 
 interface Props {
   section: LandingSection
@@ -127,8 +128,12 @@ function HeroForm({ data, onChange }: { data: HeroSectionData; onChange: (d: Her
         <option value="image">이미지</option>
       </select>
     </Field>
-    <Field label={data.bgType === 'color' ? '배경 색상 (hex)' : '배경 이미지 URL'}>
-      <input className={inputCls} value={data.bgValue} onChange={e => p({ bgValue: e.target.value })} placeholder={data.bgType === 'color' ? '#1a3a5c' : 'https://...'} />
+    <Field label={data.bgType === 'color' ? '배경 색상 (hex)' : '배경 이미지'}>
+      {data.bgType === 'color' ? (
+        <input className={inputCls} value={data.bgValue} onChange={e => p({ bgValue: e.target.value })} placeholder="#1a3a5c" />
+      ) : (
+        <ImageUploadField value={data.bgValue} onChange={url => p({ bgValue: url })} placeholder="https://... 또는 업로드" />
+      )}
     </Field>
     <Field label="헤드라인">
       <input className={inputCls} value={data.headline} onChange={e => p({ headline: e.target.value })} />
@@ -212,7 +217,7 @@ function ImpactForm({ data, onChange }: { data: ImpactSectionData; onChange: (d:
         </div>
         <Field label="헤드라인"><input className={inputCls} value={block.headline} onChange={e => updateBlock(i, { headline: e.target.value })} /></Field>
         <Field label="본문"><textarea className={textareaCls} value={block.body} onChange={e => updateBlock(i, { body: e.target.value })} /></Field>
-        <Field label="이미지 URL"><input className={inputCls} value={block.imageUrl ?? ''} onChange={e => updateBlock(i, { imageUrl: e.target.value })} placeholder="https://..." /></Field>
+        <Field label="이미지"><ImageUploadField value={block.imageUrl ?? ''} onChange={url => updateBlock(i, { imageUrl: url })} /></Field>
         <Field label="이미지 위치">
           <select title="이미지 위치 선택" className={inputCls} value={block.imagePosition ?? 'left'} onChange={e => updateBlock(i, { imagePosition: e.target.value as 'left' | 'right' | 'none' })}>
             <option value="left">왼쪽</option>
@@ -292,7 +297,7 @@ function TeamForm({ data, onChange }: { data: TeamSectionData; onChange: (d: Tea
         <Field label="이름"><input className={inputCls} value={member.name} onChange={e => updateMember(i, { name: e.target.value })} /></Field>
         <Field label="직책"><input className={inputCls} value={member.role} onChange={e => updateMember(i, { role: e.target.value })} /></Field>
         <Field label="소개"><textarea className={textareaCls} value={member.bio ?? ''} onChange={e => updateMember(i, { bio: e.target.value })} /></Field>
-        <Field label="사진 URL"><input className={inputCls} value={member.photoUrl ?? ''} onChange={e => updateMember(i, { photoUrl: e.target.value })} placeholder="https://..." /></Field>
+        <Field label="사진"><ImageUploadField value={member.photoUrl ?? ''} onChange={url => updateMember(i, { photoUrl: url })} /></Field>
       </div>
     ))}
     <button onClick={addMember} className="w-full rounded-lg border-2 border-dashed border-border py-2 text-xs text-muted-foreground hover:border-blue-400 transition-colors">

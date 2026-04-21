@@ -195,13 +195,7 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
     const newIdx = sections.findIndex(s => s.id === over.id)
     const reordered = arrayMove(sections, oldIdx, newIdx).map((s, i) => ({ ...s, sortOrder: i }))
     setSections(reordered)
-    // reorder API 직접 호출 (즉시 반영)
-    fetch('/api/admin/org/landing/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: reordered.map(s => s.id) }),
-    }).catch(() => toast.error('순서 저장 실패'))
-    setSaveStatus('saved')
+    scheduleSave(reordered)
   }
 
   // ── 게시 ─────────────────────────────────────────────────────────────────
