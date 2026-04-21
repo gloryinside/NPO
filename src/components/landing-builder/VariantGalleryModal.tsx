@@ -94,8 +94,21 @@ export function VariantGalleryModal({ type, currentVariantId, onSelect, onClose 
                 }}>
                 <div className="aspect-[3/2] bg-[var(--bg)] flex items-center justify-center overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={v.preview} alt={v.label} className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  <img
+                    src={v.preview.replace(/\.svg$/, '.png')}
+                    alt={v.label}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      // PNG 없으면 SVG로 폴백, SVG도 없으면 숨김 (G-73)
+                      const img = e.target as HTMLImageElement
+                      if (img.src.endsWith('.png')) {
+                        img.src = v.preview
+                      } else {
+                        img.style.display = 'none'
+                      }
+                    }}
+                  />
                 </div>
                 <div className="p-3">
                   <div className="flex items-center gap-2 mb-1">

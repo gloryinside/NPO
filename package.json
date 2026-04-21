@@ -11,7 +11,8 @@
     "e2e:ui": "playwright test --ui",
     "download-fonts": "bash scripts/download-fonts.sh",
     "postinstall": "bash scripts/download-fonts.sh",
-    "create-admin": "node scripts/create-admin.mjs"
+    "create-admin": "node scripts/create-admin.mjs",
+    "capture:variants": "node scripts/capture-variant-thumbnails.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
