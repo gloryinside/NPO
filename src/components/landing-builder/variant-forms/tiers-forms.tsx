@@ -1,5 +1,5 @@
 'use client'
-import type { TiersRecommendedData, TiersPricingTableData } from '@/lib/landing-variants/tiers-schemas'
+import type { TiersRecommendedData, TiersPricingTableData, TiersBaseData } from '@/lib/landing-variants/tiers-schemas'
 
 const inputCls = 'w-full rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]'
 const textareaCls = `${inputCls} min-h-[60px] resize-y`
@@ -17,6 +17,44 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 type RecTierData = TiersRecommendedData | TiersPricingTableData
+
+/**
+ * tiers-comparison 전용 — benefits 편집 가능 (체크표가 benefits 배열에 의존).
+ */
+export function TiersComparisonForm({ data, onChange }: { data: TiersBaseData; onChange: (d: TiersBaseData) => void }) {
+  function updateTier(i: number, partial: Partial<TiersBaseData['tiers'][0]>) {
+    onChange({ ...data, tiers: data.tiers.map((t, idx) => idx === i ? { ...t, ...partial } : t) })
+  }
+  function addTier() { onChange({ ...data, tiers: [...data.tiers, { amount: 50000, icon: '⭐', label: '별 후원자', description: '' }] }) }
+  function removeTier(i: number) { if (data.tiers.length > 1) onChange({ ...data, tiers: data.tiers.filter((_, idx) => idx !== i) }) }
+
+  return <>
+    <Field label="섹션 제목"><input className={inputCls} value={data.title ?? ''} onChange={(e) => onChange({ ...data, title: e.target.value })} /></Field>
+    <Field label="서브 타이틀 (선택)"><input className={inputCls} value={data.subtitle ?? ''} onChange={(e) => onChange({ ...data, subtitle: e.target.value })} /></Field>
+    <p className="text-xs text-[var(--muted-foreground)] bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-md">
+      💡 비교표는 각 등급의 <strong>혜택 목록</strong>을 기반으로 체크표를 자동 생성합니다. 모든 혜택이 합쳐져 행으로 표시되고, 각 등급은 해당 혜택을 가졌는지 표시됩니다.
+    </p>
+    {data.tiers.map((tier, i) => (
+      <div key={i} className={repeatGroupCls}>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-[var(--muted-foreground)]">등급 {i + 1}</span>
+          {data.tiers.length > 1 && <button type="button" onClick={() => removeTier(i)} className={removeBtnCls}>삭제</button>}
+        </div>
+        <Field label="아이콘"><input className={inputCls} value={tier.icon ?? ''} onChange={(e) => updateTier(i, { icon: e.target.value })} /></Field>
+        <Field label="금액 (원)"><input type="number" className={inputCls} value={tier.amount} onChange={(e) => updateTier(i, { amount: Number(e.target.value) })} /></Field>
+        <Field label="등급명"><input className={inputCls} value={tier.label} onChange={(e) => updateTier(i, { label: e.target.value })} /></Field>
+        <Field label="설명"><textarea className={textareaCls} value={tier.description} onChange={(e) => updateTier(i, { description: e.target.value })} /></Field>
+        <Field label="혜택 (줄바꿈으로 구분)">
+          <textarea className={textareaCls}
+            value={(tier.benefits ?? []).join('\n')}
+            onChange={(e) => updateTier(i, { benefits: e.target.value.split('\n').filter((s) => s.trim()) })}
+            placeholder="월간 리포트&#10;연말 감사장&#10;현장 방문" />
+        </Field>
+      </div>
+    ))}
+    <button type="button" onClick={addTier} className={addBtnCls}>+ 등급 추가</button>
+  </>
+}
 
 export function TiersRecommendedForm({
   data, onChange, showBenefits = false,

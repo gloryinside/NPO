@@ -63,9 +63,10 @@ import { TimelineForm } from './variant-forms/timeline-forms'
 import type { GalleryBaseData } from '@/lib/landing-variants/gallery-schemas'
 import { GalleryForm } from './variant-forms/gallery-forms'
 import type { TiersRecommendedData, TiersPricingTableData } from '@/lib/landing-variants/tiers-schemas'
-import { TiersRecommendedForm } from './variant-forms/tiers-forms'
+import { TiersRecommendedForm, TiersComparisonForm } from './variant-forms/tiers-forms'
 import type { RichtextQuoteData } from '@/lib/landing-variants/richtext-schemas'
 import { RichtextQuoteForm } from './variant-forms/richtext-forms'
+import { TeamOrgChartForm } from './variant-forms/team-forms'
 
 interface Props {
   section: LandingSection
@@ -186,7 +187,7 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
             <ImpactForm data={data as ImpactSectionData} onChange={d => setData(d)} />
           )}
           {section.type === 'campaigns' && (
-            <CampaignsForm data={data as CampaignsSectionData} onChange={patch} />
+            <CampaignsForm data={data as CampaignsSectionData} onChange={patch} variant={section.variant} />
           )}
           {/* Phase D: donation-tiers */}
           {section.type === 'donation-tiers' && section.variant === 'tiers-recommended' && (
@@ -195,10 +196,17 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
           {section.type === 'donation-tiers' && section.variant === 'tiers-pricing-table' && (
             <TiersRecommendedForm data={data as TiersPricingTableData} onChange={d => setData(d as LandingSection['data'])} showBenefits />
           )}
-          {section.type === 'donation-tiers' && section.variant !== 'tiers-recommended' && section.variant !== 'tiers-pricing-table' && (
+          {section.type === 'donation-tiers' && section.variant === 'tiers-comparison' && (
+            <TiersComparisonForm data={data as DonationTiersSectionData} onChange={d => setData(d)} />
+          )}
+          {section.type === 'donation-tiers' && section.variant !== 'tiers-recommended' && section.variant !== 'tiers-pricing-table' && section.variant !== 'tiers-comparison' && (
             <DonationTiersForm data={data as DonationTiersSectionData} onChange={d => setData(d)} />
           )}
-          {section.type === 'team' && (
+          {/* Phase D: team */}
+          {section.type === 'team' && section.variant === 'team-org-chart' && (
+            <TeamOrgChartForm data={data as TeamSectionData} onChange={d => setData(d)} />
+          )}
+          {section.type === 'team' && section.variant !== 'team-org-chart' && (
             <TeamForm data={data as TeamSectionData} onChange={d => setData(d)} />
           )}
           {section.type === 'cta' && section.variant === 'cta-banner' && (
@@ -438,13 +446,30 @@ function ImpactForm({ data, onChange }: { data: ImpactSectionData; onChange: (d:
   </>
 }
 
-function CampaignsForm({ data, onChange }: { data: CampaignsSectionData; onChange: (d: Partial<CampaignsSectionData>) => void }) {
+/**
+ * Campaigns form — variant별로 권장 maxCount 범위가 다르다:
+ *   grid: 2~6, featured: 3~5, carousel: 4~12, list: 2~6, masonry: 4~12
+ */
+const CAMPAIGNS_MAX_OPTIONS: Record<string, number[]> = {
+  'campaigns-grid': [2, 3, 4, 6],
+  'campaigns-featured': [3, 4, 5],
+  'campaigns-carousel': [4, 6, 8, 12],
+  'campaigns-list': [2, 3, 4, 6],
+  'campaigns-masonry': [4, 6, 8, 12],
+}
+
+function CampaignsForm({ data, onChange, variant = 'campaigns-grid' }: {
+  data: CampaignsSectionData
+  onChange: (d: Partial<CampaignsSectionData>) => void
+  variant?: string
+}) {
+  const options = CAMPAIGNS_MAX_OPTIONS[variant] ?? [2, 3, 4, 6]
   return <>
     <Field label="섹션 제목"><input className={inputCls} value={data.title ?? ''} onChange={e => onChange({ title: e.target.value })} /></Field>
     <Field label="서브 타이틀"><input className={inputCls} value={data.subtitle ?? ''} onChange={e => onChange({ subtitle: e.target.value })} /></Field>
     <Field label="최대 표시 개수">
-      <select title="최대 표시 개수 선택" className={inputCls} value={data.maxCount ?? 3} onChange={e => onChange({ maxCount: Number(e.target.value) })}>
-        {[2, 3, 4, 6].map(n => <option key={n} value={n}>{n}개</option>)}
+      <select title="최대 표시 개수 선택" className={inputCls} value={data.maxCount ?? options[0]} onChange={e => onChange({ maxCount: Number(e.target.value) })}>
+        {options.map(n => <option key={n} value={n}>{n}개</option>)}
       </select>
     </Field>
     <label className="flex items-center gap-2 text-sm cursor-pointer text-[var(--text)]">
