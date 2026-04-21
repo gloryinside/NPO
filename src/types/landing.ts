@@ -21,6 +21,7 @@ export type LandingSectionType =
   | 'faq'             // Phase B: 자주 묻는 질문
   | 'timeline'        // Phase C: 기관 연혁/활동
   | 'gallery'         // Phase C: 활동 사진 갤러리
+  | 'financials'      // Phase 2: 재무 투명성
 
 // ─── 섹션별 데이터 타입 ───────────────────────────────────────────────────────
 
@@ -126,6 +127,17 @@ export interface GallerySectionData {
   images: Array<{ url: string; alt: string; caption?: string }>
 }
 
+export interface FinancialsSectionData {
+  title?: string
+  year?: number
+  totalRaised?: number
+  totalUsed?: number
+  balance?: number
+  breakdown?: Array<{ label: string; amount: number; color?: string }>
+  years?: Array<{ year: number; raised: number; used: number }>
+  items?: Array<{ category: string; amount: number; note?: string; documentUrl?: string }>
+}
+
 export type LandingSectionData =
   | HeroSectionData
   | StatsSectionData
@@ -140,6 +152,7 @@ export type LandingSectionData =
   | FaqSectionData
   | TimelineSectionData
   | GallerySectionData
+  | FinancialsSectionData
 
 // ─── 섹션 레코드 ──────────────────────────────────────────────────────────────
 
@@ -175,6 +188,7 @@ export const SHARED_FIELDS: Record<LandingSectionType, readonly string[]> = {
   faq:              ['title', 'items'],
   timeline:         ['title', 'events'],
   gallery:          ['title', 'images'],
+  financials:       ['title', 'year'],
 }
 
 // ─── 섹션 카탈로그 (에디터 팔레트용) ──────────────────────────────────────────
@@ -196,6 +210,7 @@ export const SECTION_CATALOG: SectionCatalogItem[] = [
   { type: 'faq',            emoji: '❓', label: '자주 묻는 질문',  desc: '후원 관련 궁금증을 미리 해소' },
   { type: 'timeline',       emoji: '📅', label: '연혁/타임라인',   desc: '기관의 발자취와 활동 이정표' },
   { type: 'gallery',        emoji: '🖼️', label: '갤러리',          desc: '활동 사진을 다양한 레이아웃으로' },
+  { type: 'financials',     emoji: '💹', label: '재무 투명성',     desc: '모금액/사용액/사업비 비율 등 투명성 리포트' },
   { type: 'donation-tiers', emoji: '🏆', label: '후원 등급',       desc: '금액별 후원 등급과 혜택 안내' },
   { type: 'team',           emoji: '👥', label: '팀 소개',         desc: '이사진, 운영진 등 팀원 카드' },
   { type: 'cta',            emoji: '💛', label: 'CTA 배너',        desc: '후원 참여 유도 강조 배너' },

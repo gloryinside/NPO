@@ -14,6 +14,7 @@ const DEFAULT_VARIANT: Record<LandingSectionType, string> = {
   faq: 'faq-accordion',
   timeline: 'timeline-vertical',
   gallery: 'gallery-grid',
+  financials: 'financials-summary',
 }
 
 /**

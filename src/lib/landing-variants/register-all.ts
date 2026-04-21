@@ -26,3 +26,6 @@ import './campaigns'
 import './tiers'
 import './team'
 import './richtext'
+
+// Phase 2
+import './financials'

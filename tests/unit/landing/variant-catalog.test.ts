@@ -5,22 +5,23 @@ import type { LandingSectionType } from '@/types/landing'
 
 const ALL_TYPES: LandingSectionType[] = [
   'hero', 'stats', 'impact', 'campaigns', 'donation-tiers', 'team', 'cta', 'richtext',
-  'testimonials', 'logos', 'faq', 'timeline', 'gallery',
+  'testimonials', 'logos', 'faq', 'timeline', 'gallery', 'financials',
 ]
 
 const EXPECTED_COUNTS: Record<LandingSectionType, number> = {
   hero: 6, stats: 5, impact: 5, campaigns: 5, 'donation-tiers': 5, team: 5, cta: 5,
   richtext: 3, testimonials: 5, logos: 4, faq: 4, timeline: 4, gallery: 5,
+  financials: 4,
 }
 
 describe('VARIANT_CATALOG (Phase A~D 전체)', () => {
-  it('13개 섹션 타입 모두 variant 등록', () => {
+  it('14개 섹션 타입 모두 variant 등록', () => {
     for (const t of ALL_TYPES) {
       expect(getVariants(t).length).toBeGreaterThan(0)
     }
   })
 
-  it('섹션별 variant 수 일치 (총 61개)', () => {
+  it('섹션별 variant 수 일치 (총 65개)', () => {
     let total = 0
     for (const t of ALL_TYPES) {
       const count = getVariants(t).length

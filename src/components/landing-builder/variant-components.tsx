@@ -87,6 +87,12 @@ import { RichtextPlain } from './sections/richtext/RichtextPlain'
 import { RichtextBoxed } from './sections/richtext/RichtextBoxed'
 import { RichtextQuote } from './sections/richtext/RichtextQuote'
 
+// Phase 2: financials
+import { FinancialsSummary } from './sections/financials/FinancialsSummary'
+import { FinancialsBreakdown } from './sections/financials/FinancialsBreakdown'
+import { FinancialsTimeline } from './sections/financials/FinancialsTimeline'
+import { FinancialsTransparency } from './sections/financials/FinancialsTransparency'
+
 // G-61 안전망: v1 동작을 보존한 legacy 컴포넌트 별칭.
 // 스테이징에서 회귀 발견 시 DB의 section.variant를 'legacy-*'로 변경해 즉시 복원 가능.
 import { ImpactSection } from './sections/ImpactSection'
@@ -174,6 +180,11 @@ export const VARIANT_COMPONENTS: Record<string, ComponentType<any>> = {
   'richtext-plain': RichtextPlain,
   'richtext-boxed': RichtextBoxed,
   'richtext-quote': RichtextQuote,
+  // financials (Phase 2)
+  'financials-summary': FinancialsSummary,
+  'financials-breakdown': FinancialsBreakdown,
+  'financials-timeline': FinancialsTimeline,
+  'financials-transparency': FinancialsTransparency,
   // G-61 legacy 별칭 — 스테이징 회귀 발견 시 수동 전환 통로
   'legacy-impact': ImpactSection,
   'legacy-tiers': DonationTiersSection,

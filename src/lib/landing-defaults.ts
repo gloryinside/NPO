@@ -127,6 +127,14 @@ export function getDefaultSectionData(type: LandingSectionType): LandingSection[
           { url: 'https://picsum.photos/seed/g-d/800/600', alt: '활동 현장 4' },
         ],
       }
+    case 'financials':
+      return {
+        title: '재무 투명성',
+        year: new Date().getFullYear() - 1,
+        totalRaised: 320_000_000,
+        totalUsed: 280_000_000,
+        balance: 40_000_000,
+      }
   }
 }
 
@@ -144,6 +152,7 @@ const DEFAULT_VARIANT_SUFFIX: Record<LandingSectionType, string> = {
   faq: 'accordion',
   timeline: 'vertical',
   gallery: 'grid',
+  financials: 'summary',
 }
 
 export function createSection(type: LandingSectionType, sortOrder: number): LandingSection {

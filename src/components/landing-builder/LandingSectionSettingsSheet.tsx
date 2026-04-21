@@ -67,6 +67,14 @@ import { TiersRecommendedForm, TiersComparisonForm } from './variant-forms/tiers
 import type { RichtextQuoteData } from '@/lib/landing-variants/richtext-schemas'
 import { RichtextQuoteForm } from './variant-forms/richtext-forms'
 import { TeamOrgChartForm } from './variant-forms/team-forms'
+import type {
+  FinancialsSummaryData, FinancialsBreakdownData,
+  FinancialsTimelineData, FinancialsTransparencyData,
+} from '@/lib/landing-variants/financials-schemas'
+import {
+  FinancialsSummaryForm, FinancialsBreakdownForm,
+  FinancialsTimelineForm, FinancialsTransparencyForm,
+} from './variant-forms/financials-forms'
 
 interface Props {
   section: LandingSection
@@ -269,6 +277,20 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
           {/* Phase C: gallery (모든 variant 공통 GalleryForm) */}
           {section.type === 'gallery' && (
             <GalleryForm data={data as GalleryBaseData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+
+          {/* Phase 2: financials */}
+          {section.type === 'financials' && section.variant === 'financials-summary' && (
+            <FinancialsSummaryForm data={data as FinancialsSummaryData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'financials' && section.variant === 'financials-breakdown' && (
+            <FinancialsBreakdownForm data={data as FinancialsBreakdownData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'financials' && section.variant === 'financials-timeline' && (
+            <FinancialsTimelineForm data={data as FinancialsTimelineData} onChange={d => setData(d as LandingSection['data'])} />
+          )}
+          {section.type === 'financials' && section.variant === 'financials-transparency' && (
+            <FinancialsTransparencyForm data={data as FinancialsTransparencyData} onChange={d => setData(d as LandingSection['data'])} />
           )}
 
           {/* Phase D: richtext-quote 전용 폼 */}

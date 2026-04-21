@@ -61,6 +61,8 @@ const VARIANT_IDS = [
   'team-grid', 'team-cards', 'team-featured', 'team-carousel', 'team-org-chart',
   // richtext
   'richtext-plain', 'richtext-boxed', 'richtext-quote',
+  // financials (Phase 2)
+  'financials-summary', 'financials-breakdown', 'financials-timeline', 'financials-transparency',
 ]
 
 async function main() {
