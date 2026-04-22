@@ -5,6 +5,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/common/page-header";
+import { StatCard } from "@/components/common/stat-card";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireTenant } from "@/lib/tenant/context";
 import { formatKRW, formatDateKR } from "@/lib/format";
@@ -160,40 +162,20 @@ export default async function AdminDashboardPage() {
     failReasonMap.set(reason, (failReasonMap.get(reason) ?? 0) + 1);
   }
 
-  const kpiCards = [
-    { title: "총 후원자 수", value: `${totalMembers.toLocaleString("ko-KR")}명` },
-    { title: "이번 달 납입금액", value: formatKRW(monthAmount) },
-    { title: "활성 캠���인", value: `${activeCampaigns}건` },
-    { title: "미납/실패", value: `${unpaidCount}건`, negative: unpaidCount > 0 },
-  ];
-
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--text)]">대시보드</h1>
-      <p className="text-sm text-[var(--muted-foreground)] mt-1 mb-8">
-        안녕하세요. NPO 후원관리 대시보드입니다.
-      </p>
-
-      {/* KPI 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {kpiCards.map((card) => (
-          <Card key={card.title} className="bg-[var(--surface)] border-[var(--border)]">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-sm text-[var(--muted-foreground)]">
-                {card.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p
-                className="text-2xl font-bold"
-                style={{ color: card.negative ? "var(--negative)" : "var(--text)" }}
-              >
-                {card.value}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <PageHeader
+        title="대시보드"
+        description="안녕하세요. NPO 후원관리 대시보드입니다."
+        stats={
+          <>
+            <StatCard label="총 후원자 수" value={`${totalMembers.toLocaleString('ko-KR')}명`} />
+            <StatCard label="이번 달 납입금액" value={formatKRW(monthAmount)} />
+            <StatCard label="활성 캠페인" value={`${activeCampaigns}건`} />
+            <StatCard label="미납/실패" value={`${unpaidCount}건`} tone={unpaidCount > 0 ? 'negative' : 'default'} />
+          </>
+        }
+      />
 
       {/* 월별 추이 차트 + 할 일 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
