@@ -4,10 +4,13 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
-type RouteContext = { params: Promise<{ memberId: string }> };
+// Next.js 16: 같은 부모 아래 서로 다른 slug 이름 금지.
+// 세그먼트는 `[id]`로 통일, 값은 member.id.
+type RouteContext = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/admin/receipts/[memberId]/rrn?receiptId=<uuid>
+ * GET /api/admin/receipts/[id]/rrn?receiptId=<uuid>
+ *  ([id] = member.id)
  *
  * 관리자 전용: 특정 영수증의 암호화된 주민등록번호(RRN)를 복호화해 반환한다.
  * - RECEIPTS_ENCRYPTION_KEY 환경변수 필요
@@ -17,7 +20,7 @@ type RouteContext = { params: Promise<{ memberId: string }> };
 export async function GET(req: NextRequest, { params }: RouteContext) {
   const admin = await requireAdminUser();
 
-  const { memberId } = await params;
+  const { id: memberId } = await params;
   const { searchParams } = new URL(req.url);
   const receiptId = searchParams.get("receiptId");
 

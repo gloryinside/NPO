@@ -8,7 +8,10 @@ import { notifyReceiptIssued } from '@/lib/notifications/send';
 
 const RECEIPT_BUCKET = "receipts";
 
-type RouteContext = { params: Promise<{ memberId: string }> };
+// Next.js 16: 같은 부모 아래 서로 다른 slug 이름 금지.
+// 경로 세그먼트는 `[id]`로 통일하되, 값은 member.id 이므로 내부에선
+// `memberId`로 읽어 의미를 고정한다.
+type RouteContext = { params: Promise<{ id: string }> };
 
 type PaymentJoin = {
   amount: number;
@@ -26,7 +29,8 @@ type OrgRow = {
 };
 
 /**
- * GET /api/admin/receipts/[memberId]?year=2026
+ * GET /api/admin/receipts/[id]?year=2026
+ *  ([id] = member.id)
  *
  * 해당 연도에 member 가 납입 완료(paid)한 결제들을 합산해 기부금 영수증 PDF 를 생성해
  * 다운로드로 반환한다. Supabase Storage 업로드는 Phase 2 로 미뤘으며, 본 엔드포인트는
@@ -35,7 +39,7 @@ type OrgRow = {
 export async function GET(req: NextRequest, { params }: RouteContext) {
   const adminUser = await requireAdminUser();
 
-  const { memberId } = await params;
+  const { id: memberId } = await params;
 
   let tenant;
   try {
