@@ -137,7 +137,19 @@ export default async function DonorHomePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <a
+          href="/donor/impact"
+          className="rounded-lg border px-4 py-3 text-sm hover:opacity-90"
+          style={{
+            borderColor: "var(--accent)",
+            background: "linear-gradient(135deg, var(--accent-soft), var(--surface-2))",
+            color: "var(--accent)",
+            textDecoration: "none",
+          }}
+        >
+          ✨ 나의 임팩트 →
+        </a>
         <a
           href="/donor/promises"
           className="rounded-lg border px-4 py-3 text-sm hover:opacity-90"
