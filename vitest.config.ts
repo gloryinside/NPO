@@ -23,6 +23,7 @@ export default defineConfig({
           globals: true,
           include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
           exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
+          setupFiles: ["tests/unit/a11y-setup.ts"],
         },
       },
       {

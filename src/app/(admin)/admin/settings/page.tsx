@@ -9,6 +9,7 @@ import { ThemeSettingsForm } from "@/components/admin/theme-settings-form";
 import { ThemeConfigSchema, defaultThemeConfig } from "@/lib/theme/config";
 import { OrgSettingsForm } from "@/components/admin/org-settings-form";
 import { getOrgSettingsCached } from "@/lib/org/settings";
+import { FailedEmailsWidget } from "@/components/admin/failed-emails-widget";
 
 function maskSecret(value: string | null): string | null {
   return value ? maskPlaintext(value) : null;
@@ -149,6 +150,15 @@ export default async function SettingsPage() {
       </section>
 
       <OrgSettingsFormSection tenantId={tenantId} />
+
+      <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">최근 실패한 자동화 이메일</h2>
+        <p className="text-xs text-[var(--muted-foreground)] mb-4">
+          지난 30일 내 SMTP 실패한 자동화 이메일입니다. 캠페인 감사 이메일은 수동 재전송이 가능합니다.
+          7~30일 이전 실패는 <code>retry-failed-emails</code> cron이 일 1회 자동 재시도합니다.
+        </p>
+        <FailedEmailsWidget />
+      </section>
     </div>
   );
 }
