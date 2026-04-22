@@ -51,7 +51,7 @@ const STATUS_LABELS: Record<MemberStatus, string> = {
 function StatusBadge({ status }: { status: MemberStatus }) {
   const styles: Record<MemberStatus, React.CSSProperties> = {
     active: {
-      background: "rgba(34,197,94,0.15)",
+      background: "var(--positive-soft)",
       color: "var(--positive)",
     },
     inactive: {
@@ -59,7 +59,7 @@ function StatusBadge({ status }: { status: MemberStatus }) {
       color: "var(--muted-foreground)",
     },
     deceased: {
-      background: "rgba(239,68,68,0.15)",
+      background: "var(--negative-soft)",
       color: "var(--negative)",
     },
   };

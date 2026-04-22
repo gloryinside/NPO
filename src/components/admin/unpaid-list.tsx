@@ -24,11 +24,11 @@ function formatDate(v: string | null) {
 const STATUS_BADGE: Record<string, { label: string; style: React.CSSProperties }> = {
   unpaid: {
     label: "미납",
-    style: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
+    style: { background: "var(--warning-soft)", color: "var(--warning)" },
   },
   failed: {
     label: "실패",
-    style: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
+    style: { background: "var(--negative-soft)", color: "var(--negative)" },
   },
 };
 

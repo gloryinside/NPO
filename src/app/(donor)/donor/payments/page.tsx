@@ -25,7 +25,7 @@ const PAY_STATUS_LABEL: Record<PayStatus, string> = {
 
 function PayStatusBadge({ status }: { status: PayStatus }) {
   const styles: Record<PayStatus, React.CSSProperties> = {
-    paid: { background: "rgba(34,197,94,0.15)", color: "var(--positive)" },
+    paid: { background: "var(--positive-soft)", color: "var(--positive)" },
     pending: {
       background: "rgba(136,136,170,0.15)",
       color: "var(--muted-foreground)",
@@ -34,12 +34,12 @@ function PayStatusBadge({ status }: { status: PayStatus }) {
       background: "rgba(136,136,170,0.15)",
       color: "var(--muted-foreground)",
     },
-    failed: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
+    failed: { background: "var(--negative-soft)", color: "var(--negative)" },
     cancelled: {
-      background: "rgba(239,68,68,0.15)",
+      background: "var(--negative-soft)",
       color: "var(--negative)",
     },
-    refunded: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
+    refunded: { background: "var(--warning-soft)", color: "var(--warning)" },
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">

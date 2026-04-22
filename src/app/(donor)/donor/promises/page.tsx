@@ -2,15 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { AmountChangeDialog } from "@/components/donor/promises/AmountChangeDialog";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 
 type CampaignRef = { id: string; title: string } | null;
@@ -41,11 +33,11 @@ const TYPE_LABEL: Record<PromiseType, string> = {
 };
 
 const STATUS_BADGE_CLS: Record<PromiseStatus, string> = {
-  active: "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]",
-  suspended: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
-  cancelled: "bg-[rgba(239,68,68,0.15)] text-[var(--negative)]",
+  active: "bg-[var(--positive-soft)] text-[var(--positive)]",
+  suspended: "bg-[var(--warning-soft)] text-[var(--warning)]",
+  cancelled: "bg-[var(--negative-soft)] text-[var(--negative)]",
   completed: "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]",
-  pending_billing: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
+  pending_billing: "bg-[var(--warning-soft)] text-[var(--warning)]",
 };
 
 const STATUS_ORDER: PromiseStatus[] = [
@@ -77,8 +69,6 @@ export default function DonorPromisesPage() {
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<AmountDialogState>({ open: false });
-  const [amountInput, setAmountInput] = useState("");
-  const [amountError, setAmountError] = useState<string | null>(null);
 
   const fetchPromises = useCallback(async () => {
     setLoading(true);
@@ -127,30 +117,22 @@ export default function DonorPromisesPage() {
   }
 
   function openAmountDialog(p: DonorPromise) {
-    setAmountInput(p.amount != null ? String(p.amount) : "");
-    setAmountError(null);
     setAmountDialog({ open: true, promise: p });
   }
 
-  async function handleAmountChange() {
+  async function handleAmountSubmit(newAmount: number, reason: string | null) {
     if (!amountDialog.open) return;
     const id = amountDialog.promise.id;
-    const num = Number(amountInput);
-    if (!Number.isFinite(num) || num <= 0) {
-      setAmountError("유효한 금액을 입력하세요.");
-      return;
-    }
     setActioning(id);
-    setAmountError(null);
     try {
       const res = await fetch(`/api/donor/promises/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "changeAmount", amount: num }),
+        body: JSON.stringify({ action: "changeAmount", amount: newAmount, reason }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        setAmountError(data.error ?? "처리 중 오류가 발생했습니다.");
+        const data = await res.json().catch(() => null);
+        alert((data && data.error) ?? "처리 중 오류가 발생했습니다.");
         return;
       }
       setAmountDialog({ open: false });
@@ -168,63 +150,18 @@ export default function DonorPromisesPage() {
     );
   }
 
-  const inputStyle = {
-    background: "var(--surface-2)",
-    borderColor: "var(--border)",
-    color: "var(--text)",
-  };
-
   return (
     <>
-    <Dialog
-      open={amountDialog.open}
-      onOpenChange={(o) => { if (!o) setAmountDialog({ open: false }); }}
-    >
-      <DialogContent
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
-        <DialogHeader>
-          <DialogTitle style={{ color: "var(--text)" }}>후원 금액 변경</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-4 mt-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="new-amount" style={{ color: "var(--text)" }}>
-              새 후원 금액 (원)
-            </Label>
-            <Input
-              id="new-amount"
-              type="number"
-              min={1}
-              value={amountInput}
-              onChange={(e) => setAmountInput(e.target.value)}
-              placeholder="50000"
-              style={inputStyle}
-            />
-          </div>
-          {amountError && (
-            <p className="text-sm" style={{ color: "var(--negative)" }}>
-              {amountError}
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setAmountDialog({ open: false })}
-              style={{ color: "var(--muted-foreground)" }}
-            >
-              취소
-            </Button>
-            <Button
-              disabled={amountDialog.open && actioning === amountDialog.promise.id}
-              onClick={handleAmountChange}
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
-              변경
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    {amountDialog.open && (
+      <AmountChangeDialog
+        open={amountDialog.open}
+        onOpenChange={(o) => { if (!o) setAmountDialog({ open: false }); }}
+        promiseId={amountDialog.promise.id}
+        currentAmount={Number(amountDialog.promise.amount ?? 0)}
+        onSubmit={handleAmountSubmit}
+        submitting={actioning === amountDialog.promise.id}
+      />
+    )}
 
     <div className="space-y-4">
       <div className="flex items-center justify-between">

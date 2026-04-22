@@ -26,15 +26,15 @@ function StatusBadge({ status }: { status: Campaign["status"] }) {
       color: "var(--muted-foreground)",
     },
     active: {
-      background: "rgba(34,197,94,0.15)",
+      background: "var(--positive-soft)",
       color: "var(--positive)",
     },
     closed: {
-      background: "rgba(245,158,11,0.15)",
+      background: "var(--warning-soft)",
       color: "var(--warning)",
     },
     archived: {
-      background: "rgba(239,68,68,0.15)",
+      background: "var(--negative-soft)",
       color: "var(--negative)",
     },
   };

@@ -328,8 +328,8 @@ function TodoItem({
       <Badge
         className={`border-0 font-medium ${
           count > 0
-            ? "bg-[rgba(239,68,68,0.15)] text-[var(--negative)]"
-            : "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]"
+            ? "bg-[var(--negative-soft)] text-[var(--negative)]"
+            : "bg-[var(--positive-soft)] text-[var(--positive)]"
         }`}
       >
         {count}건

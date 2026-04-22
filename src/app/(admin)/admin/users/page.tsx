@@ -190,8 +190,8 @@ export default function UsersPage() {
                     <span
                       className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         u.confirmed
-                          ? "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]"
-                          : "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]"
+                          ? "bg-[var(--positive-soft)] text-[var(--positive)]"
+                          : "bg-[var(--warning-soft)] text-[var(--warning)]"
                       }`}
                     >
                       {u.confirmed ? "활성" : "초대됨"}

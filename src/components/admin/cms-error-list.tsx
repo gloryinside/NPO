@@ -170,8 +170,8 @@ export function CmsErrorList({ payments, total }: Props) {
                       <Badge
                         className="border-0 text-xs font-medium"
                         style={isFailed
-                          ? { background: "rgba(239,68,68,0.15)", color: "var(--negative)" }
-                          : { background: "rgba(245,158,11,0.15)", color: "var(--warning)" }}
+                          ? { background: "var(--negative-soft)", color: "var(--negative)" }
+                          : { background: "var(--warning-soft)", color: "var(--warning)" }}
                       >
                         {isFailed ? "실패" : "미납"}
                       </Badge>

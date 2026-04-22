@@ -15,13 +15,13 @@ interface Props {
 }
 
 const STYLES: Record<AccountState, React.CSSProperties> = {
-  linked: { background: 'rgba(34,197,94,0.15)', color: 'var(--positive)' },
+  linked: { background: 'var(--positive-soft)', color: 'var(--positive)' },
   invited: {
     background: 'color-mix(in srgb, var(--accent) 18%, transparent)',
     color: 'var(--accent)',
   },
   invite_expired: {
-    background: 'rgba(245,158,11,0.15)',
+    background: 'var(--warning-soft)',
     color: 'var(--warning)',
   },
   unlinked: {

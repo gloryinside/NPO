@@ -7,14 +7,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const REFERRAL_STORAGE_KEY = "donor:referralCode";
+
 export function DonorSignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
   useEffect(() => {
     const prefillEmail = searchParams.get("email");
     if (prefillEmail) setEmail(prefillEmail);
+
+    // Phase 5-B: ?ref=코드 → sessionStorage 보관 (리프레시/이메일 왕복 대비)
+    const ref = searchParams.get("ref");
+    if (ref && ref.trim()) {
+      const trimmed = ref.trim();
+      try {
+        sessionStorage.setItem(REFERRAL_STORAGE_KEY, trimmed);
+      } catch {
+        // storage 실패 시 state에만 유지
+      }
+      setReferralCode(trimmed);
+    } else {
+      try {
+        const stored = sessionStorage.getItem(REFERRAL_STORAGE_KEY);
+        if (stored) setReferralCode(stored);
+      } catch {
+        // no-op
+      }
+    }
   }, [searchParams]);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -49,7 +71,14 @@ export function DonorSignupForm() {
       }
 
       // 가입 직후 현재 tenant의 member 행에 supabase_uid 연결
-      const res = await fetch("/api/donor/link", { method: "POST" });
+      // Phase 5-B: referralCode가 있으면 함께 전달
+      const res = await fetch("/api/donor/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          referralCode ? { referralCode } : {}
+        ),
+      });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as
           | { error?: string }
@@ -59,6 +88,13 @@ export function DonorSignupForm() {
             "등록된 후원자가 아닙니다. 기부 내역이 있는 이메일로 가입해주세요."
         );
         return;
+      }
+
+      // 성공 시 저장된 referral 코드 정리
+      try {
+        sessionStorage.removeItem(REFERRAL_STORAGE_KEY);
+      } catch {
+        // no-op
       }
 
       router.push("/donor");
@@ -79,6 +115,15 @@ export function DonorSignupForm() {
         <p className="mb-6 text-center text-sm text-[var(--muted-foreground)]">
           기존 기부 내역의 이메일로 계정을 만들어주세요.
         </p>
+
+        {referralCode && (
+          <div
+            className="mb-4 rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-center text-xs text-[var(--accent)]"
+            data-testid="referral-banner"
+          >
+            초대 코드 적용: <span className="font-mono">{referralCode}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">

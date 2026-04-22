@@ -5,6 +5,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import type { Campaign } from "@/types/campaign";
 import { BlockRenderer } from "@/components/campaign-blocks/BlockRenderer";
 import { PageContentSchema } from "@/lib/campaign-builder/blocks/schema";
+import { CheerWall } from "@/components/cheer/CheerWall";
 
 export const revalidate = 60;
 
@@ -51,6 +52,9 @@ export default async function CampaignPublicPage({
     return (
       <main>
         <BlockRenderer content={parsedContent.data} slug={slug} />
+        <div className="mx-auto max-w-3xl px-4 pb-12">
+          <CheerWall campaignId={campaign.id} />
+        </div>
       </main>
     );
   }
@@ -105,7 +109,7 @@ export default async function CampaignPublicPage({
         <span
           className={`mt-1 inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
             campaign.status === "active"
-              ? "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]"
+              ? "bg-[var(--positive-soft)] text-[var(--positive)]"
               : "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]"
           }`}
         >
@@ -161,6 +165,8 @@ export default async function CampaignPublicPage({
       >
         후원하기
       </Link>
+
+      <CheerWall campaignId={campaign.id} />
     </div>
   );
 }

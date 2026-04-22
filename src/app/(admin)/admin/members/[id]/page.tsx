@@ -109,9 +109,9 @@ function formatDate(value: string | null | undefined) {
 
 function MemberStatusBadge({ status }: { status: MemberStatus }) {
   const styles: Record<MemberStatus, React.CSSProperties> = {
-    active: { background: "rgba(34,197,94,0.15)", color: "var(--positive)" },
+    active: { background: "var(--positive-soft)", color: "var(--positive)" },
     inactive: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
-    deceased: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
+    deceased: { background: "var(--negative-soft)", color: "var(--negative)" },
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">
@@ -122,11 +122,11 @@ function MemberStatusBadge({ status }: { status: MemberStatus }) {
 
 function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
   const styles: Record<PromiseStatus, React.CSSProperties> = {
-    active: { background: "rgba(34,197,94,0.15)", color: "var(--positive)" },
-    suspended: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
-    cancelled: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
+    active: { background: "var(--positive-soft)", color: "var(--positive)" },
+    suspended: { background: "var(--warning-soft)", color: "var(--warning)" },
+    cancelled: { background: "var(--negative-soft)", color: "var(--negative)" },
     completed: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
-    pending_billing: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
+    pending_billing: { background: "var(--warning-soft)", color: "var(--warning)" },
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">
@@ -137,12 +137,12 @@ function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
 
 function PayStatusBadge({ status }: { status: PayStatus }) {
   const styles: Record<PayStatus, React.CSSProperties> = {
-    paid: { background: "rgba(34,197,94,0.15)", color: "var(--positive)" },
+    paid: { background: "var(--positive-soft)", color: "var(--positive)" },
     pending: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
     unpaid: { background: "rgba(136,136,170,0.15)", color: "var(--muted-foreground)" },
-    failed: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
-    cancelled: { background: "rgba(239,68,68,0.15)", color: "var(--negative)" },
-    refunded: { background: "rgba(245,158,11,0.15)", color: "var(--warning)" },
+    failed: { background: "var(--negative-soft)", color: "var(--negative)" },
+    cancelled: { background: "var(--negative-soft)", color: "var(--negative)" },
+    refunded: { background: "var(--warning-soft)", color: "var(--warning)" },
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">

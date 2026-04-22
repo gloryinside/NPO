@@ -44,12 +44,12 @@ const PAY_STATUS_LABEL: Record<PayStatus, string> = {
 };
 
 const PAY_STATUS_CLASS: Record<PayStatus, string> = {
-  paid: "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]",
+  paid: "bg-[var(--positive-soft)] text-[var(--positive)]",
   pending: "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]",
   unpaid: "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]",
-  failed: "bg-[rgba(239,68,68,0.15)] text-[var(--negative)]",
-  cancelled: "bg-[rgba(239,68,68,0.15)] text-[var(--negative)]",
-  refunded: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
+  failed: "bg-[var(--negative-soft)] text-[var(--negative)]",
+  cancelled: "bg-[var(--negative-soft)] text-[var(--negative)]",
+  refunded: "bg-[var(--warning-soft)] text-[var(--warning)]",
 };
 
 const INCOME_STATUS_LABEL: Record<IncomeStatus, string> = {
@@ -62,8 +62,8 @@ const INCOME_STATUS_LABEL: Record<IncomeStatus, string> = {
 const INCOME_STATUS_CLASS: Record<IncomeStatus, string> = {
   pending: "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]",
   processing: "bg-[rgba(59,130,246,0.15)] text-[#3b82f6]",
-  confirmed: "bg-[rgba(34,197,94,0.15)] text-[var(--positive)]",
-  excluded: "bg-[rgba(245,158,11,0.15)] text-[var(--warning)]",
+  confirmed: "bg-[var(--positive-soft)] text-[var(--positive)]",
+  excluded: "bg-[var(--warning-soft)] text-[var(--warning)]",
 };
 
 function PayStatusBadge({ status }: { status: PayStatus }) {
