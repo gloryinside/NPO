@@ -7,6 +7,10 @@ import {
   type AccountState,
 } from "@/lib/members/account-state";
 import type { Member } from "@/types/member";
+import {
+  PageHeader,
+  type PageHeaderTab,
+} from "@/components/common/page-header";
 
 type SearchParams = Promise<{
   q?: string;
@@ -15,6 +19,13 @@ type SearchParams = Promise<{
   promiseType?: string;
   tab?: string;
 }>;
+
+const MEMBER_TABS: PageHeaderTab[] = [
+  { key: "all", label: "전체", href: "/admin/members?tab=all" },
+  { key: "linked", label: "회원(로그인)", href: "/admin/members?tab=linked" },
+  { key: "unlinked", label: "비회원", href: "/admin/members?tab=unlinked" },
+  { key: "source", label: "유입경로", href: "/admin/members?tab=source" },
+];
 
 export default async function MembersPage({
   searchParams,
@@ -33,30 +44,6 @@ export default async function MembersPage({
 
   // 하위호환: 기존 링크가 tab=list 로 들어오면 all 로 매핑
   const tab = rawTab === "list" ? "all" : rawTab;
-
-  // 탭 링크 (공통) — Phase 7-D-1: 회원/비회원 탭 추가
-  const tabLinks = (
-    <div className="mb-6 flex gap-1 border-b border-[var(--border)]">
-      {[
-        { key: "all", label: "전체" },
-        { key: "linked", label: "회원(로그인)" },
-        { key: "unlinked", label: "비회원" },
-        { key: "source", label: "유입경로" },
-      ].map(({ key, label }) => (
-        <a
-          key={key}
-          href={`/admin/members?tab=${key}`}
-          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-            tab === key
-              ? "border-[var(--accent)] text-[var(--accent)]"
-              : "border-transparent text-[var(--muted-foreground)]"
-          }`}
-        >
-          {label}
-        </a>
-      ))}
-    </div>
-  );
 
   // ── 유입경로 탭 ──
   if (tab === "source") {
@@ -85,7 +72,12 @@ export default async function MembersPage({
 
     return (
       <div>
-        {tabLinks}
+        <PageHeader
+          title="회원 관리"
+          description="후원자 유입경로 현황입니다."
+          tabs={MEMBER_TABS}
+          activeTab={tab}
+        />
         <h2 className="mb-4 text-lg font-semibold text-[var(--text)]">유입경로 현황</h2>
         <div className="overflow-hidden rounded-lg border border-[var(--border)]">
           <table className="w-full text-sm">
@@ -143,7 +135,6 @@ export default async function MembersPage({
       if (filteredMemberIds.length === 0) {
         return (
           <div>
-            {tabLinks}
             <MemberList
               members={[]}
               total={0}
@@ -153,6 +144,8 @@ export default async function MembersPage({
               initialPromiseType={promiseType}
               accountStates={{}}
               stats={{ activeCount: 0, newCount: 0, churnRiskCount: 0 }}
+              tabs={MEMBER_TABS}
+              activeTab={tab}
             />
           </div>
         );
@@ -233,7 +226,6 @@ export default async function MembersPage({
 
   return (
     <div>
-      {tabLinks}
       <MemberList
         members={members}
         total={total}
@@ -243,6 +235,8 @@ export default async function MembersPage({
         initialPromiseType={promiseType}
         accountStates={accountStates}
         stats={{ activeCount, newCount, churnRiskCount }}
+        tabs={MEMBER_TABS}
+        activeTab={tab}
       />
     </div>
   );

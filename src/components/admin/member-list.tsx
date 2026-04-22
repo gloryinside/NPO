@@ -2,14 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +15,11 @@ import {
 import type { Member, MemberStatus } from "@/types/member";
 import type { AccountState } from "@/lib/members/account-state";
 import { AccountStateBadge } from "@/components/admin/members/account-state-badge";
-import { PageHeader } from "@/components/common/page-header";
+import { PageHeader, type PageHeaderTab } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
+import { FilterBar, FilterDropdown } from "@/components/common/filter-bar";
+import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import { DetailDrawer } from "@/components/common/detail-drawer";
 
 type Props = {
   members: Member[];
@@ -40,14 +35,10 @@ type Props = {
     newCount: number;
     churnRiskCount: number;
   };
+  /** PageHeader에 렌더할 탭 (외부에서 주입). 없으면 미렌더. */
+  tabs?: PageHeaderTab[];
+  activeTab?: string;
 };
-
-const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "active", label: "활성" },
-  { value: "inactive", label: "비활성" },
-  { value: "deceased", label: "사망" },
-  { value: "all", label: "전체" },
-];
 
 const STATUS_LABELS: Record<MemberStatus, string> = {
   active: "활성",
@@ -274,16 +265,20 @@ function AddMemberDialog({
   );
 }
 
-const PAY_METHOD_OPTIONS = [
-  { value: "", label: "결제방법 전체" },
+const STATUS_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "inactive", label: "비활성" },
+  { value: "deceased", label: "사망" },
+  { value: "all", label: "전체" },
+];
+
+const PAY_METHOD_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "card", label: "카드" },
   { value: "transfer", label: "계좌이체" },
   { value: "cms", label: "CMS" },
   { value: "manual", label: "수기" },
 ];
 
-const PROMISE_TYPE_OPTIONS = [
-  { value: "", label: "후원유형 전체" },
+const PROMISE_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "regular", label: "정기" },
   { value: "onetime", label: "일시" },
 ];
@@ -297,6 +292,8 @@ export function MemberList({
   initialPromiseType = "",
   accountStates,
   stats,
+  tabs,
+  activeTab,
 }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -304,6 +301,7 @@ export function MemberList({
   const [payMethod, setPayMethod] = useState(initialPayMethod);
   const [promiseType, setPromiseType] = useState(initialPromiseType);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<Member | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
 
@@ -313,6 +311,8 @@ export function MemberList({
     if (nextStatus && nextStatus !== "active") params.set("status", nextStatus);
     if (nextPayMethod) params.set("payMethod", nextPayMethod);
     if (nextPromiseType) params.set("promiseType", nextPromiseType);
+    // 탭 쿼리 유지 — 검색/필터 변경 시에도 현재 탭을 지우지 않음
+    if (activeTab && activeTab !== "all") params.set("tab", activeTab);
     const qs = params.toString();
     return qs ? `/admin/members?${qs}` : "/admin/members";
   };
@@ -332,6 +332,75 @@ export function MemberList({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, status, payMethod, promiseType]);
+
+  const hasActiveFilters =
+    !!query || (status !== "" && status !== "active") || !!payMethod || !!promiseType;
+
+  // status 필터 표시값: 'active'는 기본값이므로 '미선택'(null)로 취급
+  const statusFilterValue: string | null =
+    status && status !== "active" ? status : null;
+
+  const columns: DataTableColumn<Member>[] = [
+    {
+      key: "member_code",
+      header: "회원코드",
+      width: "140px",
+      render: (m) => (
+        <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
+          {m.member_code}
+        </span>
+      ),
+    },
+    {
+      key: "name",
+      header: "이름",
+      render: (m) => (
+        <span className="font-medium text-[var(--text)]">{m.name}</span>
+      ),
+    },
+    {
+      key: "phone",
+      header: "연락처",
+      width: "140px",
+      render: (m) => (
+        <span className="text-[var(--text)]">{m.phone ?? "-"}</span>
+      ),
+    },
+    {
+      key: "email",
+      header: "이메일",
+      render: (m) => (
+        <span className="text-[var(--muted-foreground)]">{m.email ?? "-"}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "상태",
+      width: "80px",
+      render: (m) => <StatusBadge status={m.status} />,
+    },
+    {
+      key: "account_state",
+      header: "계정",
+      width: "110px",
+      render: (m) => (
+        <AccountStateBadge
+          state={accountStates?.[m.id] ?? "unlinked"}
+          compact
+        />
+      ),
+    },
+    {
+      key: "created_at",
+      header: "등록일",
+      width: "110px",
+      render: (m) => (
+        <span className="text-[var(--muted-foreground)]">
+          {formatDate(m.created_at)}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -388,170 +457,142 @@ export function MemberList({
             </Button>
           </>
         }
+        tabs={tabs}
+        activeTab={activeTab}
       />
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex-1 min-w-[240px] max-w-md">
-          <Input
-            placeholder="이름, 연락처, 이메일로 검색"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)]"
-          />
-        </div>
-        <div className="flex gap-1">
-          {STATUS_OPTIONS.map((opt) => {
-            const isActive = status === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setStatus(opt.value)}
-                className="px-3 py-1.5 text-sm rounded-md border transition-colors"
-                style={{
-                  background: isActive ? "var(--accent)" : "var(--surface-2)",
-                  borderColor: isActive ? "var(--accent)" : "var(--border)",
-                  color: isActive ? "#fff" : "var(--muted-foreground)",
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-        {/* 결제방법 필터 */}
-        <select
-          title="결제방법 필터"
-          value={payMethod}
-          onChange={(e) => setPayMethod(e.target.value)}
-          className="rounded-lg border px-3 py-1.5 text-sm outline-none"
-          style={{
-            background: payMethod ? "color-mix(in srgb, var(--accent) 10%, var(--surface-2))" : "var(--surface-2)",
-            borderColor: payMethod ? "var(--accent)" : "var(--border)",
-            color: payMethod ? "var(--accent)" : "var(--muted-foreground)",
-          }}
-        >
-          {PAY_METHOD_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        {/* 후원유형 필터 */}
-        <select
-          title="후원유형 필터"
-          value={promiseType}
-          onChange={(e) => setPromiseType(e.target.value)}
-          className="rounded-lg border px-3 py-1.5 text-sm outline-none"
-          style={{
-            background: promiseType ? "color-mix(in srgb, var(--accent) 10%, var(--surface-2))" : "var(--surface-2)",
-            borderColor: promiseType ? "var(--accent)" : "var(--border)",
-            color: promiseType ? "var(--accent)" : "var(--muted-foreground)",
-          }}
-        >
-          {PROMISE_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
+      <FilterBar
+        searchPlaceholder="이름, 연락처, 이메일로 검색"
+        searchValue={query}
+        onSearchChange={setQuery}
+        filters={
+          <>
+            <FilterDropdown
+              label="상태"
+              value={statusFilterValue}
+              options={STATUS_FILTER_OPTIONS}
+              onChange={(v) => setStatus(v ?? "active")}
+            />
+            <FilterDropdown
+              label="결제방법"
+              value={payMethod || null}
+              options={PAY_METHOD_OPTIONS}
+              onChange={(v) => setPayMethod(v ?? "")}
+            />
+            <FilterDropdown
+              label="후원유형"
+              value={promiseType || null}
+              options={PROMISE_TYPE_OPTIONS}
+              onChange={(v) => setPromiseType(v ?? "")}
+            />
+          </>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onReset={() => {
+          setQuery("");
+          setStatus("active");
+          setPayMethod("");
+          setPromiseType("");
+        }}
+      />
 
-      <div
-        className="rounded-lg border overflow-hidden"
-        style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-      >
-        <Table>
-          <TableHeader>
-            <TableRow style={{ borderColor: "var(--border)" }}>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                회원코드
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                이름
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                연락처
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                이메일
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                상태
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                등록일
-              </TableHead>
-              <TableHead
-                style={{ color: "var(--muted-foreground)" }}
-                className="text-right"
+      <DataTable<Member>
+        columns={columns}
+        rows={members}
+        rowKey={(m) => m.id}
+        emptyMessage="등록된 후원자가 없습니다."
+        onRowClick={(m) => setDetailTarget(m)}
+        rowActions={(m) => (
+          <a
+            href={`/admin/members/${m.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] text-[var(--text)] hover:bg-[var(--surface)]"
+          >
+            상세
+          </a>
+        )}
+      />
+
+      <DetailDrawer
+        open={!!detailTarget}
+        onClose={() => setDetailTarget(null)}
+        title={detailTarget ? detailTarget.name : ""}
+        subtitle={
+          detailTarget ? `회원코드 ${detailTarget.member_code}` : undefined
+        }
+        footer={
+          detailTarget && (
+            <div className="flex justify-end">
+              <a
+                href={`/admin/members/${detailTarget.id}`}
+                className="inline-flex items-center justify-center rounded-md bg-[var(--accent)] px-4 py-1.5 text-[13px] font-medium text-white hover:opacity-90"
               >
-                액션
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center py-12"
-                  style={{ color: "var(--muted-foreground)" }}
-                >
-                  등록된 후원자가 없습니다.
-                </TableCell>
-              </TableRow>
-            ) : (
-              members.map((m) => (
-                <TableRow
-                  key={m.id}
-                  style={{ borderColor: "var(--border)", cursor: "pointer" }}
-                  onClick={() => router.push(`/admin/members/${m.id}`)}
-                >
-                  <TableCell
-                    className="font-mono text-sm"
-                    style={{ color: "var(--muted-foreground)" }}
-                  >
-                    {m.member_code}
-                  </TableCell>
-                  <TableCell
-                    className="font-medium"
-                    style={{ color: "var(--text)" }}
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      {m.name}
-                      <AccountStateBadge
-                        state={accountStates?.[m.id] ?? "unlinked"}
-                        compact
-                      />
-                    </span>
-                  </TableCell>
-                  <TableCell style={{ color: "var(--text)" }}>
-                    {m.phone ?? "-"}
-                  </TableCell>
-                  <TableCell
-                    className="text-sm"
-                    style={{ color: "var(--muted-foreground)" }}
-                  >
-                    {m.email ?? "-"}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={m.status} />
-                  </TableCell>
-                  <TableCell
-                    className="text-sm"
-                    style={{ color: "var(--muted-foreground)" }}
-                  >
-                    {formatDate(m.created_at)}
-                  </TableCell>
-                  <TableCell
-                    className="text-right text-sm"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    상세 →
-                  </TableCell>
-                </TableRow>
-              ))
+                회원 프로필 열기 →
+              </a>
+            </div>
+          )
+        }
+      >
+        {detailTarget && (
+          <div className="flex flex-col gap-4 text-[13px]">
+            <section>
+              <h3 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+                기본 정보
+              </h3>
+              <dl className="grid grid-cols-[100px_1fr] gap-y-1.5">
+                <dt className="text-[var(--muted-foreground)]">이름</dt>
+                <dd className="font-medium text-[var(--text)]">
+                  {detailTarget.name}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">회원코드</dt>
+                <dd className="font-mono text-[12px] text-[var(--text)]">
+                  {detailTarget.member_code}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">연락처</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.phone ?? "-"}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">이메일</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.email ?? "-"}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">구분</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.member_type === "corporate" ? "법인" : "개인"}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">상태</dt>
+                <dd>
+                  <StatusBadge status={detailTarget.status} />
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">계정</dt>
+                <dd>
+                  <AccountStateBadge
+                    state={accountStates?.[detailTarget.id] ?? "unlinked"}
+                  />
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">가입경로</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.join_path ?? "-"}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">등록일</dt>
+                <dd className="text-[var(--text)]">
+                  {formatDate(detailTarget.created_at)}
+                </dd>
+              </dl>
+            </section>
+            {detailTarget.note && (
+              <section>
+                <h3 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+                  메모
+                </h3>
+                <p className="whitespace-pre-wrap text-[var(--text)]">
+                  {detailTarget.note}
+                </p>
+              </section>
             )}
-          </TableBody>
-        </Table>
-      </div>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }
