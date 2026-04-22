@@ -205,13 +205,15 @@ async function sendDonationConfirmedEmail(
         : Promise.resolve({ data: null, error: null }),
     ]);
 
-    const memberEmail = memberRes.data?.email;
-    if (!memberEmail) return; // no email on file — skip
+    const memberEmail = memberRes.data?.email ?? null;
+    const memberPhone = memberRes.data?.phone ?? null;
+    // 이메일·전화 모두 없으면 발송 채널이 없음
+    if (!memberEmail && !memberPhone) return;
 
     const payType = (payment as unknown as { pay_method?: string | null }).pay_method === 'card_billing' ? 'regular' : 'onetime';
     notifyDonationThanks({
       orgId: payment.org_id,
-      phone: memberRes.data?.phone ?? null,
+      phone: memberPhone,
       email: memberEmail,
       name: memberRes.data?.name ?? '후원자',
       amount: Number(payment.amount),

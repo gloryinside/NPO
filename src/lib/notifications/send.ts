@@ -106,3 +106,18 @@ export function notifyBillingUpcoming(params: BillingUpcomingParams): void {
     name, date, amount: amountStr, orgName,
   }, TEMPLATES.BILLING_UPCOMING.smsBody({ name, date, amount: amountStr, orgName }));
 }
+
+// ── 생일 축하 ───
+export type BirthdayGreetingParams = {
+  orgId: string;
+  phone: string | null;
+  name: string;
+  orgName: string;
+};
+
+export function notifyBirthdayGreeting(params: BirthdayGreetingParams): void {
+  const { phone, name, orgName } = params;
+  void sendWithFallback(phone, TEMPLATES.BIRTHDAY_GREETING.code, {
+    name, orgName,
+  }, TEMPLATES.BIRTHDAY_GREETING.smsBody({ name, orgName }));
+}

@@ -5,6 +5,7 @@ import {
   createBillingFailedNotification,
   createPledgeSuspendedNotification,
 } from './notifications';
+import { notifyCmsChargeSuccess } from './notify-success';
 
 const RETRY_INTERVALS_MS = [
   1 * 86400000, // retry_count 0 → +1일
@@ -65,14 +66,25 @@ export async function processRetries(orgId: string): Promise<{ retried: number; 
     );
 
     if (result.success) {
+      const approvedAt = new Date().toISOString();
       await supabase
         .from('payments')
         .update({
           pay_status: 'paid',
           toss_payment_key: result.paymentKey,
-          approved_at: new Date().toISOString(),
+          approved_at: approvedAt,
         })
         .eq('id', payment.id);
+
+      void notifyCmsChargeSuccess({
+        orgId,
+        paymentId: payment.id,
+        memberId: promise.member_id,
+        amount: payment.amount,
+        paymentCode: payment.payment_code ?? payment.code ?? payment.id,
+        approvedAt,
+      });
+
       retried++;
     } else {
       const newRetryCount = (payment.retry_count ?? 0) + 1;

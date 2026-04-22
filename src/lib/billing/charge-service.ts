@@ -2,6 +2,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getOrgTossKeys } from '@/lib/toss/keys';
 import { chargeBillingKey } from './toss-billing';
 import { createBillingFailedNotification } from './notifications';
+import { notifyCmsChargeSuccess } from './notify-success';
 
 export async function processMonthlyCharges(orgId: string): Promise<{ charged: number; failed: number }> {
   const keys = await getOrgTossKeys(orgId);
@@ -55,14 +56,26 @@ export async function processMonthlyCharges(orgId: string): Promise<{ charged: n
     );
 
     if (result.success) {
+      const approvedAt = new Date().toISOString();
       await supabase
         .from('payments')
         .update({
           pay_status: 'paid',
           toss_payment_key: result.paymentKey,
-          approved_at: new Date().toISOString(),
+          approved_at: approvedAt,
         })
         .eq('id', payment.id);
+
+      // 후원자 감사 알림 (fire-and-forget)
+      void notifyCmsChargeSuccess({
+        orgId,
+        paymentId: payment.id,
+        memberId: promise.member_id,
+        amount: payment.amount,
+        paymentCode: payment.payment_code ?? payment.code ?? payment.id,
+        approvedAt,
+      });
+
       charged++;
     } else {
       await supabase

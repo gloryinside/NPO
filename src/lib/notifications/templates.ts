@@ -19,4 +19,9 @@ export const TEMPLATES = {
     smsBody: (v: { name: string; date: string; amount: string; orgName: string }) =>
       `[${v.orgName}] ${v.name}님, ${v.date}에 ${v.amount} 정기후원이 결제됩니다.`,
   },
+  BIRTHDAY_GREETING: {
+    code: 'BIRTHDAY_GREETING',
+    smsBody: (v: { name: string; orgName: string }) =>
+      `[${v.orgName}] ${v.name}님의 생일을 진심으로 축하드립니다. 항상 따뜻한 후원에 감사드립니다.`,
+  },
 } as const;
