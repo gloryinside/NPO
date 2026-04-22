@@ -29,6 +29,9 @@ export type Payment = {
   receipt_url: string | null;
   requested_at: string | null;
   approved_at: string | null;
+  cancelled_at: string | null;
+  refund_amount: number | null;
+  cancel_reason: string | null;
   created_at: string;
   updated_at: string;
 };
