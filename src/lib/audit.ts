@@ -25,6 +25,7 @@ export type AuditAction =
   | "payment.mark_paid"
   | "payment.mark_unpaid"
   | "payment.retry_cms"
+  | "payment.refund"
   | "payment.confirm_income"
   // 캠페인
   | "campaign.create"
