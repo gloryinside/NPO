@@ -23,6 +23,8 @@ import {
 import type { Member, MemberStatus } from "@/types/member";
 import type { AccountState } from "@/lib/members/account-state";
 import { AccountStateBadge } from "@/components/admin/members/account-state-badge";
+import { PageHeader } from "@/components/common/page-header";
+import { StatCard } from "@/components/common/stat-card";
 
 type Props = {
   members: Member[];
@@ -33,6 +35,11 @@ type Props = {
   initialPromiseType?: string;
   /** member.id → 계정 상태. 키 누락 시 기본 'unlinked' 로 해석. */
   accountStates?: Record<string, AccountState>;
+  stats: {
+    activeCount: number;
+    newCount: number;
+    churnRiskCount: number;
+  };
 };
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -289,6 +296,7 @@ export function MemberList({
   initialPayMethod = "",
   initialPromiseType = "",
   accountStates,
+  stats,
 }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -336,32 +344,51 @@ export function MemberList({
         }}
       />
 
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text)]">후원자 관리</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[var(--muted-foreground)]">
-            총 {total.toLocaleString("ko-KR")}명
-          </span>
-          <MemberCsvImport />
-          <a
-            href={`/api/admin/export/members?${new URLSearchParams({
-              ...(query ? { q: query } : {}),
-              ...(status && status !== "active" ? { status } : {}),
-              ...(payMethod ? { payMethod } : {}),
-              ...(promiseType ? { promiseType } : {}),
-            }).toString()}`}
-            className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm transition-colors bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface)]"
-          >
-            CSV 내보내기
-          </a>
-          <Button
-            onClick={() => setShowAddDialog(true)}
-            className="bg-[var(--accent)] text-white text-sm px-4 py-1.5 h-auto"
-          >
-            + 후원자 등록
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="회원 관리"
+        description={`후원자 회원 정보와 약정을 관리합니다. 총 ${total.toLocaleString(
+          "ko-KR"
+        )}명`}
+        stats={
+          <>
+            <StatCard
+              label="활성 회원"
+              value={`${stats.activeCount.toLocaleString("ko-KR")}명`}
+            />
+            <StatCard
+              label="신규 (30일)"
+              value={`${stats.newCount.toLocaleString("ko-KR")}명`}
+            />
+            <StatCard
+              label="이탈 위험"
+              value={`${stats.churnRiskCount.toLocaleString("ko-KR")}명`}
+              tone={stats.churnRiskCount > 0 ? "warning" : "default"}
+            />
+          </>
+        }
+        actions={
+          <>
+            <MemberCsvImport />
+            <a
+              href={`/api/admin/export/members?${new URLSearchParams({
+                ...(query ? { q: query } : {}),
+                ...(status && status !== "active" ? { status } : {}),
+                ...(payMethod ? { payMethod } : {}),
+                ...(promiseType ? { promiseType } : {}),
+              }).toString()}`}
+              className="inline-flex items-center rounded-md border bg-[var(--surface-2)] border-[var(--border)] px-3 py-1.5 text-[13px] text-[var(--text)] transition-colors hover:bg-[var(--surface)]"
+            >
+              CSV 내보내기
+            </a>
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              className="h-auto bg-[var(--accent)] px-4 py-1.5 text-[13px] text-white"
+            >
+              + 후원자 등록
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="flex-1 min-w-[240px] max-w-md">

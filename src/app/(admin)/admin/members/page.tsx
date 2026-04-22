@@ -122,6 +122,9 @@ export default async function MembersPage({
   let members: Member[] = [];
   let total = 0;
   let accountStates: Record<string, AccountState> = {};
+  let activeCount = 0;
+  let newCount = 0;
+  let churnRiskCount = 0;
 
   try {
     const tenant = await requireTenant();
@@ -149,6 +152,7 @@ export default async function MembersPage({
               initialPayMethod={payMethod}
               initialPromiseType={promiseType}
               accountStates={{}}
+              stats={{ activeCount: 0, newCount: 0, churnRiskCount: 0 }}
             />
           </div>
         );
@@ -180,12 +184,38 @@ export default async function MembersPage({
       query = query.is("supabase_uid", null);
     }
 
-    const { data, count } = await query
-      .order("created_at", { ascending: false })
-      .range(0, 49);
+    // Stat 쿼리: 활성/신규(30일)/이탈위험(60일 내 결제 실패)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
 
-    members = (data as Member[]) ?? [];
-    total = count ?? 0;
+    const [listRes, activeRes, newRes, churnRes] = await Promise.all([
+      query.order("created_at", { ascending: false }).range(0, 49),
+      supabase
+        .from("members")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", tenant.id)
+        .eq("status", "active"),
+      supabase
+        .from("members")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", tenant.id)
+        .eq("status", "active")
+        .gte("created_at", thirtyDaysAgo),
+      supabase
+        .from("payments")
+        .select("member_id", { count: "exact", head: true })
+        .eq("org_id", tenant.id)
+        .eq("pay_status", "failed")
+        .gte("pay_date", sixtyDaysAgo),
+    ]);
+
+    members = (listRes.data as Member[]) ?? [];
+    total = listRes.count ?? 0;
+    activeCount = activeRes.count ?? 0;
+    newCount = newRes.count ?? 0;
+    churnRiskCount = churnRes.count ?? 0;
 
     // 회원/비회원 상태 배치 계산 — 목록에 표시된 회원만 대상
     if (members.length > 0) {
@@ -212,6 +242,7 @@ export default async function MembersPage({
         initialPayMethod={payMethod}
         initialPromiseType={promiseType}
         accountStates={accountStates}
+        stats={{ activeCount, newCount, churnRiskCount }}
       />
     </div>
   );
