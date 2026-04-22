@@ -1,10 +1,9 @@
 import { ImageResponse } from 'next/og'
 import { NextRequest } from 'next/server'
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getDonorSession } from '@/lib/auth'
 import { getDonorImpact } from '@/lib/donor/impact'
+import { loadKoreanFonts } from '@/lib/og/fonts'
 
 /**
  * GET /api/donor/impact/og
@@ -18,43 +17,6 @@ import { getDonorImpact } from '@/lib/donor/impact'
  * SNS 미리보기에서 쓸 때는 /donor/impact/share 페이지의 meta[og:image]로 지정.
  */
 export const runtime = 'nodejs'
-
-// G-100: 한글 폰트 로딩 캐시 — 모듈 life-cycle 동안 1회만 read.
-// 실패 시 fonts 옵션을 생략해 기본 fallback 폰트를 쓰게 하고, 일부 글자는
-// 박스가 될 수 있지만 503을 내지 않는다.
-let cachedFonts: Array<{ name: string; data: ArrayBuffer; weight: 400 | 700 }> | null = null
-async function loadKoreanFonts() {
-  if (cachedFonts) return cachedFonts
-  try {
-    const base = path.join(process.cwd(), 'public', 'fonts')
-    const [regular, bold] = await Promise.all([
-      readFile(path.join(base, 'NotoSansKR-Regular.ttf')),
-      readFile(path.join(base, 'NotoSansKR-Bold.ttf')),
-    ])
-    cachedFonts = [
-      {
-        name: 'NotoSansKR',
-        data: regular.buffer.slice(
-          regular.byteOffset,
-          regular.byteOffset + regular.byteLength
-        ) as ArrayBuffer,
-        weight: 400,
-      },
-      {
-        name: 'NotoSansKR',
-        data: bold.buffer.slice(
-          bold.byteOffset,
-          bold.byteOffset + bold.byteLength
-        ) as ArrayBuffer,
-        weight: 700,
-      },
-    ]
-    return cachedFonts
-  } catch (err) {
-    console.warn('[og] Korean font load failed, using fallback:', err)
-    return null
-  }
-}
 
 function maskName(name: string): string {
   if (name.length <= 1) return name
