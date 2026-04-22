@@ -183,6 +183,17 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
                   >
                     수정
                   </Button>
+                  {/* G-90: 리포트 페이지 진입점 — closed 캠페인에서 가장 유용하지만 active도 실시간 지표 확인 가능 */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => router.push(`/admin/campaigns/${campaign.id}/report`)}
+                    disabled={campaign.status === "draft"}
+                    style={{ borderColor: "var(--border)", color: "var(--accent)" }}
+                  >
+                    📊 리포트
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"

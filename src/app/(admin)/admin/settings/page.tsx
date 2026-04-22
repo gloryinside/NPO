@@ -8,7 +8,7 @@ import { ErpSettingsForm } from "@/components/admin/erp-settings-form";
 import { ThemeSettingsForm } from "@/components/admin/theme-settings-form";
 import { ThemeConfigSchema, defaultThemeConfig } from "@/lib/theme/config";
 import { OrgSettingsForm } from "@/components/admin/org-settings-form";
-import { getOrgSettings } from "@/lib/org/settings";
+import { getOrgSettingsCached } from "@/lib/org/settings";
 
 function maskSecret(value: string | null): string | null {
   return value ? maskPlaintext(value) : null;
@@ -154,7 +154,6 @@ export default async function SettingsPage() {
 }
 
 async function OrgSettingsFormSection({ tenantId }: { tenantId: string }) {
-  const supabase = createSupabaseAdminClient();
-  const settings = await getOrgSettings(supabase, tenantId);
+  const settings = await getOrgSettingsCached(tenantId);
   return <OrgSettingsForm initial={settings} />;
 }

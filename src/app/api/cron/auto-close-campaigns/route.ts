@@ -53,17 +53,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: actErr.message }, { status: 500 })
   }
 
+  // G-87: N+1 쿼리 → 단일 batch 쿼리로 최적화.
+  // 모든 active + goal 캠페인의 paid 결제를 한 번에 가져와 메모리에서 합산.
   const goalReached: Array<{ id: string; title: string; raised: number; goal: number; orgId: string }> = []
-  for (const c of activeWithGoal ?? []) {
-    const { data: sumData } = await supabase
+  const campaignIds = (activeWithGoal ?? []).map((c) => c.id as string)
+  if (campaignIds.length > 0) {
+    const { data: allPayments, error: payErr } = await supabase
       .from('payments')
-      .select('amount')
-      .eq('campaign_id', c.id as string)
+      .select('campaign_id, amount')
+      .in('campaign_id', campaignIds)
       .eq('pay_status', 'paid')
-    const raised = (sumData ?? []).reduce((s, r) => s + Number(r.amount ?? 0), 0)
-    const goal = Number(c.goal_amount ?? 0)
-    if (goal > 0 && raised >= goal) {
-      goalReached.push({ id: c.id as string, title: c.title as string, raised, goal, orgId: c.org_id as string })
+
+    if (payErr) {
+      console.error('[cron/auto-close] payments batch:', payErr)
+      return NextResponse.json({ error: payErr.message }, { status: 500 })
+    }
+
+    const raisedByCampaign = new Map<string, number>()
+    for (const row of allPayments ?? []) {
+      const cid = row.campaign_id as string
+      raisedByCampaign.set(cid, (raisedByCampaign.get(cid) ?? 0) + Number(row.amount ?? 0))
+    }
+
+    for (const c of activeWithGoal ?? []) {
+      const raised = raisedByCampaign.get(c.id as string) ?? 0
+      const goal = Number(c.goal_amount ?? 0)
+      if (goal > 0 && raised >= goal) {
+        goalReached.push({ id: c.id as string, title: c.title as string, raised, goal, orgId: c.org_id as string })
+      }
     }
   }
 

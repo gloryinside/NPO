@@ -2,7 +2,12 @@ import { requireAdminUser } from '@/lib/auth'
 import { requireTenant } from '@/lib/tenant/context'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getCampaignReport } from '@/lib/campaigns/report'
-import { ReportDailyChart } from '@/components/admin/campaign-report/ReportDailyChart'
+import dynamic from 'next/dynamic'
+// G-89: recharts는 리포트 페이지에서만 필요 → 지연 로드로 다른 admin 페이지 번들 영향 최소화
+const ReportDailyChart = dynamic(
+  () => import('@/components/admin/campaign-report/ReportDailyChart').then((m) => m.ReportDailyChart),
+  { ssr: true }
+)
 import { notFound } from 'next/navigation'
 
 function formatKRW(n: number): string {
