@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { fetchChurnRiskMembers } from '@/lib/stats/churn-risk'
 import { sendEmail } from '@/lib/email/send-email'
+import { wasSentWithin, logNotification } from '@/lib/email/notification-log'
 
 /**
  * GET /api/cron/notify-churn-risk
@@ -38,6 +39,13 @@ export async function GET(req: NextRequest) {
     const risk = await fetchChurnRiskMembers(supabase, org.id as string)
     if (risk.length < MIN_CHURN_COUNT) {
       results.push({ orgId: org.id as string, count: risk.length, sent: false })
+      continue
+    }
+
+    // G-85: 지난 7일 내 이미 발송된 org는 skip (수동 재실행 중복 방지)
+    const recentlySent = await wasSentWithin(supabase, org.id as string, 'churn_risk_weekly', 7)
+    if (recentlySent) {
+      results.push({ orgId: org.id as string, count: risk.length, sent: false, error: 'skipped_recent' })
       continue
     }
 
@@ -90,6 +98,15 @@ export async function GET(req: NextRequest) {
       to,
       subject: `[${orgName}] 이탈 위험 후원자 ${risk.length}명 주간 리포트`,
       html,
+    })
+
+    // G-85: 발송 결과를 로그 테이블에 기록
+    await logNotification(supabase, {
+      orgId: org.id as string,
+      kind: 'churn_risk_weekly',
+      recipientEmail: to,
+      status: result.success ? 'sent' : 'failed',
+      error: result.error ?? null,
     })
 
     results.push({
