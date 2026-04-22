@@ -2,6 +2,7 @@ import { getDonorSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getDonorImpact, getImpactUnitAmount } from '@/lib/donor/impact'
+import { getOrgSettings } from '@/lib/org/settings'
 import { ImpactDonutChart } from '@/components/donor/impact/ImpactDonutChart'
 import { ImpactYearlyBar } from '@/components/donor/impact/ImpactYearlyBar'
 
@@ -22,8 +23,9 @@ export default async function DonorImpactPage() {
 
   const impact = await getDonorImpact(supabase, member.org_id, member.id)
 
-  // G-82: 임팩트 추정 단가는 환경변수 기반 헬퍼. 향후 기관별 설정으로 확장 가능.
-  const unitAmount = getImpactUnitAmount()
+  // G-82 + Phase 4-B: 기관 설정에 impact_unit_amount 있으면 우선 사용, 없으면 환경변수 기반 fallback
+  const orgSettings = await getOrgSettings(supabase, member.org_id)
+  const unitAmount = orgSettings.impact_unit_amount || getImpactUnitAmount()
   const estimatedBeneficiaries = Math.floor(impact.totalAmount / unitAmount)
   const unitLabel = unitAmount >= 10_000
     ? `${Math.round(unitAmount / 10_000)}만원 단위`

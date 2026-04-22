@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send-email'
 import { logNotification } from '@/lib/email/notification-log'
+import { getOrgSettings } from '@/lib/org/settings'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
   // ② 목표 달성 — 집계 쿼리가 필요하므로 active + goal_amount 있는 캠페인 조회 후 개별 합산
   const { data: activeWithGoal, error: actErr } = await supabase
     .from('campaigns')
-    .select('id, title, goal_amount')
+    .select('id, title, goal_amount, org_id')
     .eq('status', 'active')
     .not('goal_amount', 'is', null)
     .gt('goal_amount', 0)
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: actErr.message }, { status: 500 })
   }
 
-  const goalReached: Array<{ id: string; title: string; raised: number; goal: number }> = []
+  const goalReached: Array<{ id: string; title: string; raised: number; goal: number; orgId: string }> = []
   for (const c of activeWithGoal ?? []) {
     const { data: sumData } = await supabase
       .from('payments')
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
     const raised = (sumData ?? []).reduce((s, r) => s + Number(r.amount ?? 0), 0)
     const goal = Number(c.goal_amount ?? 0)
     if (goal > 0 && raised >= goal) {
-      goalReached.push({ id: c.id as string, title: c.title as string, raised, goal })
+      goalReached.push({ id: c.id as string, title: c.title as string, raised, goal, orgId: c.org_id as string })
     }
   }
 
@@ -81,10 +82,16 @@ export async function GET(req: NextRequest) {
   }
 
   // G-86: 목표 달성 마감 캠페인의 기여 후원자에게 감사 이메일 발송
-  // 기간 경과 마감은 감사 메시지 대상이 아님 (축하 맥락이 아니라서)
+  // Phase 4-B: 기관 설정에서 감사 이메일 disabled면 skip
   let thanksEmailsSent = 0
   let thanksEmailsSkipped = 0
+  let thanksEmailsOptedOut = 0
   for (const c of goalReached) {
+    const settings = await getOrgSettings(supabase, c.orgId)
+    if (!settings.campaign_thanks_enabled) {
+      thanksEmailsOptedOut++
+      continue
+    }
     const result = await sendCampaignThanksEmails(supabase, c)
     thanksEmailsSent += result.sent
     thanksEmailsSkipped += result.skipped
@@ -97,6 +104,7 @@ export async function GET(req: NextRequest) {
     goalList: goalReached.map((g) => ({ id: g.id, title: g.title, raised: g.raised, goal: g.goal })),
     thanksEmailsSent,
     thanksEmailsSkipped,
+    thanksEmailsOptedOut,
   }
   if (summary.closedByDeadline + summary.closedByGoal > 0) {
     console.log('[cron/auto-close-campaigns]', summary)

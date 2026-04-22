@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { fetchChurnRiskMembers } from '@/lib/stats/churn-risk'
 import { sendEmail } from '@/lib/email/send-email'
 import { wasSentWithin, logNotification } from '@/lib/email/notification-log'
+import { getOrgSettings } from '@/lib/org/settings'
 
 /**
  * GET /api/cron/notify-churn-risk
@@ -39,6 +40,13 @@ export async function GET(req: NextRequest) {
     const risk = await fetchChurnRiskMembers(supabase, org.id as string)
     if (risk.length < MIN_CHURN_COUNT) {
       results.push({ orgId: org.id as string, count: risk.length, sent: false })
+      continue
+    }
+
+    // Phase 4-B: 기관 설정에서 수신 거부 확인
+    const settings = await getOrgSettings(supabase, org.id as string)
+    if (!settings.weekly_alert_enabled) {
+      results.push({ orgId: org.id as string, count: risk.length, sent: false, error: 'opted_out' })
       continue
     }
 
