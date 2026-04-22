@@ -37,6 +37,7 @@ const NAV: NavGroup[] = [
     defaultOpen: true,
     items: [
       { label: "미납 관리", href: "/admin/unpaid" },
+      { label: "이탈 위험 후원자", href: "/admin/at-risk" },
       { label: "정기 스케줄", href: "/admin/schedules" },
       { label: "CMS 출금 오류", href: "/admin/cms-errors" },
     ],

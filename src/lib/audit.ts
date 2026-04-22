@@ -33,6 +33,7 @@ export type AuditAction =
   | "campaign.delete"
   // 영수증
   | "receipt.issue"
+  | "receipt.reissue"
   | "receipt.nts_export"
   // 설정
   | "settings.update_toss"

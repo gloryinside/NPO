@@ -6,6 +6,8 @@ import type { Campaign } from "@/types/campaign";
 import { BlockRenderer } from "@/components/campaign-blocks/BlockRenderer";
 import { PageContentSchema } from "@/lib/campaign-builder/blocks/schema";
 import { CheerWall } from "@/components/cheer/CheerWall";
+import { LiveProgressBar } from "@/components/campaign-blocks/LiveProgressBar";
+import { RecentDonorFeed } from "@/components/campaign-blocks/RecentDonorFeed";
 
 export const revalidate = 60;
 
@@ -73,11 +75,8 @@ export default async function CampaignPublicPage({
     0
   );
   const goalAmount = campaign.goal_amount ?? 0;
-  const progressPct =
-    goalAmount > 0 ? Math.min(Math.round((raisedAmount / goalAmount) * 100), 100) : null;
 
   const fmt = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
-  const formattedGoal = goalAmount ? fmt(goalAmount) + "원" : null;
   const formattedRaised = fmt(raisedAmount) + "원";
 
   const dateRange =
@@ -117,24 +116,14 @@ export default async function CampaignPublicPage({
         </span>
       </div>
 
-      {/* 달성률 progress bar */}
-      {goalAmount > 0 && (
-        <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="font-semibold text-[var(--text)]">{formattedRaised} 모금</span>
-            <span className="text-[var(--muted-foreground)]">목표 {formattedGoal}</span>
-          </div>
-          <div className="h-2.5 rounded-full bg-[var(--surface-2)] overflow-hidden">
-            <div
-              className="h-full rounded-full bg-[var(--accent)] transition-all"
-              style={{ width: `${progressPct ?? 0}%` }}
-            />
-          </div>
-          <p className="mt-1.5 text-xs text-right text-[var(--muted-foreground)]">
-            {progressPct !== null ? `${progressPct}% 달성` : ""}
-          </p>
-        </div>
-      )}
+      {/* 달성률 progress bar — 실시간 갱신 (60초 polling) */}
+      <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <LiveProgressBar
+          slug={slug}
+          initialRaised={raisedAmount}
+          initialGoal={goalAmount > 0 ? goalAmount : null}
+        />
+      </div>
 
       <div className="flex flex-col gap-2 mb-8 text-sm text-[var(--muted-foreground)]">
         {!goalAmount && raisedAmount > 0 && (
@@ -165,6 +154,11 @@ export default async function CampaignPublicPage({
       >
         후원하기
       </Link>
+
+      {/* 최근 후원자 피드 (30초 polling) */}
+      <div className="mt-10">
+        <RecentDonorFeed slug={slug} limit={10} />
+      </div>
 
       <CheerWall campaignId={campaign.id} />
     </div>
