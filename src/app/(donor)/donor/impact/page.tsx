@@ -126,7 +126,10 @@ export default async function DonorImpactPage() {
           )}
 
           {/* 리포트·공유 */}
-          <ImpactShareActions availableYears={impact.byYear.map((y) => y.year).reverse()} />
+          <ImpactShareActions
+            availableYears={impact.byYear.map((y) => y.year).reverse()}
+            cacheVersion={impact.lastPayDate}
+          />
 
           {/* 연도별 상세 표 */}
           {impact.byYear.length > 0 && (
