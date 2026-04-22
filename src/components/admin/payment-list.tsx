@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { PayStatus, IncomeStatus, PaymentWithRelations } from "@/types/payment";
+import { RefundDialog } from "@/components/admin/refund-dialog";
 
 type Props = {
   payments: PaymentWithRelations[];
@@ -357,6 +358,7 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
+  const [refundTarget, setRefundTarget] = useState<PaymentWithRelations | null>(null);
 
   const selectStatus = (next: string) => {
     const params = new URLSearchParams();
@@ -412,6 +414,12 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
         open={showAddDialog}
         onClose={() => setShowAddDialog(false)}
         onCreated={() => { setShowAddDialog(false); router.refresh(); }}
+      />
+
+      <RefundDialog
+        payment={refundTarget}
+        onClose={() => setRefundTarget(null)}
+        onRefunded={() => { setRefundTarget(null); router.refresh(); }}
       />
 
       <div className="flex items-center justify-between mb-6">
@@ -548,7 +556,31 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
                     {formatDate(p.pay_date)}
                   </TableCell>
                   <TableCell>
-                    <PayStatusBadge status={p.pay_status} />
+                    <div className="flex items-center gap-2">
+                      <PayStatusBadge status={p.pay_status} />
+                      {p.pay_status === 'refunded' && (
+                        <span
+                          className="text-xs text-[var(--muted-foreground)]"
+                          title={[
+                            p.refund_amount != null
+                              ? `부분환불 ${new Intl.NumberFormat('ko-KR').format(p.refund_amount)}원`
+                              : '전액환불',
+                            p.cancel_reason ? `사유: ${p.cancel_reason.split(':')[0]}` : '',
+                          ].filter(Boolean).join(' | ')}
+                        >
+                          ⓘ
+                        </span>
+                      )}
+                      {p.pay_status === 'paid' && p.toss_payment_key && (
+                        <button
+                          type="button"
+                          onClick={() => setRefundTarget(p)}
+                          className="text-xs px-2 py-0.5 rounded border border-[var(--negative)] text-[var(--negative)] hover:bg-[var(--negative-soft)] transition-colors"
+                        >
+                          환불
+                        </button>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <IncomeStatusBadge status={p.income_status} />
