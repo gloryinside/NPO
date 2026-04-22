@@ -1,15 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +13,15 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "@/components/common/data-table";
+import { DetailDrawer } from "@/components/common/detail-drawer";
+import {
+  FilterBar,
+  FilterDropdown,
+} from "@/components/common/filter-bar";
 import type {
   PromiseStatus,
   PromiseType,
@@ -726,13 +727,39 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
   const router = useRouter();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [active, setActive] = useState<ActiveAction | null>(null);
+  const [detailTarget, setDetailTarget] = useState<PromiseWithRelations | null>(null);
 
-  const selectStatus = (next: string) => {
-    const params = new URLSearchParams();
-    if (next && next !== "active") params.set("status", next);
-    const qs = params.toString();
-    router.replace(qs ? `/admin/promises?${qs}` : "/admin/promises");
-  };
+  // FilterBar state (client-side narrowing on top of server-filtered list)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<PromiseType | null>(null);
+
+  const filteredPromises = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return promises.filter((p) => {
+      if (q) {
+        const name = (p.members?.name ?? "").toLowerCase();
+        const code = (p.promise_code ?? "").toLowerCase();
+        const campaign = (p.campaigns?.title ?? "").toLowerCase();
+        const memberCode = (p.members?.member_code ?? "").toLowerCase();
+        if (
+          !name.includes(q) &&
+          !code.includes(q) &&
+          !campaign.includes(q) &&
+          !memberCode.includes(q)
+        ) {
+          return false;
+        }
+      }
+      if (typeFilter && p.type !== typeFilter) return false;
+      return true;
+    });
+  }, [promises, searchQuery, typeFilter]);
+
+  const hasActiveFilters = !!(searchQuery || typeFilter);
+  function resetFilters() {
+    setSearchQuery("");
+    setTypeFilter(null);
+  }
 
   const openAction = (promise: PromiseWithRelations, action: ActionType) => {
     setActive({ promise, action });
@@ -742,6 +769,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
 
   const doneAction = () => {
     setActive(null);
+    setDetailTarget(null);
     router.refresh();
   };
 
@@ -752,6 +780,89 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     resume: "약정 재개",
     complete: "약정 완료 처리",
   };
+
+  const columns: DataTableColumn<PromiseWithRelations>[] = [
+    {
+      key: "promise_code",
+      header: "약정코드",
+      width: "140px",
+      render: (p) => (
+        <span className="font-mono text-[12px] text-[var(--muted-foreground)]">
+          {p.promise_code}
+        </span>
+      ),
+    },
+    {
+      key: "member",
+      header: "후원자",
+      render: (p) => (
+        <span className="text-[var(--text)]">{p.members?.name ?? "-"}</span>
+      ),
+    },
+    {
+      key: "campaign",
+      header: "캠페인",
+      render: (p) => (
+        <span className="text-[var(--muted-foreground)]">
+          {p.campaigns?.title ?? "-"}
+        </span>
+      ),
+    },
+    {
+      key: "type",
+      header: "유형",
+      width: "70px",
+      render: (p) => <PromiseTypeBadge type={p.type} />,
+    },
+    {
+      key: "amount",
+      header: "금액",
+      align: "right",
+      width: "120px",
+      render: (p) => (
+        <span className="font-medium text-[var(--text)]">
+          {formatAmount(p.amount)}
+        </span>
+      ),
+    },
+    {
+      key: "pay_day",
+      header: "납입일",
+      width: "100px",
+      render: (p) => (
+        <span className="text-[var(--muted-foreground)]">
+          {p.pay_day ? `매월 ${p.pay_day}일` : "-"}
+        </span>
+      ),
+    },
+    {
+      key: "started_at",
+      header: "시작일",
+      width: "110px",
+      render: (p) => (
+        <span className="text-[var(--muted-foreground)]">
+          {formatDate(p.started_at)}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "상태",
+      width: "100px",
+      render: (p) => <PromiseStatusBadge status={p.status} />,
+    },
+  ];
+
+  const pageTabs = STATUS_TABS.map((tab) => ({
+    key: tab.value,
+    label: tab.label,
+    href:
+      tab.value === "active"
+        ? "/admin/promises"
+        : `/admin/promises?status=${tab.value}`,
+  }));
+
+  const activeTabKey = initialStatus || "active";
 
   return (
     <div>
@@ -822,80 +933,197 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
             + 약정 등록
           </Button>
         }
+        tabs={pageTabs}
+        activeTab={activeTabKey}
       />
 
-      <div className="flex gap-1 mb-4">
-        {STATUS_TABS.map((tab) => {
-          const isActive = initialStatus === tab.value;
-          return (
-            <button key={tab.value} type="button" onClick={() => selectStatus(tab.value)}
-              className="px-3 py-1.5 text-sm rounded-md border transition-colors"
-              style={{
-                background: isActive ? "var(--accent)" : "var(--surface-2)",
-                borderColor: isActive ? "var(--accent)" : "var(--border)",
-                color: isActive ? "#fff" : "var(--muted-foreground)",
-              }}>
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      <FilterBar
+        searchPlaceholder="후원자/약정코드/캠페인 검색"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={
+          <FilterDropdown<PromiseType>
+            label="유형"
+            value={typeFilter}
+            options={[
+              { value: "regular", label: "정기" },
+              { value: "onetime", label: "일시" },
+            ]}
+            onChange={setTypeFilter}
+          />
+        }
+        hasActiveFilters={hasActiveFilters}
+        onReset={resetFilters}
+      />
 
-      <div className="rounded-lg border overflow-hidden"
-        style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
-        <Table>
-          <TableHeader>
-            <TableRow style={{ borderColor: "var(--border)" }}>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>약정코드</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>후원자</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>캠페인</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>유형</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>금액</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>납입일</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>시작일</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>상태</TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }} className="text-right">액션</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {promises.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center py-12"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  약정 내역이 없습니다.
-                </TableCell>
-              </TableRow>
-            ) : (
-              promises.map((p) => (
-                <TableRow key={p.id} style={{ borderColor: "var(--border)", cursor: "pointer" }}
-                  onClick={() => { if (p.member_id) router.push(`/admin/members/${p.member_id}`); }}>
-                  <TableCell className="font-mono text-sm" style={{ color: "var(--muted-foreground)" }}>
-                    {p.promise_code}
-                  </TableCell>
-                  <TableCell style={{ color: "var(--text)" }}>{p.members?.name ?? "-"}</TableCell>
-                  <TableCell className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                    {p.campaigns?.title ?? "-"}
-                  </TableCell>
-                  <TableCell><PromiseTypeBadge type={p.type} /></TableCell>
-                  <TableCell className="font-medium" style={{ color: "var(--text)" }}>
-                    {formatAmount(p.amount)}
-                  </TableCell>
-                  <TableCell className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                    {p.pay_day ? `매월 ${p.pay_day}일` : "-"}
-                  </TableCell>
-                  <TableCell className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                    {formatDate(p.started_at)}
-                  </TableCell>
-                  <TableCell><PromiseStatusBadge status={p.status} /></TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <ActionMenu promise={p} onAction={openAction} />
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={filteredPromises}
+        rowKey={(p) => p.id}
+        emptyMessage="약정 내역이 없습니다."
+        onRowClick={(p) => setDetailTarget(p)}
+        rowActions={(p) => <ActionMenu promise={p} onAction={openAction} />}
+      />
+
+      <DetailDrawer
+        open={!!detailTarget}
+        onClose={() => setDetailTarget(null)}
+        title="약정 상세"
+        subtitle={
+          detailTarget
+            ? `${detailTarget.members?.name ?? "-"} · ${formatAmount(
+                detailTarget.amount
+              )}`
+            : undefined
+        }
+        footer={
+          detailTarget && detailTarget.member_id ? (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={() => {
+                  if (detailTarget.member_id) {
+                    router.push(`/admin/members/${detailTarget.member_id}`);
+                  }
+                }}
+                className="h-auto bg-[var(--accent)] px-3 py-1.5 text-[12px] text-white"
+              >
+                후원자 프로필 열기
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        {detailTarget && (
+          <div className="flex flex-col gap-4 text-[13px]">
+            <section>
+              <h3 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+                약정 정보
+              </h3>
+              <dl className="grid grid-cols-[100px_1fr] gap-y-1.5">
+                <dt className="text-[var(--muted-foreground)]">약정코드</dt>
+                <dd className="font-mono text-[12px] text-[var(--text)]">
+                  {detailTarget.promise_code}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">후원자</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.members?.name ?? "-"}
+                  {detailTarget.members?.member_code && (
+                    <span className="ml-1 text-[11px] text-[var(--muted-foreground)]">
+                      ({detailTarget.members.member_code})
+                    </span>
+                  )}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">캠페인</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.campaigns?.title ?? "-"}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">유형</dt>
+                <dd>
+                  <PromiseTypeBadge type={detailTarget.type} />
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">금액</dt>
+                <dd className="font-semibold text-[var(--text)]">
+                  {formatAmount(detailTarget.amount)}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">납입일</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.pay_day ? `매월 ${detailTarget.pay_day}일` : "-"}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">결제수단</dt>
+                <dd className="text-[var(--text)]">
+                  {detailTarget.pay_method ?? "-"}
+                </dd>
+                <dt className="text-[var(--muted-foreground)]">상태</dt>
+                <dd>
+                  <PromiseStatusBadge status={detailTarget.status} />
+                </dd>
+                {detailTarget.started_at && (
+                  <>
+                    <dt className="text-[var(--muted-foreground)]">시작일</dt>
+                    <dd className="text-[var(--text)]">
+                      {formatDate(detailTarget.started_at)}
+                    </dd>
+                  </>
+                )}
+                {detailTarget.ended_at && (
+                  <>
+                    <dt className="text-[var(--muted-foreground)]">종료일</dt>
+                    <dd className="text-[var(--text)]">
+                      {formatDate(detailTarget.ended_at)}
+                    </dd>
+                  </>
+                )}
+              </dl>
+            </section>
+
+            <section className="border-t border-[var(--border)] pt-3">
+              <h3 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+                빠른 작업
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {(detailTarget.status === "active" ||
+                  detailTarget.status === "suspended") && (
+                  <button
+                    type="button"
+                    onClick={() => openAction(detailTarget, "amount")}
+                    className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[12px] text-[var(--text)] hover:bg-[var(--surface)]"
+                  >
+                    금액 변경
+                  </button>
+                )}
+                {detailTarget.status === "active" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openAction(detailTarget, "suspend")}
+                      className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[12px] hover:bg-[var(--surface)]"
+                      style={{ color: "var(--warning)" }}
+                    >
+                      일시정지
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAction(detailTarget, "complete")}
+                      className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[12px] text-[var(--muted-foreground)] hover:bg-[var(--surface)]"
+                    >
+                      완료 처리
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAction(detailTarget, "cancel")}
+                      className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[12px] hover:bg-[var(--surface)]"
+                      style={{ color: "var(--negative)" }}
+                    >
+                      해지
+                    </button>
+                  </>
+                )}
+                {detailTarget.status === "suspended" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openAction(detailTarget, "resume")}
+                      className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[12px] hover:bg-[var(--surface)]"
+                      style={{ color: "var(--positive)" }}
+                    >
+                      재개
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAction(detailTarget, "cancel")}
+                      className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[12px] hover:bg-[var(--surface)]"
+                      style={{ color: "var(--negative)" }}
+                    >
+                      해지
+                    </button>
+                  </>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }
