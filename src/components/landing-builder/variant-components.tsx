@@ -89,9 +89,17 @@ import { RichtextQuote } from './sections/richtext/RichtextQuote'
 
 // Phase 2: financials
 import { FinancialsSummary } from './sections/financials/FinancialsSummary'
-import { FinancialsBreakdown } from './sections/financials/FinancialsBreakdown'
-import { FinancialsTimeline } from './sections/financials/FinancialsTimeline'
 import { FinancialsTransparency } from './sections/financials/FinancialsTransparency'
+// G-81: recharts를 사용하는 variant만 dynamic import — 사용 안 하는 페이지는 recharts 번들 제외
+import dynamic from 'next/dynamic'
+const FinancialsBreakdown = dynamic(
+  () => import('./sections/financials/FinancialsBreakdown').then((m) => m.FinancialsBreakdown),
+  { ssr: true }
+)
+const FinancialsTimeline = dynamic(
+  () => import('./sections/financials/FinancialsTimeline').then((m) => m.FinancialsTimeline),
+  { ssr: true }
+)
 
 // G-61 안전망: v1 동작을 보존한 legacy 컴포넌트 별칭.
 // 스테이징에서 회귀 발견 시 DB의 section.variant를 'legacy-*'로 변경해 즉시 복원 가능.

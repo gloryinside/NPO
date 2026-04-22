@@ -1,8 +1,69 @@
 'use client'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import type {
   FinancialsSummaryData, FinancialsBreakdownData,
   FinancialsTimelineData, FinancialsTransparencyData,
 } from '@/lib/landing-variants/financials-schemas'
+
+/**
+ * G-79: 지정 연도의 결제 합계를 API에서 받아 totalRaised에 주입.
+ * 실패 시 toast.
+ */
+async function fetchYearlyRaised(year: number): Promise<number | null> {
+  try {
+    const res = await fetch(`/api/admin/finance/yearly-summary?year=${year}`)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      toast.error(body?.error === 'invalid_year' ? '연도가 잘못됐습니다' : '자동 계산 실패')
+      return null
+    }
+    const body = await res.json() as { totalRaised: number }
+    return body.totalRaised
+  } catch {
+    toast.error('자동 계산 실패')
+    return null
+  }
+}
+
+function AutoFillRaisedButton({ year, onFill, disabled }: { year?: number; onFill: (n: number) => void; disabled?: boolean }) {
+  const [loading, setLoading] = useState(false)
+  if (!year) return null
+  return (
+    <button
+      type="button"
+      disabled={disabled || loading}
+      onClick={async () => {
+        setLoading(true)
+        const n = await fetchYearlyRaised(year)
+        if (n !== null) { onFill(n); toast.success(`${year}년 합계 ${n.toLocaleString('ko-KR')}원 반영 (참고값)`) }
+        setLoading(false)
+      }}
+      className="text-xs text-[var(--accent)] hover:underline disabled:opacity-50"
+    >
+      {loading ? '계산 중…' : `🔄 ${year}년 payments 자동 계산`}
+    </button>
+  )
+}
+
+/**
+ * G-80: balance ≠ totalRaised - totalUsed 검증. 10% 이상 차이면 경고.
+ */
+function BalanceMismatchWarning({ totalRaised, totalUsed, balance }: {
+  totalRaised: number; totalUsed: number; balance?: number
+}) {
+  if (balance === undefined || balance === null) return null
+  const expected = totalRaised - totalUsed
+  const diff = Math.abs(balance - expected)
+  const denom = Math.max(Math.abs(expected), 1)
+  if (diff / denom < 0.1) return null
+  return (
+    <div className="rounded-md border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-3 py-2 text-xs text-[var(--warning)]">
+      ⚠️ 잔액이 <strong>총 모금 − 집행 = {expected.toLocaleString('ko-KR')}원</strong>과 10% 이상 차이납니다.
+      결산 특성상 이월금/이자 등으로 차이가 날 수 있습니다.
+    </div>
+  )
+}
 
 const inputCls = 'w-full rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]'
 const textareaCls = `${inputCls} min-h-[60px] resize-y`
@@ -25,12 +86,16 @@ export function FinancialsSummaryForm({ data, onChange }: {
   return <>
     <Field label="섹션 제목"><input className={inputCls} value={data.title ?? ''} onChange={(e) => onChange({ ...data, title: e.target.value })} /></Field>
     <Field label="기준 연도"><input type="number" className={inputCls} min={2000} max={2100} value={data.year ?? ''} onChange={(e) => onChange({ ...data, year: e.target.value ? Number(e.target.value) : undefined })} /></Field>
-    <Field label="총 모금액 (원)"><input type="number" className={inputCls} min={0} value={data.totalRaised} onChange={(e) => onChange({ ...data, totalRaised: Number(e.target.value) })} /></Field>
+    <Field label="총 모금액 (원)">
+      <input type="number" className={inputCls} min={0} value={data.totalRaised} onChange={(e) => onChange({ ...data, totalRaised: Number(e.target.value) })} />
+      <AutoFillRaisedButton year={data.year} onFill={(n) => onChange({ ...data, totalRaised: n })} />
+    </Field>
     <Field label="총 집행액 (원)"><input type="number" className={inputCls} min={0} value={data.totalUsed} onChange={(e) => onChange({ ...data, totalUsed: Number(e.target.value) })} /></Field>
     <Field label="잔액 (원, 비어 있으면 자동 계산)">
       <input type="number" className={inputCls} min={0} value={data.balance ?? ''}
         onChange={(e) => onChange({ ...data, balance: e.target.value ? Number(e.target.value) : undefined })} />
     </Field>
+    <BalanceMismatchWarning totalRaised={data.totalRaised} totalUsed={data.totalUsed} balance={data.balance} />
   </>
 }
 
@@ -100,7 +165,10 @@ export function FinancialsTransparencyForm({ data, onChange }: {
   return <>
     <Field label="섹션 제목"><input className={inputCls} value={data.title ?? ''} onChange={(e) => onChange({ ...data, title: e.target.value })} /></Field>
     <Field label="기준 연도"><input type="number" className={inputCls} min={2000} max={2100} value={data.year ?? ''} onChange={(e) => onChange({ ...data, year: e.target.value ? Number(e.target.value) : undefined })} /></Field>
-    <Field label="총 모금액 (원)"><input type="number" className={inputCls} min={0} value={data.totalRaised} onChange={(e) => onChange({ ...data, totalRaised: Number(e.target.value) })} /></Field>
+    <Field label="총 모금액 (원)">
+      <input type="number" className={inputCls} min={0} value={data.totalRaised} onChange={(e) => onChange({ ...data, totalRaised: Number(e.target.value) })} />
+      <AutoFillRaisedButton year={data.year} onFill={(n) => onChange({ ...data, totalRaised: n })} />
+    </Field>
     <Field label="총 집행액 (원)"><input type="number" className={inputCls} min={0} value={data.totalUsed} onChange={(e) => onChange({ ...data, totalUsed: Number(e.target.value) })} /></Field>
     <Field label="감사보고서 URL (선택)"><input className={inputCls} value={data.reportUrl ?? ''} onChange={(e) => onChange({ ...data, reportUrl: e.target.value || undefined })} placeholder="https://.../report.pdf" /></Field>
     {data.items.map((it, i) => (
