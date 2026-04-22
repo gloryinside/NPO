@@ -17,6 +17,8 @@ import { MemberConsultations } from "@/components/admin/member-consultations";
 import { MemberEditForm } from "@/components/admin/member-edit-form";
 import { AccountStateBadge } from "@/components/admin/members/account-state-badge";
 import { InviteButton } from "@/components/admin/members/invite-button";
+import { ManualPaymentDialog } from "@/components/admin/payments/manual-payment-dialog";
+import { RetryButton } from "@/components/admin/payments/retry-button";
 import { resolveAccountStatesBatch } from "@/lib/members/account-state";
 import type { Member, MemberStatus, MemberType } from "@/types/member";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
@@ -48,6 +50,7 @@ type PaymentRow = {
   pg_method: string | null;
   pay_method: string | null;
   campaigns: { id: string; title: string } | null;
+  promises: { toss_billing_key: string | null } | null;
 };
 
 const MEMBER_STATUS_LABEL: Record<MemberStatus, string> = {
@@ -197,7 +200,7 @@ export default async function MemberDetailPage({
       supabase
         .from("payments")
         .select(
-          "id, payment_code, amount, pay_date, pay_status, income_status, pg_method, pay_method, campaigns(id, title)"
+          "id, payment_code, amount, pay_date, pay_status, income_status, pg_method, pay_method, campaigns(id, title), promises(toss_billing_key)"
         )
         .eq("org_id", tenant.id)
         .eq("member_id", id)
@@ -259,6 +262,18 @@ export default async function MemberDetailPage({
               이메일 없음 · 초대 불가
             </span>
           )}
+          <ManualPaymentDialog
+            memberId={member.id}
+            memberName={member.name}
+            trigger={
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)] border-[var(--border)] text-[var(--text)] bg-[var(--surface)]"
+              >
+                수기 납부 기록
+              </button>
+            }
+          />
           <a
             href={`/api/admin/receipts/${member.id}?year=${new Date().getFullYear()}`}
             className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)] border-[var(--border)] text-[var(--text)] bg-[var(--surface)]"
@@ -406,41 +421,50 @@ export default async function MemberDetailPage({
                   <TableHead className="text-[var(--muted-foreground)]">납부상태</TableHead>
                   <TableHead className="text-[var(--muted-foreground)]">수입상태</TableHead>
                   <TableHead className="text-[var(--muted-foreground)]">결제수단</TableHead>
+                  <TableHead className="text-[var(--muted-foreground)] text-right">액션</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-[var(--muted-foreground)]">
+                    <TableCell colSpan={8} className="text-center py-8 text-[var(--muted-foreground)]">
                       납입 내역이 없습니다.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  payments.map((p) => (
-                    <TableRow key={p.id} className="border-[var(--border)]">
-                      <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
-                        {p.payment_code}
-                      </TableCell>
-                      <TableCell className="text-[var(--text)]">
-                        {p.campaigns?.title ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-[var(--text)]">
-                        {formatAmount(p.amount)}
-                      </TableCell>
-                      <TableCell className="text-sm text-[var(--muted-foreground)]">
-                        {formatDate(p.pay_date)}
-                      </TableCell>
-                      <TableCell><PayStatusBadge status={p.pay_status} /></TableCell>
-                      <TableCell>
-                        <Badge className="border-0 font-medium bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]">
-                          {INCOME_STATUS_LABEL[p.income_status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-[var(--muted-foreground)]">
-                        {p.pg_method ?? p.pay_method ?? "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  payments.map((p) => {
+                    const retryable =
+                      (p.pay_status === "failed" || p.pay_status === "unpaid") &&
+                      !!p.promises?.toss_billing_key;
+                    return (
+                      <TableRow key={p.id} className="border-[var(--border)]">
+                        <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
+                          {p.payment_code}
+                        </TableCell>
+                        <TableCell className="text-[var(--text)]">
+                          {p.campaigns?.title ?? "-"}
+                        </TableCell>
+                        <TableCell className="text-[var(--text)]">
+                          {formatAmount(p.amount)}
+                        </TableCell>
+                        <TableCell className="text-sm text-[var(--muted-foreground)]">
+                          {formatDate(p.pay_date)}
+                        </TableCell>
+                        <TableCell><PayStatusBadge status={p.pay_status} /></TableCell>
+                        <TableCell>
+                          <Badge className="border-0 font-medium bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]">
+                            {INCOME_STATUS_LABEL[p.income_status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-[var(--muted-foreground)]">
+                          {p.pg_method ?? p.pay_method ?? "-"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {retryable ? <RetryButton paymentId={p.id} /> : null}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
