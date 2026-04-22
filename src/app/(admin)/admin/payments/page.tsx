@@ -44,20 +44,82 @@ export default async function PaymentsPage({
   if (tab !== "monthly") {
     let payments: PaymentWithRelations[] = [];
     let total = 0;
+    let monthPaidTotal = 0;
+    let unpaidCount = 0;
+    let cmsSuccessRate = 100;
+    let pendingIncomeCount = 0;
     try {
-      let query = supabase
-        .from("payments")
-        .select("*, members(id, name, member_code), campaigns(id, title)", { count: "exact" })
-        .eq("org_id", tenant.id);
-      if (status !== "all") query = query.eq("pay_status", status);
-      const { data, count } = await query.order("pay_date", { ascending: false }).range(0, 99);
-      payments = (data as unknown as PaymentWithRelations[]) ?? [];
-      total = count ?? 0;
+      const now = new Date();
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const nextFirstDay = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
+
+      const [paymentsRes, monthPaidRes, monthFailedRes, monthTotalRes, pendingIncomeRes] = await Promise.all([
+        (() => {
+          let q = supabase
+            .from("payments")
+            .select("*, members(id, name, member_code), campaigns(id, title)", { count: "exact" })
+            .eq("org_id", tenant.id);
+          if (status !== "all") q = q.eq("pay_status", status);
+          return q.order("pay_date", { ascending: false }).range(0, 99);
+        })(),
+        supabase
+          .from("payments")
+          .select("amount")
+          .eq("org_id", tenant.id)
+          .eq("pay_status", "paid")
+          .gte("pay_date", firstDay)
+          .lt("pay_date", nextFirstDay),
+        supabase
+          .from("payments")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", tenant.id)
+          .eq("pay_status", "failed")
+          .gte("pay_date", firstDay)
+          .lt("pay_date", nextFirstDay),
+        supabase
+          .from("payments")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", tenant.id)
+          .in("pay_status", ["paid", "failed"])
+          .gte("pay_date", firstDay)
+          .lt("pay_date", nextFirstDay),
+        supabase
+          .from("payments")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", tenant.id)
+          .eq("income_status", "pending")
+          .eq("pay_status", "paid"),
+      ]);
+
+      payments = (paymentsRes.data as unknown as PaymentWithRelations[]) ?? [];
+      total = paymentsRes.count ?? 0;
+
+      monthPaidTotal = (monthPaidRes.data ?? []).reduce(
+        (s: number, r: { amount: number | null }) => s + Number(r.amount ?? 0),
+        0,
+      );
+      const monthFailed = monthFailedRes.count ?? 0;
+      const monthAttempts = monthTotalRes.count ?? 0;
+      unpaidCount = monthFailed;
+      cmsSuccessRate =
+        monthAttempts > 0 ? Math.round(((monthAttempts - monthFailed) / monthAttempts) * 100) : 100;
+      pendingIncomeCount = pendingIncomeRes.count ?? 0;
     } catch { /* tenant not found */ }
     return (
       <div>
         {tabLinks}
-        <PaymentList payments={payments} total={total} initialStatus={status} />
+        <PaymentList
+          payments={payments}
+          total={total}
+          initialStatus={status}
+          stats={{
+            monthPaidTotal,
+            unpaidCount,
+            cmsSuccessRate,
+            pendingIncomeCount,
+          }}
+        />
       </div>
     );
   }

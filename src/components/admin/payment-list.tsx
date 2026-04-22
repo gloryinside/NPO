@@ -21,11 +21,20 @@ import {
 } from "@/components/ui/dialog";
 import type { PayStatus, IncomeStatus, PaymentWithRelations } from "@/types/payment";
 import { RefundDialog } from "@/components/admin/refund-dialog";
+import { PageHeader } from "@/components/common/page-header";
+import { StatCard } from "@/components/common/stat-card";
+import { formatKRW } from "@/lib/format";
 
 type Props = {
   payments: PaymentWithRelations[];
   total: number;
   initialStatus: string;
+  stats: {
+    monthPaidTotal: number;
+    unpaidCount: number;
+    cmsSuccessRate: number;
+    pendingIncomeCount: number;
+  };
 };
 
 const STATUS_TABS: Array<{ value: string; label: string }> = [
@@ -353,19 +362,18 @@ function AddPaymentDialog({
   );
 }
 
-export function PaymentList({ payments, total, initialStatus }: Props) {
+export function PaymentList({ payments, total, initialStatus, stats }: Props) {
   const router = useRouter();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
   const [refundTarget, setRefundTarget] = useState<PaymentWithRelations | null>(null);
 
-  const selectStatus = (next: string) => {
-    const params = new URLSearchParams();
-    if (next && next !== "all") params.set("status", next);
-    const qs = params.toString();
-    router.replace(qs ? `/admin/payments?${qs}` : "/admin/payments");
-  };
+  const pageTabs = STATUS_TABS.map((t) => ({
+    key: t.value,
+    label: t.label,
+    href: t.value === "all" ? "/admin/payments" : `/admin/payments?status=${t.value}`,
+  }));
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -422,46 +430,46 @@ export function PaymentList({ payments, total, initialStatus }: Props) {
         onRefunded={() => { setRefundTarget(null); router.refresh(); }}
       />
 
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text)]">납입 관리</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[var(--muted-foreground)]">
-            총 {total.toLocaleString("ko-KR")}건
-          </span>
-          <a
-            href={`/api/admin/export/payments${initialStatus && initialStatus !== "all" ? `?status=${initialStatus}` : ""}`}
-            className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm transition-colors bg-[var(--surface-2)] border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface)]"
-          >
-            CSV 내보내기
-          </a>
-          <Button
-            onClick={() => setShowAddDialog(true)}
-            className="bg-[var(--accent)] text-white text-sm px-4 py-1.5 h-auto"
-          >
-            + 납입 등록
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex gap-1 mb-4">
-        {STATUS_TABS.map((tab) => {
-          const isActive = initialStatus === tab.value;
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => selectStatus(tab.value)}
-              className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                isActive
-                  ? "bg-[var(--accent)] border-[var(--accent)] text-white"
-                  : "bg-[var(--surface-2)] border-[var(--border)] text-[var(--muted-foreground)]"
+      <PageHeader
+        title="납입 관리"
+        description={`총 ${total.toLocaleString("ko-KR")}건`}
+        stats={
+          <>
+            <StatCard label="당월 수납" value={formatKRW(stats.monthPaidTotal)} />
+            <StatCard
+              label="미납/실패"
+              value={`${stats.unpaidCount}건`}
+              tone={stats.unpaidCount > 0 ? "negative" : "default"}
+            />
+            <StatCard
+              label="CMS 성공률"
+              value={`${stats.cmsSuccessRate}%`}
+              tone={stats.cmsSuccessRate < 90 ? "warning" : "default"}
+            />
+            <StatCard label="수입대기" value={`${stats.pendingIncomeCount}건`} />
+          </>
+        }
+        actions={
+          <>
+            <a
+              href={`/api/admin/export/payments${
+                initialStatus && initialStatus !== "all" ? `?status=${initialStatus}` : ""
               }`}
+              className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-[13px] text-[var(--text)] hover:bg-[var(--surface)]"
             >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+              CSV 내보내기
+            </a>
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              className="h-auto bg-[var(--accent)] px-4 py-1.5 text-[13px] text-white"
+            >
+              + 납입 등록
+            </Button>
+          </>
+        }
+        tabs={pageTabs}
+        activeTab={initialStatus}
+      />
 
       {/* 일괄 수입상태 변경 바 */}
       {selected.size > 0 && (
