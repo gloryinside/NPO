@@ -32,6 +32,24 @@ const STATUS_BADGE: Record<string, { label: string; style: React.CSSProperties }
   },
 };
 
+function formatRetryAt(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  const now = Date.now();
+  const diffMs = d.getTime() - now;
+  const abs = Math.abs(diffMs);
+  if (abs < 60 * 60 * 1000) {
+    const m = Math.round(abs / 60000);
+    return diffMs >= 0 ? `${m}분 후` : `${m}분 전`;
+  }
+  if (abs < 86400 * 1000) {
+    const h = Math.round(abs / 3600000);
+    return diffMs >= 0 ? `${h}시간 후` : `${h}시간 전`;
+  }
+  const days = Math.round(abs / 86400000);
+  return diffMs >= 0 ? `${days}일 후` : `${days}일 전`;
+}
+
 export function UnpaidList({ payments, total, initialQ }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,6 +90,49 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
       }
     },
     [router]
+  );
+
+  const retryNow = useCallback(
+    async (id: string) => {
+      if (!confirm("이 건을 지금 즉시 재청구하시겠습니까?")) return;
+      setProcessing(id);
+      try {
+        const res = await fetch(`/api/admin/payments/${id}/retry`, { method: "POST" });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alert(d?.error ?? "재시도 실패");
+          return;
+        }
+        alert(d.success ? `재청구 성공` : `재청구 실패: ${d.message ?? "알 수 없음"}`);
+        router.refresh();
+      } finally {
+        setProcessing(null);
+      }
+    },
+    [router],
+  );
+
+  const cancelRetrySchedule = useCallback(
+    async (id: string) => {
+      if (!confirm("이 건의 자동 재시도 예약을 취소하시겠습니까? (미납 상태로 되돌립니다)")) return;
+      setProcessing(id);
+      try {
+        const res = await fetch(`/api/admin/payments/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pay_status: "unpaid" }),
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          alert(d.error ?? "처리 실패");
+          return;
+        }
+        router.refresh();
+      } finally {
+        setProcessing(null);
+      }
+    },
+    [router],
   );
 
   async function markSelectedPaid() {
@@ -172,13 +233,14 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
               <th className="text-center px-4 py-3 text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>상태</th>
               <th className="text-right px-4 py-3 text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>금액</th>
               <th className="text-center px-4 py-3 text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>납입 예정일</th>
+              <th className="text-center px-4 py-3 text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>재시도</th>
               <th className="px-4 py-3 text-xs font-medium text-right" style={{ color: "var(--muted-foreground)" }}>처리</th>
             </tr>
           </thead>
           <tbody>
             {payments.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-16 text-center text-sm" style={{ color: "var(--positive)" }}>
+                <td colSpan={8} className="py-16 text-center text-sm" style={{ color: "var(--positive)" }}>
                   ✓ 미납·실패 건이 없습니다.
                 </td>
               </tr>
@@ -229,20 +291,67 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
                     <td className="px-4 py-3 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
                       {formatDate(p.pay_date)}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        disabled={isProcessing}
-                        onClick={() => markPaid(p.id)}
-                        className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
-                        style={{
-                          borderColor: "var(--positive)",
-                          color: "var(--positive)",
-                          background: "rgba(34,197,94,0.08)",
-                        }}
-                      >
-                        {isProcessing ? "처리중..." : "납부완료"}
-                      </button>
+                    <td className="px-4 py-3 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
+                      {p.pay_status === "failed" && p.next_retry_at ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span style={{ color: "var(--warning)" }}>
+                            {formatRetryAt(p.next_retry_at)}
+                          </span>
+                          <span className="text-[10px]" style={{ color: "var(--muted-foreground)" }}>
+                            {(p.retry_count ?? 0)}/3회 시도
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px]">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap justify-end gap-1">
+                        {p.pay_status === "failed" && p.toss_payment_key == null && (p.retry_count ?? 0) < 3 && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => retryNow(p.id)}
+                              className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                              style={{
+                                borderColor: "var(--accent)",
+                                color: "var(--accent)",
+                                background: "var(--accent-soft)",
+                              }}
+                            >
+                              {isProcessing ? "처리중..." : "지금 재시도"}
+                            </button>
+                            {p.next_retry_at && (
+                              <button
+                                type="button"
+                                disabled={isProcessing}
+                                onClick={() => cancelRetrySchedule(p.id)}
+                                className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                                style={{
+                                  borderColor: "var(--border)",
+                                  color: "var(--muted-foreground)",
+                                }}
+                              >
+                                예약 취소
+                              </button>
+                            )}
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={() => markPaid(p.id)}
+                          className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                          style={{
+                            borderColor: "var(--positive)",
+                            color: "var(--positive)",
+                            background: "rgba(34,197,94,0.08)",
+                          }}
+                        >
+                          {isProcessing ? "처리중..." : "납부완료"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

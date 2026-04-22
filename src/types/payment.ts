@@ -32,6 +32,8 @@ export type Payment = {
   cancelled_at: string | null;
   refund_amount: number | null;
   cancel_reason: string | null;
+  retry_count: number | null;
+  next_retry_at: string | null;
   created_at: string;
   updated_at: string;
 };

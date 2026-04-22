@@ -21,6 +21,7 @@ export default async function UnpaidPage({
   let totalUnpaidAmount = 0;
   let risk2 = 0;
   let risk3 = 0;
+  let retryScheduledCount = 0;
 
   try {
     const tenant = await requireTenant();
@@ -48,6 +49,16 @@ export default async function UnpaidPage({
     risk2 = [...memberUnpaidCount.values()].filter((c) => c >= 2).length;
     risk3 = [...memberUnpaidCount.values()].filter((c) => c >= 3).length;
 
+    // 재시도 예약 건수
+    const { count: retryCount } = await supabase
+      .from("payments")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", tenant.id)
+      .eq("pay_status", "failed")
+      .not("next_retry_at", "is", null)
+      .lt("retry_count", 3);
+    retryScheduledCount = retryCount ?? 0;
+
     let query = supabase
       .from("payments")
       .select(
@@ -69,7 +80,7 @@ export default async function UnpaidPage({
       if (memberIds.length === 0) {
         return (
           <div>
-            <SummaryCards total={totalUnpaidCount} amount={totalUnpaidAmount} risk2={risk2} risk3={risk3} />
+            <SummaryCards total={totalUnpaidCount} amount={totalUnpaidAmount} risk2={risk2} risk3={risk3} retryScheduled={retryScheduledCount} />
             <UnpaidList payments={[]} total={0} initialQ={q} />
           </div>
         );
@@ -86,7 +97,7 @@ export default async function UnpaidPage({
 
   return (
     <div>
-      <SummaryCards total={totalUnpaidCount} amount={totalUnpaidAmount} risk2={risk2} risk3={risk3} />
+      <SummaryCards total={totalUnpaidCount} amount={totalUnpaidAmount} risk2={risk2} risk3={risk3} retryScheduled={retryScheduledCount} />
       <UnpaidList payments={payments} total={total} initialQ={q} />
     </div>
   );
@@ -97,25 +108,34 @@ function SummaryCards({
   amount,
   risk2,
   risk3,
+  retryScheduled,
 }: {
   total: number;
   amount: number;
   risk2: number;
   risk3: number;
+  retryScheduled: number;
 }) {
   const cards = [
     { label: "총 미납 건수", value: `${total.toLocaleString("ko-KR")}건`, negative: total > 0 },
     { label: "총 미납 금액", value: `${amount.toLocaleString("ko-KR")}원`, negative: amount > 0 },
+    { label: "재시도 예약", value: `${retryScheduled}건`, negative: false, warning: retryScheduled > 0 },
     { label: "2회+ 연속 미납", value: `${risk2}명`, negative: risk2 > 0 },
     { label: "3회+ 연속 미납", value: `${risk3}명`, negative: risk3 > 0 },
   ];
   return (
-    <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-      {cards.map(({ label, value, negative }) => (
+    <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+      {cards.map(({ label, value, negative, warning }) => (
         <div key={label} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
           <div className="mb-1 text-xs text-[var(--muted-foreground)]">{label}</div>
           <div
-            className={`text-xl font-bold ${negative ? "text-[var(--negative)]" : "text-[var(--text)]"}`}
+            className={`text-xl font-bold ${
+              negative
+                ? "text-[var(--negative)]"
+                : warning
+                  ? "text-[var(--warning)]"
+                  : "text-[var(--text)]"
+            }`}
           >
             {value}
           </div>
