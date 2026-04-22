@@ -1,7 +1,7 @@
 import { getDonorSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
-import { getDonorImpact } from '@/lib/donor/impact'
+import { getDonorImpact, getImpactUnitAmount } from '@/lib/donor/impact'
 import { ImpactDonutChart } from '@/components/donor/impact/ImpactDonutChart'
 import { ImpactYearlyBar } from '@/components/donor/impact/ImpactYearlyBar'
 
@@ -22,8 +22,12 @@ export default async function DonorImpactPage() {
 
   const impact = await getDonorImpact(supabase, member.org_id, member.id)
 
-  // 간단한 "임팩트 추정": 후원액을 10만원 단위로 "수혜 건수"로 변환 (관리자가 조정 가능해야 하지만 MVP는 고정)
-  const estimatedBeneficiaries = Math.floor(impact.totalAmount / 100_000)
+  // G-82: 임팩트 추정 단가는 환경변수 기반 헬퍼. 향후 기관별 설정으로 확장 가능.
+  const unitAmount = getImpactUnitAmount()
+  const estimatedBeneficiaries = Math.floor(impact.totalAmount / unitAmount)
+  const unitLabel = unitAmount >= 10_000
+    ? `${Math.round(unitAmount / 10_000)}만원 단위`
+    : `${unitAmount.toLocaleString('ko-KR')}원 단위`
 
   return (
     <div className="space-y-8">
@@ -70,7 +74,7 @@ export default async function DonorImpactPage() {
             <MetricCard icon="💰" label="누적 후원액" value={formatKRW(impact.totalAmount)} color="var(--accent)" />
             <MetricCard icon="📊" label="후원 건수" value={`${impact.paymentCount}회`} color="var(--positive)" />
             <MetricCard icon="📅" label="함께한 개월" value={`${impact.activeMonths}개월`} color="var(--info)" />
-            <MetricCard icon="🌱" label="지원 추정 (10만원 단위)" value={`${estimatedBeneficiaries}건`} color="var(--warning)" />
+            <MetricCard icon="🌱" label={`지원 추정 (${unitLabel})`} value={`${estimatedBeneficiaries}건`} color="var(--warning)" />
           </section>
 
           {/* 캠페인별 분포 */}
@@ -80,7 +84,7 @@ export default async function DonorImpactPage() {
               <div className="grid md:grid-cols-[1fr_auto] gap-6 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
                 <ImpactDonutChart data={impact.byCampaign.map((c) => ({ title: c.title, amount: c.amount }))} />
                 <ul className="space-y-2">
-                  {impact.byCampaign.slice(0, 6).map((c) => {
+                  {impact.byCampaign.map((c) => {
                     const pct = Math.round((c.amount / impact.totalAmount) * 100)
                     return (
                       <li key={c.campaignId ?? '__none__'} className="flex items-center justify-between gap-4 py-2 border-b border-[var(--border)] last:border-b-0">

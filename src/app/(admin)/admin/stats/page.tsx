@@ -28,14 +28,8 @@ type CampaignSettlement = {
   unpaidAmount: number;
   rate: number;
 };
-type ChurnRiskMember = {
-  memberId: string;
-  memberName: string;
-  memberPhone: string | null;
-  unpaidCount: number;
-  lastPayDate: string | null;
-  totalUnpaid: number;
-};
+import type { ChurnRiskMember } from "@/lib/stats/churn-risk";
+import { fetchChurnRiskMembers as fetchChurnRiskMembersLib } from "@/lib/stats/churn-risk";
 type MemberPayRow = {
   memberId: string;
   memberName: string;
@@ -235,46 +229,8 @@ async function fetchCampaignSettlement(
     .sort((a, b) => b.paidAmount - a.paidAmount);
 }
 
-async function fetchChurnRisk(
-  supabase: ReturnType<typeof createSupabaseAdminClient>,
-  orgId: string
-): Promise<ChurnRiskMember[]> {
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const startStr = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, "0")}-01`;
-
-  const { data } = await supabase
-    .from("payments")
-    .select("member_id, pay_date, pay_status, amount, members(name, phone)")
-    .eq("org_id", orgId)
-    .in("pay_status", ["failed", "unpaid"])
-    .gte("pay_date", startStr);
-
-  const map = new Map<string, ChurnRiskMember>();
-  for (const row of data ?? []) {
-    const mid = row.member_id as string;
-    if (!mid) continue;
-    const member = (row as Record<string, unknown>).members as { name: string; phone: string | null } | null;
-    const cur = map.get(mid) ?? {
-      memberId: mid,
-      memberName: member?.name ?? "알 수 없음",
-      memberPhone: member?.phone ?? null,
-      unpaidCount: 0,
-      lastPayDate: null,
-      totalUnpaid: 0,
-    };
-    cur.unpaidCount += 1;
-    cur.totalUnpaid += Number(row.amount ?? 0);
-    if (!cur.lastPayDate || (row.pay_date as string) > cur.lastPayDate) {
-      cur.lastPayDate = row.pay_date as string;
-    }
-    map.set(mid, cur);
-  }
-
-  return Array.from(map.values())
-    .filter((m) => m.unpaidCount >= 2)
-    .sort((a, b) => b.unpaidCount - a.unpaidCount || (b.lastPayDate ?? "").localeCompare(a.lastPayDate ?? ""));
-}
+// fetchChurnRisk는 src/lib/stats/churn-risk.ts로 이전되어 cron과 공용.
+// 기존 호출부는 fetchChurnRiskMembersLib(supabase, orgId) 사용.
 
 async function fetchMemberPayRanking(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
@@ -355,7 +311,7 @@ export default async function StatsPage({
         fetchMemberGrowth(supabase, tenant.id),
         fetchUnpaidStats(supabase, tenant.id),
         fetchIncomeStatusCounts(supabase, tenant.id),
-        fetchChurnRisk(supabase, tenant.id),
+        fetchChurnRiskMembersLib(supabase, tenant.id),
         fetchChurnRate(supabase, tenant.id),
         fetchCampaignSettlement(supabase, tenant.id),
       ]);

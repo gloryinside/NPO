@@ -1,6 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
+ * G-82: 임팩트 단가 — 총 후원액을 "지원 추정 건수"로 환산할 때의 분모.
+ *
+ * 현재는 환경변수 IMPACT_UNIT_AMOUNT(기본 100_000원)로 전역 설정.
+ * 향후 orgs.settings JSONB에 기관별 단가 컬럼 추가 시 이 함수를 교체하면
+ * 호출부(/donor/impact 페이지)는 변경 불필요.
+ */
+export function getImpactUnitAmount(): number {
+  const env = Number(process.env.IMPACT_UNIT_AMOUNT)
+  return Number.isFinite(env) && env > 0 ? env : 100_000
+}
+
+/**
  * 후원자 개인 임팩트 집계.
  * 기준: payments.pay_status = 'paid' 인 행만 합산.
  *
@@ -81,7 +93,8 @@ export async function getDonorImpact(
     }
   }
 
-  const byCampaign = [...campaignMap.values()].sort((a, b) => b.amount - a.amount)
+  const byCampaignRaw = [...campaignMap.values()].sort((a, b) => b.amount - a.amount)
+  const byCampaign = collapseOthers(byCampaignRaw, 6)
   const byYear = [...yearMap.values()].sort((a, b) => a.year - b.year)
 
   // activeMonths 계산 (최소 1)
@@ -102,6 +115,23 @@ export async function getDonorImpact(
     firstPayDate,
     lastPayDate,
   }
+}
+
+/**
+ * G-83: 7개 이상 캠페인은 상위 N-1 + "기타" 1개로 묶어 도넛/리스트 가독성 확보.
+ */
+function collapseOthers(
+  items: Array<{ campaignId: string | null; title: string; amount: number; count: number }>,
+  keep: number,
+): Array<{ campaignId: string | null; title: string; amount: number; count: number }> {
+  if (items.length <= keep) return items
+  const head = items.slice(0, keep - 1)
+  const tail = items.slice(keep - 1)
+  const others = tail.reduce(
+    (acc, c) => ({ campaignId: null, title: `기타 (${tail.length}건)`, amount: acc.amount + c.amount, count: acc.count + c.count }),
+    { campaignId: null, title: '기타', amount: 0, count: 0 },
+  )
+  return [...head, others]
 }
 
 function emptyImpact(): DonorImpact {

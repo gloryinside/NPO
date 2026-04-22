@@ -75,6 +75,22 @@ describe('getDonorImpact', () => {
     ])
   })
 
+  it('G-83: 7개 이상 캠페인은 상위 5 + "기타"로 묶인다', async () => {
+    const rows = Array.from({ length: 8 }, (_, i) => ({
+      amount: (8 - i) * 10000,  // 내림차순
+      pay_date: `2024-0${(i % 9) + 1}-01`,
+      campaign_id: `c${i}`,
+      campaigns: { id: `c${i}`, title: `캠페인${i}` },
+    }))
+    const r = await getDonorImpact(stub(rows), 'org-1', 'm-1')
+    expect(r.byCampaign.length).toBe(6)  // keep=6, 상위 5 + 기타 1
+    expect(r.byCampaign[5].campaignId).toBe(null)
+    expect(r.byCampaign[5].title).toMatch(/^기타/)
+    // 합계는 원본 총액과 동일해야 함 (8+7+6+5+4+3+2+1)*10000 = 360000
+    const total = r.byCampaign.reduce((s, c) => s + c.amount, 0)
+    expect(total).toBe(360000)
+  })
+
   it('activeMonths는 첫 결제 월부터 마지막 결제 월까지의 개월 수', async () => {
     const rows = [
       { amount: 10000, pay_date: '2024-01-15', campaign_id: null, campaigns: null },
