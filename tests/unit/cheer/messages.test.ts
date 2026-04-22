@@ -38,6 +38,7 @@ function buildSupabase(opts: {
   chain.eq = ret
   chain.gte = ret
   chain.is = ret
+  chain.lt = ret
   chain.order = ret
   chain.limit = () =>
     Promise.resolve({ data: opts.listRows ?? [], error: null })
@@ -276,5 +277,61 @@ describe('listPublicCheerMessages', () => {
       campaignId: 'camp-1',
     })
     expect(r[0].displayName).toBe('후원자')
+  })
+})
+
+describe('listPublicCheerMessages — G-110 페이지네이션', () => {
+  /**
+   * spy stub — chain.lt 호출 여부를 관찰.
+   * listRows를 그대로 반환하되, 각 filter 메서드의 호출은 mockFn으로 기록.
+   */
+  function spyStub(listRows: Array<Record<string, unknown>> = []) {
+    const ltSpy = vi.fn()
+    const chain: Record<string, unknown> = {}
+    const ret = () => chain
+    chain.select = ret
+    chain.eq = ret
+    chain.is = ret
+    chain.order = ret
+    chain.lt = (...args: unknown[]) => {
+      ltSpy(...args)
+      return chain
+    }
+    chain.limit = () => Promise.resolve({ data: listRows, error: null })
+    return {
+      supabase: { from: vi.fn().mockReturnValue(chain) } as unknown as SupabaseClient,
+      ltSpy,
+    }
+  }
+
+  it('before 없으면 .lt 호출 안 함', async () => {
+    const { supabase, ltSpy } = spyStub([])
+    await listPublicCheerMessages(supabase, {
+      orgId: 'o1',
+      campaignId: null,
+    })
+    expect(ltSpy).not.toHaveBeenCalled()
+  })
+
+  it('before 주어지면 created_at < before 필터 추가', async () => {
+    const cursor = '2026-04-22T00:00:00Z'
+    const { supabase, ltSpy } = spyStub([])
+    await listPublicCheerMessages(supabase, {
+      orgId: 'o1',
+      campaignId: 'camp-1',
+      before: cursor,
+    })
+    expect(ltSpy).toHaveBeenCalledTimes(1)
+    expect(ltSpy).toHaveBeenCalledWith('created_at', cursor)
+  })
+
+  it('before가 null/undefined여도 .lt 호출 안 함', async () => {
+    const { supabase, ltSpy } = spyStub([])
+    await listPublicCheerMessages(supabase, {
+      orgId: 'o1',
+      campaignId: null,
+      before: null,
+    })
+    expect(ltSpy).not.toHaveBeenCalled()
   })
 })

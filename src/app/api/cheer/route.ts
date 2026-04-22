@@ -51,14 +51,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_limit' }, { status: 400 })
   }
 
+  // G-110: 커서 기반 페이지네이션 — `before`는 이전 페이지 마지막 행의 createdAt
+  const beforeRaw = req.nextUrl.searchParams.get('before')
+  const before =
+    beforeRaw && !Number.isNaN(Date.parse(beforeRaw)) ? beforeRaw : null
+
   const supabase = createSupabaseAdminClient()
   const messages = await listPublicCheerMessages(supabase, {
     orgId: tenant.id,
     campaignId: campaignIdRaw && campaignIdRaw.trim() ? campaignIdRaw : null,
     limit,
+    before,
   })
 
-  return NextResponse.json({ messages })
+  // 반환 건수가 limit과 같으면 다음 페이지가 있을 "가능성"이 있다 — 마지막 행
+  // createdAt을 nextCursor로 내려준다. 정확히 한 페이지 남았을 때 한 번 더
+  // fetch가 발생할 수 있지만 lib에서 빈 배열을 반환하므로 UX에 무해.
+  const nextCursor =
+    messages.length === limit ? messages[messages.length - 1]!.createdAt : null
+
+  return NextResponse.json({ messages, nextCursor })
 }
 
 export async function POST(req: NextRequest) {

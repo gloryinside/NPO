@@ -129,6 +129,8 @@ export async function createCheerMessage(
  *   - 최신순
  *   - hidden=false AND published=true 만
  *   - anonymous=true면 displayName 마스킹
+ *   - G-110: `before` ISO timestamp 커서로 페이지네이션
+ *     (`created_at < before` — 인덱스 idx_cheer_campaign_created range-scan)
  */
 export async function listPublicCheerMessages(
   supabase: SupabaseClient,
@@ -136,6 +138,7 @@ export async function listPublicCheerMessages(
     orgId: string
     campaignId: string | null
     limit?: number
+    before?: string | null
   }
 ): Promise<CheerMessage[]> {
   const limit = Math.min(Math.max(1, params.limit ?? 50), 200)
@@ -153,6 +156,10 @@ export async function listPublicCheerMessages(
     query = query.is('campaign_id', null)
   } else {
     query = query.eq('campaign_id', params.campaignId)
+  }
+
+  if (params.before) {
+    query = query.lt('created_at', params.before)
   }
 
   const { data } = await query
