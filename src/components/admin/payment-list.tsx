@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
 import { DetailDrawer } from "@/components/common/detail-drawer";
+import { FilterBar, FilterDropdown } from "@/components/common/filter-bar";
 import { formatKRW } from "@/lib/format";
 
 type Props = {
@@ -363,6 +364,50 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
   const [batchLoading, setBatchLoading] = useState(false);
   const [refundTarget, setRefundTarget] = useState<PaymentWithRelations | null>(null);
   const [detailTarget, setDetailTarget] = useState<PaymentWithRelations | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [campaignFilter, setCampaignFilter] = useState<string | null>(null);
+  const [methodFilter, setMethodFilter] = useState<string | null>(null);
+
+  const campaignOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of payments) {
+      if (p.campaigns?.id) map.set(p.campaigns.id, p.campaigns.title);
+    }
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+  }, [payments]);
+
+  const methodOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of payments) {
+      if (p.pg_method) set.add(p.pg_method);
+    }
+    return Array.from(set).map((v) => ({ value: v, label: v }));
+  }, [payments]);
+
+  const filteredPayments = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return payments.filter((p) => {
+      if (q) {
+        const name = (p.members?.name ?? "").toLowerCase();
+        const code = (p.payment_code ?? "").toLowerCase();
+        const title = (p.campaigns?.title ?? "").toLowerCase();
+        if (!name.includes(q) && !code.includes(q) && !title.includes(q)) {
+          return false;
+        }
+      }
+      if (campaignFilter && p.campaigns?.id !== campaignFilter) return false;
+      if (methodFilter && p.pg_method !== methodFilter) return false;
+      return true;
+    });
+  }, [payments, searchQuery, campaignFilter, methodFilter]);
+
+  const hasActiveFilters = !!(searchQuery || campaignFilter || methodFilter);
+
+  function resetFilters() {
+    setSearchQuery("");
+    setCampaignFilter(null);
+    setMethodFilter(null);
+  }
 
   const pageTabs = STATUS_TABS.map((t) => ({
     key: t.value,
@@ -503,6 +548,34 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
         activeTab={initialStatus}
       />
 
+      <FilterBar
+        searchPlaceholder="이름 / 결제코드 / 캠페인"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={
+          <>
+            {campaignOptions.length > 0 && (
+              <FilterDropdown
+                label="캠페인"
+                value={campaignFilter}
+                options={campaignOptions}
+                onChange={setCampaignFilter}
+              />
+            )}
+            {methodOptions.length > 0 && (
+              <FilterDropdown
+                label="결제수단"
+                value={methodFilter}
+                options={methodOptions}
+                onChange={setMethodFilter}
+              />
+            )}
+          </>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onReset={resetFilters}
+      />
+
       {/* 일괄 수입상태 변경 바 */}
       {selected.size > 0 && (
         <div className="flex items-center gap-2 mb-3 p-3 rounded-lg border border-[var(--accent)] bg-[rgba(99,102,241,0.05)]">
@@ -535,7 +608,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
 
       <DataTable<PaymentWithRelations>
         columns={columns}
-        rows={payments}
+        rows={filteredPayments}
         rowKey={(p) => p.id}
         emptyMessage="납입 내역이 없습니다."
         selectable
