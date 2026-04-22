@@ -1,4 +1,5 @@
 import PublicNav from "@/components/public/nav";
+import { LogoWithText } from "@/components/brand/logo-with-text";
 import {
   ThemeConfigSchema,
   defaultThemeConfig,
@@ -37,6 +38,26 @@ export default async function PublicLayout({
       <style dangerouslySetInnerHTML={{ __html: cssString }} />
       <PublicNav />
       {children}
+      <footer
+        style={{
+          textAlign: "center",
+          padding: "1.5rem 1rem",
+          color: "var(--muted-foreground)",
+          fontSize: 12,
+        }}
+      >
+        <a
+          href="/"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <LogoWithText variant="footer" size="sm" />
+        </a>
+      </footer>
     </div>
   );
 }
