@@ -19,6 +19,15 @@ export const runtime = 'nodejs'
 
 export const FALLBACK_ORG = '후원 기관'
 
+// G-121: ref 형식을 DB 조회 전에 걸러낸다. referral_codes CHECK 규칙의 거울:
+//   length 6~16, ascii 가시문자만 (실제 알파벳은 더 좁지만 가드는 관대하게).
+// normalize 후 검증 — 대소문자 입력을 허용하기 위함.
+const REF_PATTERN = /^[!-~]{6,16}$/
+
+export function isValidRefShape(raw: string): boolean {
+  return REF_PATTERN.test(raw)
+}
+
 export interface InviteOgContext {
   orgName: string
   inviterName: string | null
@@ -30,7 +39,12 @@ export async function loadInviteOgContext(
 ): Promise<InviteOgContext> {
   if (!ref) return { orgName: FALLBACK_ORG, inviterName: null }
 
-  const referrer = await findReferrerByCode(supabase, ref)
+  const normalized = ref.trim().toLowerCase()
+  if (!isValidRefShape(normalized)) {
+    return { orgName: FALLBACK_ORG, inviterName: null }
+  }
+
+  const referrer = await findReferrerByCode(supabase, normalized)
   if (!referrer) return { orgName: FALLBACK_ORG, inviterName: null }
 
   const [orgRow, memberRow] = await Promise.all([

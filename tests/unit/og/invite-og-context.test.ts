@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   loadInviteOgContext,
   FALLBACK_ORG,
+  isValidRefShape,
 } from '@/app/api/public/invite-og/route'
 
 /**
@@ -75,5 +76,51 @@ describe('loadInviteOgContext', () => {
     const ctx = await loadInviteOgContext(supabase, 'code1234')
     expect(ctx.orgName).toBe('희망나눔재단')
     expect(ctx.inviterName).toBeNull()
+  })
+
+  it('G-121: 너무 짧은 ref는 DB 조회 없이 fallback', async () => {
+    const supabase = stub([])
+    const ctx = await loadInviteOgContext(supabase, 'abc')
+    expect(ctx).toEqual({ orgName: FALLBACK_ORG, inviterName: null })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('G-121: 너무 긴 ref는 DB 조회 없이 fallback', async () => {
+    const supabase = stub([])
+    const ctx = await loadInviteOgContext(supabase, 'a'.repeat(17))
+    expect(ctx).toEqual({ orgName: FALLBACK_ORG, inviterName: null })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('G-121: 공격성 수천자 ref도 즉시 fallback', async () => {
+    const supabase = stub([])
+    const ctx = await loadInviteOgContext(supabase, 'x'.repeat(5000))
+    expect(ctx).toEqual({ orgName: FALLBACK_ORG, inviterName: null })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('G-121: 공백/제어문자 섞이면 fallback', async () => {
+    const supabase = stub([])
+    const ctx = await loadInviteOgContext(supabase, 'code 123')
+    expect(ctx).toEqual({ orgName: FALLBACK_ORG, inviterName: null })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+})
+
+describe('isValidRefShape', () => {
+  it.each([
+    ['abcdef', true],
+    ['ABCDEF', true],
+    ['code1234', true],
+    ['a1b2c3d4e5f6g7', true],
+    ['a'.repeat(16), true],
+    ['a'.repeat(17), false],
+    ['abc', false],
+    ['', false],
+    ['코드1234', false], // non-ASCII
+    ['abc def', false], // whitespace
+    ['abc\t123', false], // control char
+  ])('shape(%j) === %s', (input, expected) => {
+    expect(isValidRefShape(input)).toBe(expected)
   })
 })
