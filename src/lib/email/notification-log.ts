@@ -5,6 +5,7 @@ export type NotificationKind =
   | 'campaign_closed_thanks'
   | 'amount_change_up'
   | 'amount_change_down'
+  | 'member_invite'
 
 /**
  * G-85/G-86: 지난 N일 내 같은 (org, kind) 발송이 있었는지 확인.

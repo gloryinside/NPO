@@ -15,6 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MemberConsultations } from "@/components/admin/member-consultations";
 import { MemberEditForm } from "@/components/admin/member-edit-form";
+import { AccountStateBadge } from "@/components/admin/members/account-state-badge";
+import { InviteButton } from "@/components/admin/members/invite-button";
+import { resolveAccountStatesBatch } from "@/lib/members/account-state";
 import type { Member, MemberStatus, MemberType } from "@/types/member";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 import type { PayStatus, IncomeStatus } from "@/types/payment";
@@ -156,7 +159,17 @@ export default async function MemberDetailPage({
   let member: Member | null = null;
   let promises: PromiseRow[] = [];
   let payments: PaymentRow[] = [];
-  let stats = { totalAmount: 0, paymentCount: 0, activePromiseCount: 0 };
+  let stats = {
+    totalAmount: 0,
+    paymentCount: 0,
+    activePromiseCount: 0,
+    unpaidAmount: 0,
+    unpaidCount: 0,
+  };
+  let accountState: Awaited<ReturnType<typeof resolveAccountStatesBatch>> extends Map<string, infer V> ? V : never = {
+    state: "unlinked" as const,
+    lastInviteSentAt: null,
+  };
 
   try {
     const tenant = await requireTenant();
@@ -172,7 +185,7 @@ export default async function MemberDetailPage({
     if (!memberData) notFound();
     member = memberData as Member;
 
-    const [promisesRes, paymentsRes] = await Promise.all([
+    const [promisesRes, paymentsRes, stateMap] = await Promise.all([
       supabase
         .from("promises")
         .select(
@@ -190,16 +203,28 @@ export default async function MemberDetailPage({
         .eq("member_id", id)
         .order("pay_date", { ascending: false })
         .limit(100),
+      resolveAccountStatesBatch(supabase, [
+        { id: member.id, supabase_uid: member.supabase_uid },
+      ]),
     ]);
 
     promises = (promisesRes.data as unknown as PromiseRow[]) ?? [];
     payments = (paymentsRes.data as unknown as PaymentRow[]) ?? [];
+    accountState = stateMap.get(member.id) ?? accountState;
 
     const paidPayments = payments.filter((p) => p.pay_status === "paid");
+    const unpaidPayments = payments.filter((p) =>
+      p.pay_status === "unpaid" || p.pay_status === "failed"
+    );
     stats = {
       totalAmount: paidPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
       paymentCount: paidPayments.length,
       activePromiseCount: promises.filter((p) => p.status === "active").length,
+      unpaidAmount: unpaidPayments.reduce(
+        (sum, p) => sum + (Number(p.amount) || 0),
+        0
+      ),
+      unpaidCount: unpaidPayments.length,
     };
   } catch {
     notFound();
@@ -221,20 +246,44 @@ export default async function MemberDetailPage({
         </span>
         <h1 className="text-2xl font-bold text-[var(--text)]">{member.name}</h1>
         <MemberStatusBadge status={member.status} />
-        <a
-          href={`/api/admin/receipts/${member.id}?year=${new Date().getFullYear()}`}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)] border-[var(--border)] text-[var(--text)] bg-[var(--surface)]"
-          download
-        >
-          영수증 발급
-        </a>
+        <AccountStateBadge state={accountState.state} />
+        <div className="ml-auto flex items-center gap-2">
+          {accountState.state !== "linked" && member.email && (
+            <InviteButton
+              memberId={member.id}
+              lastSentAt={accountState.lastInviteSentAt}
+            />
+          )}
+          {accountState.state !== "linked" && !member.email && (
+            <span className="text-xs text-[var(--muted-foreground)]">
+              이메일 없음 · 초대 불가
+            </span>
+          )}
+          <a
+            href={`/api/admin/receipts/${member.id}?year=${new Date().getFullYear()}`}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)] border-[var(--border)] text-[var(--text)] bg-[var(--surface)]"
+            download
+          >
+            영수증 발급
+          </a>
+        </div>
       </div>
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* 요약 카드 5개: 총납입/건수/활성약정/미납액/미납건수 */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <StatCard label="총 납입액" value={formatAmount(stats.totalAmount)} />
         <StatCard label="납입 건수" value={`${stats.paymentCount.toLocaleString("ko-KR")}건`} />
         <StatCard label="활성 약정 수" value={`${stats.activePromiseCount.toLocaleString("ko-KR")}건`} />
+        <StatCard
+          label="미납액"
+          value={formatAmount(stats.unpaidAmount)}
+          highlight={stats.unpaidCount > 0}
+        />
+        <StatCard
+          label="미납 건수"
+          value={`${stats.unpaidCount.toLocaleString("ko-KR")}건`}
+          highlight={stats.unpaidCount > 0}
+        />
       </div>
 
       {/* 탭 구조 */}
@@ -248,6 +297,38 @@ export default async function MemberDetailPage({
 
         {/* 기본정보 탭 */}
         <TabsContent value="basic">
+          <div className="mb-4 rounded-lg border p-4 border-[var(--border)] bg-[var(--surface)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-[var(--muted-foreground)] mb-1.5">
+                  계정 상태
+                </div>
+                <div className="flex items-center gap-2">
+                  <AccountStateBadge state={accountState.state} />
+                  <span className="text-sm text-[var(--text)]">
+                    {accountState.state === "linked"
+                      ? "로그인 연결됨"
+                      : accountState.state === "invited"
+                        ? "초대 메일 발송됨"
+                        : accountState.state === "invite_expired"
+                          ? "초대 만료 — 재발송 가능"
+                          : "로그인 계정 미연결"}
+                  </span>
+                </div>
+                {accountState.lastInviteSentAt && (
+                  <div className="text-xs mt-1.5 text-[var(--muted-foreground)]">
+                    최근 초대 메일: {formatDate(accountState.lastInviteSentAt)}
+                  </div>
+                )}
+              </div>
+              {accountState.state !== "linked" && member.email && (
+                <InviteButton
+                  memberId={member.id}
+                  lastSentAt={accountState.lastInviteSentAt}
+                />
+              )}
+            </div>
+          </div>
           <MemberEditForm member={member} />
         </TabsContent>
 
@@ -375,11 +456,30 @@ export default async function MemberDetailPage({
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="rounded-lg border p-5 border-[var(--border)] bg-[var(--surface)]">
+    <div
+      className="rounded-lg border p-5"
+      style={{
+        borderColor: highlight ? "var(--warning)" : "var(--border)",
+        background: "var(--surface)",
+      }}
+    >
       <div className="text-sm mb-1 text-[var(--muted-foreground)]">{label}</div>
-      <div className="text-xl font-semibold text-[var(--text)]">{value}</div>
+      <div
+        className="text-xl font-semibold"
+        style={{ color: highlight ? "var(--warning)" : "var(--text)" }}
+      >
+        {value}
+      </div>
     </div>
   );
 }

@@ -9,7 +9,8 @@ export type ScenarioKey =
   | 'receipt_issued'
   | 'billing_failed'
   | 'billing_reminder'
-  | 'welcome';
+  | 'welcome'
+  | 'member_invite';
 
 export type VariableDef = { key: string; label: string; sample: string };
 
@@ -188,6 +189,32 @@ export const SCENARIOS: ScenarioMeta[] = [
         pMixed(bold('{{name}}'), textNode('님, {{orgName}}에 오신 것을 환영합니다.')),
         p('앞으로 따뜻한 나눔의 여정을 함께해 주세요.'),
         p('궁금한 점이 있으시면 언제든 문의해 주세요.'),
+      ],
+    },
+  },
+  {
+    key: 'member_invite',
+    label: '후원자 로그인 초대',
+    description: '관리자가 비회원(로그인 계정 미연결) 후원자에게 발송',
+    variables: [
+      { key: 'name', label: '후원자명', sample: '홍길동' },
+      { key: 'orgName', label: '기관명', sample: '희망나눔재단' },
+      { key: 'email', label: '후원자 이메일', sample: 'donor@example.com' },
+      { key: 'loginUrl', label: '로그인 링크', sample: 'https://example.org/donor/login' },
+    ],
+    defaultSubject: '[{{orgName}}] 후원자 페이지로 로그인해보세요',
+    defaultBodyJson: {
+      type: 'doc',
+      content: [
+        heading('후원자 전용 페이지 안내'),
+        pMixed(bold('{{name}}'), textNode('님, {{orgName}}에 후원해주셔서 감사합니다.')),
+        p('후원자 전용 페이지에 로그인하시면 다음 기능을 이용하실 수 있습니다.'),
+        p('• 지금까지의 후원 내역 확인'),
+        p('• 기부금 영수증 발급·다운로드'),
+        p('• 정기후원 약정 상태 관리'),
+        p('아래 링크에서 회원님 이메일({{email}})로 로그인해 주세요. 기존 후원 내역이 자동으로 연결됩니다.'),
+        p('{{loginUrl}}'),
+        p('이 메일은 {{orgName}}의 관리자가 1회 안내 목적으로 발송했습니다.'),
       ],
     },
   },

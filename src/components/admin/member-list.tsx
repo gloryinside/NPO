@@ -21,6 +21,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Member, MemberStatus } from "@/types/member";
+import type { AccountState } from "@/lib/members/account-state";
+import { AccountStateBadge } from "@/components/admin/members/account-state-badge";
 
 type Props = {
   members: Member[];
@@ -29,6 +31,8 @@ type Props = {
   initialStatus: string;
   initialPayMethod?: string;
   initialPromiseType?: string;
+  /** member.id → 계정 상태. 키 누락 시 기본 'unlinked' 로 해석. */
+  accountStates?: Record<string, AccountState>;
 };
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -284,6 +288,7 @@ export function MemberList({
   initialStatus,
   initialPayMethod = "",
   initialPromiseType = "",
+  accountStates,
 }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -482,7 +487,13 @@ export function MemberList({
                     className="font-medium"
                     style={{ color: "var(--text)" }}
                   >
-                    {m.name}
+                    <span className="inline-flex items-center gap-1.5">
+                      {m.name}
+                      <AccountStateBadge
+                        state={accountStates?.[m.id] ?? "unlinked"}
+                        compact
+                      />
+                    </span>
                   </TableCell>
                   <TableCell style={{ color: "var(--text)" }}>
                     {m.phone ?? "-"}

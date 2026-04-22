@@ -2,6 +2,10 @@ import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { MemberList } from "@/components/admin/member-list";
+import {
+  resolveAccountStatesBatch,
+  type AccountState,
+} from "@/lib/members/account-state";
 import type { Member } from "@/types/member";
 
 type SearchParams = Promise<{
@@ -24,14 +28,19 @@ export default async function MembersPage({
     status = "active",
     payMethod = "",
     promiseType = "",
-    tab = "list",
+    tab: rawTab = "all",
   } = await searchParams;
 
-  // 탭 링크 (공통)
+  // 하위호환: 기존 링크가 tab=list 로 들어오면 all 로 매핑
+  const tab = rawTab === "list" ? "all" : rawTab;
+
+  // 탭 링크 (공통) — Phase 7-D-1: 회원/비회원 탭 추가
   const tabLinks = (
     <div className="mb-6 flex gap-1 border-b border-[var(--border)]">
       {[
-        { key: "list", label: "회원목록" },
+        { key: "all", label: "전체" },
+        { key: "linked", label: "회원(로그인)" },
+        { key: "unlinked", label: "비회원" },
         { key: "source", label: "유입경로" },
       ].map(({ key, label }) => (
         <a
@@ -109,9 +118,11 @@ export default async function MembersPage({
     );
   }
 
-  // ── 회원목록 탭 (기본) ──
+  // ── 회원목록 탭 (all/linked/unlinked) ──
   let members: Member[] = [];
   let total = 0;
+  let accountStates: Record<string, AccountState> = {};
+
   try {
     const tenant = await requireTenant();
     const supabase = createSupabaseAdminClient();
@@ -137,6 +148,7 @@ export default async function MembersPage({
               initialStatus={status}
               initialPayMethod={payMethod}
               initialPromiseType={promiseType}
+              accountStates={{}}
             />
           </div>
         );
@@ -161,12 +173,30 @@ export default async function MembersPage({
       query = query.in("id", filteredMemberIds);
     }
 
+    // Phase 7-D-1: 회원/비회원 탭 필터
+    if (tab === "linked") {
+      query = query.not("supabase_uid", "is", null);
+    } else if (tab === "unlinked") {
+      query = query.is("supabase_uid", null);
+    }
+
     const { data, count } = await query
       .order("created_at", { ascending: false })
       .range(0, 49);
 
     members = (data as Member[]) ?? [];
     total = count ?? 0;
+
+    // 회원/비회원 상태 배치 계산 — 목록에 표시된 회원만 대상
+    if (members.length > 0) {
+      const stateMap = await resolveAccountStatesBatch(
+        supabase,
+        members.map((m) => ({ id: m.id, supabase_uid: m.supabase_uid }))
+      );
+      accountStates = Object.fromEntries(
+        Array.from(stateMap.entries()).map(([id, v]) => [id, v.state])
+      );
+    }
   } catch {
     // tenant not found — render empty list
   }
@@ -181,6 +211,7 @@ export default async function MembersPage({
         initialStatus={status}
         initialPayMethod={payMethod}
         initialPromiseType={promiseType}
+        accountStates={accountStates}
       />
     </div>
   );

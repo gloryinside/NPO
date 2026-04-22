@@ -14,6 +14,7 @@ export type AuditAction =
   | "member.update"
   | "member.update_id_number"
   | "member.delete"
+  | "member.invite"
   // 약정
   | "promise.create"
   | "promise.update"
