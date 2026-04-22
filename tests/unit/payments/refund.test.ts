@@ -18,16 +18,19 @@ const BASE_PAYMENT = {
   toss_payment_key: 'toss-key-abc',
 }
 
+type UpdateChain = { eq: () => UpdateChain; select: () => Promise<{ error: unknown }> }
+type SelectChain = { eq: () => SelectChain; maybeSingle: () => Promise<{ data: unknown; error: null }> }
+
 function makeSupabase(opts: {
   row: unknown
   updateError?: unknown
 }): SupabaseClient {
-  const updateChain = {
-    eq: function(this: typeof updateChain) { return this },
+  const updateChain: UpdateChain = {
+    eq: () => updateChain,
     select: () => Promise.resolve({ error: opts.updateError ?? null }),
   }
-  const selectChain = {
-    eq: function(this: typeof selectChain) { return this },
+  const selectChain: SelectChain = {
+    eq: () => selectChain,
     maybeSingle: () => Promise.resolve({ data: opts.row, error: null }),
   }
   return {
@@ -81,8 +84,8 @@ describe('refundPayment 사전 검증', () => {
 
   it('Toss API 실패 → TOSS_FAILED, DB 변경 없음', async () => {
     const updateSpy = vi.fn()
-    const selectChain = {
-      eq: function(this: typeof selectChain) { return this },
+    const selectChain: SelectChain = {
+      eq: () => selectChain,
       maybeSingle: () => Promise.resolve({ data: BASE_PAYMENT, error: null }),
     }
     const sb = {
@@ -105,16 +108,16 @@ describe('refundPayment 사전 검증', () => {
 
   it('전액 환불 성공 → refund_amount null, pay_status refunded', async () => {
     const capturedUpdate: unknown[] = []
-    const updateChain = {
-      eq: function(this: typeof updateChain) { return this },
+    const updateChain: UpdateChain = {
+      eq: () => updateChain,
       select: () => Promise.resolve({ error: null }),
     }
     const updateSpy = vi.fn((data: unknown) => {
       capturedUpdate.push(data)
       return updateChain
     })
-    const selectChain = {
-      eq: function(this: typeof selectChain) { return this },
+    const selectChain: SelectChain = {
+      eq: () => selectChain,
       maybeSingle: () => Promise.resolve({ data: BASE_PAYMENT, error: null }),
     }
     const sb = {
@@ -139,16 +142,16 @@ describe('refundPayment 사전 검증', () => {
 
   it('부분 환불 성공 → refund_amount=50000, cancel_reason 포함', async () => {
     const capturedUpdate: unknown[] = []
-    const updateChain = {
-      eq: function(this: typeof updateChain) { return this },
+    const updateChain: UpdateChain = {
+      eq: () => updateChain,
       select: () => Promise.resolve({ error: null }),
     }
     const updateSpy = vi.fn((data: unknown) => {
       capturedUpdate.push(data)
       return updateChain
     })
-    const selectChain = {
-      eq: function(this: typeof selectChain) { return this },
+    const selectChain: SelectChain = {
+      eq: () => selectChain,
       maybeSingle: () => Promise.resolve({ data: BASE_PAYMENT, error: null }),
     }
     const sb = {
