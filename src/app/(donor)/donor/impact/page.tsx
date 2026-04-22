@@ -5,6 +5,8 @@ import { getDonorImpact, getImpactUnitAmount } from '@/lib/donor/impact'
 import { getOrgSettingsCached } from '@/lib/org/settings'
 import { ImpactDonutChart } from '@/components/donor/impact/ImpactDonutChart'
 import { ImpactYearlyBar } from '@/components/donor/impact/ImpactYearlyBar'
+import { ImpactMonthlyHeatmap } from '@/components/donor/impact/ImpactMonthlyHeatmap'
+import { ImpactShareActions } from '@/components/donor/impact/ImpactShareActions'
 
 function formatKRW(n: number): string {
   return n.toLocaleString('ko-KR') + '원'
@@ -103,6 +105,16 @@ export default async function DonorImpactPage() {
             </section>
           )}
 
+          {/* 월별 히트맵 */}
+          {impact.byMonth.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-[var(--text)] mb-4">월별 히트맵</h2>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+                <ImpactMonthlyHeatmap data={impact.byMonth} />
+              </div>
+            </section>
+          )}
+
           {/* 연도별 추이 (2년 이상일 때만) */}
           {impact.byYear.length >= 2 && (
             <section>
@@ -112,6 +124,9 @@ export default async function DonorImpactPage() {
               </div>
             </section>
           )}
+
+          {/* 리포트·공유 */}
+          <ImpactShareActions availableYears={impact.byYear.map((y) => y.year).reverse()} />
 
           {/* 연도별 상세 표 */}
           {impact.byYear.length > 0 && (

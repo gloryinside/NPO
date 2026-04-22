@@ -75,6 +75,21 @@ describe('getDonorImpact', () => {
     ])
   })
 
+  it('Phase 5-A: byMonth는 YYYY-MM 키로 월별 집계', async () => {
+    const rows = [
+      { amount: 10000, pay_date: '2024-01-15', campaign_id: null, campaigns: null },
+      { amount: 20000, pay_date: '2024-01-28', campaign_id: null, campaigns: null },
+      { amount: 30000, pay_date: '2024-03-10', campaign_id: null, campaigns: null },
+      { amount: 5000, pay_date: '2025-02-05', campaign_id: null, campaigns: null },
+    ]
+    const r = await getDonorImpact(stub(rows), 'org-1', 'm-1')
+    expect(r.byMonth).toEqual([
+      { month: '2024-01', amount: 30000, count: 2 },
+      { month: '2024-03', amount: 30000, count: 1 },
+      { month: '2025-02', amount: 5000, count: 1 },
+    ])
+  })
+
   it('G-83: 7개 이상 캠페인은 상위 5 + "기타"로 묶인다', async () => {
     const rows = Array.from({ length: 8 }, (_, i) => ({
       amount: (8 - i) * 10000,  // 내림차순

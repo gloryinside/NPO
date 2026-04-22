@@ -30,6 +30,8 @@ export interface DonorImpact {
   activeMonths: number
   byCampaign: Array<{ campaignId: string | null; title: string; amount: number; count: number }>
   byYear: Array<{ year: number; amount: number; count: number }>
+  /** Phase 5-A: 월별 히트맵용 집계 — YYYY-MM 키 */
+  byMonth: Array<{ month: string; amount: number; count: number }>
   firstPayDate: string | null
   lastPayDate: string | null
 }
@@ -64,6 +66,7 @@ export async function getDonorImpact(
   let totalAmount = 0
   const campaignMap = new Map<string, { campaignId: string | null; title: string; amount: number; count: number }>()
   const yearMap = new Map<number, { year: number; amount: number; count: number }>()
+  const monthMap = new Map<string, { month: string; amount: number; count: number }>()
   let firstPayDate: string | null = null
   let lastPayDate: string | null = null
 
@@ -79,14 +82,21 @@ export async function getDonorImpact(
     cCurr.count += 1
     campaignMap.set(cKey, cCurr)
 
-    // 연도별
+    // 연도별 + 월별
     if (r.pay_date) {
-      const year = new Date(r.pay_date).getFullYear()
+      const d = new Date(r.pay_date)
+      const year = d.getFullYear()
       if (Number.isFinite(year)) {
         const yCurr = yearMap.get(year) ?? { year, amount: 0, count: 0 }
         yCurr.amount += amt
         yCurr.count += 1
         yearMap.set(year, yCurr)
+
+        const monthKey = `${year}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        const mCurr = monthMap.get(monthKey) ?? { month: monthKey, amount: 0, count: 0 }
+        mCurr.amount += amt
+        mCurr.count += 1
+        monthMap.set(monthKey, mCurr)
       }
       if (!firstPayDate || r.pay_date < firstPayDate) firstPayDate = r.pay_date
       if (!lastPayDate || r.pay_date > lastPayDate) lastPayDate = r.pay_date
@@ -96,6 +106,7 @@ export async function getDonorImpact(
   const byCampaignRaw = [...campaignMap.values()].sort((a, b) => b.amount - a.amount)
   const byCampaign = collapseOthers(byCampaignRaw, 6)
   const byYear = [...yearMap.values()].sort((a, b) => a.year - b.year)
+  const byMonth = [...monthMap.values()].sort((a, b) => a.month.localeCompare(b.month))
 
   // activeMonths 계산 (최소 1)
   let activeMonths = 1
@@ -112,6 +123,7 @@ export async function getDonorImpact(
     activeMonths,
     byCampaign,
     byYear,
+    byMonth,
     firstPayDate,
     lastPayDate,
   }
@@ -141,6 +153,7 @@ function emptyImpact(): DonorImpact {
     activeMonths: 0,
     byCampaign: [],
     byYear: [],
+    byMonth: [],
     firstPayDate: null,
     lastPayDate: null,
   }
