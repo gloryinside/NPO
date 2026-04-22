@@ -8,7 +8,7 @@ import {
   CHEER_MAX_LENGTH,
 } from '@/lib/cheer/messages'
 import { analyzeProfanity } from '@/lib/cheer/profanity'
-import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, normalizeIpForKey } from '@/lib/rate-limit'
 import { revalidateCheerCampaignPath } from '@/lib/cheer/revalidate'
 
 /**
@@ -30,9 +30,10 @@ export async function GET(req: NextRequest) {
   }
 
   // G-108: 공개 GET IP 기반 rate limit — 크롤러/봇 보호
-  // 분당 60회는 사람이 페이지를 자주 새로고침해도 여유 있는 한도
-  const ip = getClientIp(req.headers)
-  const rl = rateLimit(`cheer:get:${ip}`, 60, 60_000)
+  // 분당 60회는 사람이 페이지를 자주 새로고침해도 여유 있는 한도.
+  // G-113: IPv6는 /64 prefix로 마스킹해 같은 대역 우회 차단.
+  const ipKey = normalizeIpForKey(getClientIp(req.headers))
+  const rl = rateLimit(`cheer:get:${ipKey}`, 60, 60_000)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'rate_limited' },

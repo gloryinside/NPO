@@ -55,3 +55,36 @@ export function getClientIp(headers: Headers): string {
   if (real) return real.trim();
   return "unknown";
 }
+
+/**
+ * rate-limit 키 조립용 IP 정규화. IPv6는 /64 prefix로 마스킹 — 대부분의
+ * ISP가 고객당 /64 대역을 할당하므로 같은 대역의 다른 주소로 rate-limit을
+ * 우회하는 것을 막는다 (G-113).
+ *
+ * IPv4는 그대로, IPv4-mapped IPv6는 내부 IPv4만 사용, IPv6는 앞 4 hextets
+ * 유지 + "::/64" suffix. 원본 IP는 로깅/감사에 `getClientIp`를 그대로 쓸 것.
+ */
+export function normalizeIpForKey(ip: string): string {
+  if (!ip || ip === "unknown") return "unknown";
+  const raw = ip.trim();
+  if (!raw) return "unknown";
+
+  const mappedMatch = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(raw);
+  if (mappedMatch) return mappedMatch[1]!;
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw)) return raw;
+
+  if (raw.includes(":")) {
+    const parts = raw.toLowerCase().split("::");
+    let head = parts[0] ? parts[0].split(":") : [];
+    const tail = parts[1] ? parts[1].split(":") : [];
+    if (parts.length === 2) {
+      const missing = 8 - head.length - tail.length;
+      head = [...head, ...new Array(Math.max(0, missing)).fill("0"), ...tail];
+    }
+    const prefix = head.slice(0, 4).join(":");
+    return `${prefix}::/64`;
+  }
+
+  return raw;
+}
