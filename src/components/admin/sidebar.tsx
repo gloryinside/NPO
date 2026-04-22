@@ -7,6 +7,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { logout } from "@/app/(admin)/admin/actions";
 import { NotificationBadge } from "./notification-badge";
+import { LogoWithText } from "@/components/brand/logo-with-text";
+import { ThemeToggle } from "@/components/brand/theme-toggle";
 
 interface NavItem {
   label: string;
@@ -26,6 +28,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: "후원자 관리", href: "/admin/members" },
       { label: "약정 관리", href: "/admin/promises" },
+      { label: "약정 변경 추이", href: "/admin/promises/changes" },
       { label: "납입 관리", href: "/admin/payments" },
     ],
   },
@@ -44,6 +47,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: "캠페인 목록", href: "/admin/campaigns" },
       { label: "랜딩페이지 편집", href: "/admin/landing" },
+      { label: "응원 메시지 검수", href: "/admin/cheer" },
     ],
   },
   {
@@ -208,20 +212,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <div
-          style={{
-            color: "var(--text)",
-            fontWeight: 600,
-            fontSize: "0.9375rem",
-          }}
-        >
-          NPO 관리시스템
-        </div>
+        <LogoWithText variant="header" size="md" />
         <div
           style={{
             color: "var(--muted-foreground)",
             fontSize: "0.75rem",
-            marginTop: "0.125rem",
+            marginTop: "0.25rem",
           }}
         >
           관리자
@@ -235,6 +231,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           <NavGroupSection key={group.group} {...group} />
         ))}
       </nav>
+
+      {/* Theme toggle */}
+      <div
+        style={{
+          padding: "0.75rem 1rem",
+          borderTop: "1px solid var(--border)",
+        }}
+      >
+        <ThemeToggle persistToServer={false} />
+      </div>
 
       {/* User area */}
       <div
