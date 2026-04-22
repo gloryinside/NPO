@@ -73,6 +73,36 @@
   color-scheme: dark;
 }
 
+/* ===== 라이트 테마 오버라이드 (Phase Theme-A) ===== */
+:root[data-theme="light"] {
+  --bg:        #fafafb;
+  --surface:   #ffffff;
+  --surface-2: #f3f3f7;
+  --border:    #e4e4ec;
+  --text:      #18181f;
+  --muted:     var(--surface-2);
+  --muted-2:   #9a9ab0;
+
+  --accent:    #7c3aed;
+  --positive:  #16a34a;
+  --negative:  #dc2626;
+  --warning:   #d97706;
+  --info:      #0284c7;
+
+  --accent-soft:   rgba(124, 58, 237, 0.10);
+  --positive-soft: rgba(22, 163, 74, 0.10);
+  --negative-soft: rgba(220, 38, 38, 0.10);
+  --warning-soft:  rgba(217, 119, 6, 0.10);
+  --info-soft:     rgba(2, 132, 199, 0.10);
+
+  --muted-foreground: #6b6b80;
+
+  --shadow-hero: 0 20px 60px -20px rgb(0 0 0 / 0.08);
+  --shadow-card: 0 4px 20px -4px rgb(0 0 0 / 0.05);
+
+  color-scheme: light;
+}
+
 @theme inline {
   /* NPO 5색 의미 토큰 */
   --color-bg:        var(--bg);
