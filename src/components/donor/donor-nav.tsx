@@ -8,6 +8,10 @@ const NAV_ITEMS = [
   { href: "/donor/promises", label: "약정" },
   { href: "/donor/payments", label: "납입내역" },
   { href: "/donor/receipts", label: "영수증" },
+  { href: "/donor/impact", label: "임팩트" },
+  { href: "/donor/invite", label: "초대" },
+  { href: "/donor/cheer", label: "내 응원" },
+  { href: "/donor/settings", label: "설정" },
 ];
 
 export function DonorNav() {

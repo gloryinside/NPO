@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type NotificationKind = 'churn_risk_weekly' | 'campaign_closed_thanks'
+export type NotificationKind =
+  | 'churn_risk_weekly'
+  | 'campaign_closed_thanks'
+  | 'amount_change_up'
+  | 'amount_change_down'
 
 /**
  * G-85/G-86: 지난 N일 내 같은 (org, kind) 발송이 있었는지 확인.
@@ -55,6 +59,28 @@ export async function logNotification(
     return { ok: false, error: error.message }
   }
   return { ok: true }
+}
+
+/**
+ * G-117: 특정 약정(ref_id)에 대해 최근 N분 내 같은 kind가 발송됐는지 확인.
+ * 금액 변경 감사 이메일 debounce — 짧은 시간 내 반복 변경 시 중복 발송 방지.
+ */
+export async function wasSentForRefWithin(
+  supabase: SupabaseClient,
+  refId: string,
+  kind: NotificationKind,
+  minutesAgo: number,
+): Promise<boolean> {
+  const cutoff = new Date(Date.now() - minutesAgo * 60_000).toISOString()
+  const { count } = await supabase
+    .from('email_notifications_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('ref_id', refId)
+    .eq('kind', kind)
+    .eq('status', 'sent')
+    .gte('sent_at', cutoff)
+
+  return (count ?? 0) > 0
 }
 
 /**
