@@ -1,6 +1,8 @@
 import { getDonorSession } from "@/lib/auth";
 import { logoutDonor } from "./actions";
 import { DonorNav } from "@/components/donor/donor-nav";
+import { LogoWithText } from "@/components/brand/logo-with-text";
+import { ThemeToggle } from "@/components/brand/theme-toggle";
 
 export default async function DonorLayout({
   children,
@@ -25,11 +27,12 @@ export default async function DonorLayout({
           href="/donor"
           style={{
             color: "var(--text)",
-            fontWeight: 600,
             textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
           }}
         >
-          후원자 마이페이지
+          <LogoWithText variant="header" size="md" />
         </a>
         {session && <DonorNav />}
         <nav
@@ -40,6 +43,7 @@ export default async function DonorLayout({
             alignItems: "center",
           }}
         >
+          <ThemeToggle persistToServer={!!session} />
           {session ? (
             <>
               <span
