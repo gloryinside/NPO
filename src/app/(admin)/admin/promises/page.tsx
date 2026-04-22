@@ -22,30 +22,75 @@ export default async function PromisesPage({
   let methodCounts: Record<string, number> = {};
   let statusCounts: Record<string, number> = {};
   let monthlyTotal = 0;
+  let activeCount = 0;
+  let cancelScheduledCount = 0;
+  let overdueCount = 0;
 
   try {
     const tenant = await requireTenant();
     const supabase = createSupabaseAdminClient();
 
-    // 결제수단별 집계 (active 약정만)
-    const { data: methodAgg } = await supabase
-      .from("promises")
-      .select("pay_method")
-      .eq("org_id", tenant.id)
-      .eq("status", "active");
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
 
-    // 상태별 집계 (전체)
-    const { data: statusAgg } = await supabase
-      .from("promises")
-      .select("status")
-      .eq("org_id", tenant.id);
+    // 기존 집계 + 신규 스탯 쿼리를 병렬 실행
+    const [
+      methodAggRes,
+      statusAggRes,
+      amountAggRes,
+      promisesRes,
+      activeCountRes,
+      overdueRes,
+    ] = await Promise.all([
+      // 결제수단별 집계 (active 약정만)
+      supabase
+        .from("promises")
+        .select("pay_method")
+        .eq("org_id", tenant.id)
+        .eq("status", "active"),
+      // 상태별 집계 (전체)
+      supabase.from("promises").select("status").eq("org_id", tenant.id),
+      // 월 약정총액 (active)
+      supabase
+        .from("promises")
+        .select("amount")
+        .eq("org_id", tenant.id)
+        .eq("status", "active"),
+      // 메인 목록 쿼리
+      (() => {
+        let query = supabase
+          .from("promises")
+          .select(
+            "*, members(id, name, member_code), campaigns(id, title)",
+            { count: "exact" }
+          )
+          .eq("org_id", tenant.id);
 
-    // 월 약정총액 (active)
-    const { data: amountAgg } = await supabase
-      .from("promises")
-      .select("amount")
-      .eq("org_id", tenant.id)
-      .eq("status", "active");
+        if (status !== "all") {
+          query = query.eq("status", status);
+        }
+
+        return query.order("created_at", { ascending: false }).range(0, 99);
+      })(),
+      // 활성 약정 건수
+      supabase
+        .from("promises")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", tenant.id)
+        .eq("status", "active"),
+      // 연체 근사: 최근 60일 failed payment 건수
+      supabase
+        .from("payments")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", tenant.id)
+        .eq("pay_status", "failed")
+        .gte("pay_date", sixtyDaysAgo),
+    ]);
+
+    const methodAgg = methodAggRes.data;
+    const statusAgg = statusAggRes.data;
+    const amountAgg = amountAggRes.data;
 
     for (const r of methodAgg ?? []) {
       const m = (r as { pay_method: string | null }).pay_method ?? "기타";
@@ -62,24 +107,14 @@ export default async function PromisesPage({
       0
     );
 
-    let query = supabase
-      .from("promises")
-      .select(
-        "*, members(id, name, member_code), campaigns(id, title)",
-        { count: "exact" }
-      )
-      .eq("org_id", tenant.id);
+    promises =
+      (promisesRes.data as unknown as PromiseWithRelations[]) ?? [];
+    total = promisesRes.count ?? 0;
 
-    if (status !== "all") {
-      query = query.eq("status", status);
-    }
-
-    const { data, count } = await query
-      .order("created_at", { ascending: false })
-      .range(0, 99);
-
-    promises = (data as unknown as PromiseWithRelations[]) ?? [];
-    total = count ?? 0;
+    activeCount = activeCountRes.count ?? 0;
+    // promises 스키마상 'cancel_scheduled' 개념이 없음 — 0으로 둠
+    cancelScheduledCount = 0;
+    overdueCount = overdueRes.count ?? 0;
   } catch {
     // tenant not found — render empty list
   }
@@ -125,7 +160,12 @@ export default async function PromisesPage({
           </div>
         </div>
       </div>
-      <PromiseList promises={promises} total={total} initialStatus={status} />
+      <PromiseList
+        promises={promises}
+        total={total}
+        initialStatus={status}
+        stats={{ activeCount, cancelScheduledCount, overdueCount }}
+      />
     </div>
   );
 }

@@ -19,6 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/common/page-header";
+import { StatCard } from "@/components/common/stat-card";
 import type {
   PromiseStatus,
   PromiseType,
@@ -29,6 +31,11 @@ type Props = {
   promises: PromiseWithRelations[];
   total: number;
   initialStatus: string;
+  stats: {
+    activeCount: number;
+    cancelScheduledCount: number;
+    overdueCount: number;
+  };
 };
 
 const STATUS_TABS: Array<{ value: string; label: string }> = [
@@ -715,7 +722,7 @@ function AddPromiseDialog({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function PromiseList({ promises, total, initialStatus }: Props) {
+export function PromiseList({ promises, total, initialStatus, stats }: Props) {
   const router = useRouter();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [active, setActive] = useState<ActiveAction | null>(null);
@@ -784,20 +791,38 @@ export function PromiseList({ promises, total, initialStatus }: Props) {
         )}
       </Dialog>
 
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text)]">약정 관리</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[var(--muted-foreground)]">
-            총 {total.toLocaleString("ko-KR")}건
-          </span>
+      <PageHeader
+        title="약정 관리"
+        description={`정기/일시 후원 약정을 확인하고 관리합니다. 총 ${total.toLocaleString(
+          "ko-KR"
+        )}건`}
+        stats={
+          <>
+            <StatCard
+              label="활성 약정"
+              value={`${stats.activeCount.toLocaleString("ko-KR")}건`}
+            />
+            <StatCard
+              label="해지 예정"
+              value={`${stats.cancelScheduledCount.toLocaleString("ko-KR")}건`}
+              tone={stats.cancelScheduledCount > 0 ? "warning" : "default"}
+            />
+            <StatCard
+              label="연체"
+              value={`${stats.overdueCount.toLocaleString("ko-KR")}건`}
+              tone={stats.overdueCount > 0 ? "negative" : "default"}
+            />
+          </>
+        }
+        actions={
           <Button
             onClick={() => setShowAddDialog(true)}
-            className="bg-[var(--accent)] text-white text-sm px-4 py-1.5 h-auto"
+            className="h-auto bg-[var(--accent)] px-4 py-1.5 text-[13px] text-white"
           >
-            + 약정 생성
+            + 약정 등록
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex gap-1 mb-4">
         {STATUS_TABS.map((tab) => {
