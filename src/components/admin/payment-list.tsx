@@ -2,14 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +15,8 @@ import type { PayStatus, IncomeStatus, PaymentWithRelations } from "@/types/paym
 import { RefundDialog } from "@/components/admin/refund-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
+import { DataTable, type DataTableColumn } from "@/components/common/data-table";
+import { DetailDrawer } from "@/components/common/detail-drawer";
 import { formatKRW } from "@/lib/format";
 
 type Props = {
@@ -368,6 +362,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
   const [refundTarget, setRefundTarget] = useState<PaymentWithRelations | null>(null);
+  const [detailTarget, setDetailTarget] = useState<PaymentWithRelations | null>(null);
 
   const pageTabs = STATUS_TABS.map((t) => ({
     key: t.value,
@@ -375,22 +370,59 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
     href: t.value === "all" ? "/admin/payments" : `/admin/payments?status=${t.value}`,
   }));
 
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    if (selected.size === payments.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(payments.map((p) => p.id)));
-    }
-  };
+  const columns: DataTableColumn<PaymentWithRelations>[] = [
+    {
+      key: "payment_code",
+      header: "결제코드",
+      width: "130px",
+      render: (p) => (
+        <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
+          {p.payment_code}
+        </span>
+      ),
+    },
+    {
+      key: "member",
+      header: "후원자",
+      render: (p) => p.members?.name ?? "-",
+    },
+    {
+      key: "campaign",
+      header: "캠페인",
+      render: (p) => (
+        <span className="text-[var(--muted-foreground)]">{p.campaigns?.title ?? "-"}</span>
+      ),
+    },
+    {
+      key: "amount",
+      header: "금액",
+      align: "right",
+      width: "120px",
+      render: (p) => (
+        <span className="font-medium text-[var(--text)]">{formatAmount(p.amount)}</span>
+      ),
+    },
+    {
+      key: "pay_date",
+      header: "결제일",
+      width: "110px",
+      render: (p) => (
+        <span className="text-[var(--muted-foreground)]">{formatDate(p.pay_date)}</span>
+      ),
+    },
+    {
+      key: "pay_status",
+      header: "납부상태",
+      width: "80px",
+      render: (p) => <PayStatusBadge status={p.pay_status} />,
+    },
+    {
+      key: "income_status",
+      header: "수입상태",
+      width: "90px",
+      render: (p) => <IncomeStatusBadge status={p.income_status} />,
+    },
+  ];
 
   const batchUpdateIncome = async (incomeStatus: IncomeStatus) => {
     if (selected.size === 0) return;
@@ -501,104 +533,94 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
         </div>
       )}
 
-      <div className="rounded-lg border overflow-hidden border-[var(--border)] bg-[var(--surface)]">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-[var(--border)]">
-              <TableHead className="w-10">
-                <input
-                  type="checkbox"
-                  checked={payments.length > 0 && selected.size === payments.length}
-                  onChange={toggleAll}
-                  className="rounded"
-                  aria-label="전체 선택"
-                />
-              </TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">결제코드</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">후원자</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">캠페인</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">금액</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">결제일</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">납부상태</TableHead>
-              <TableHead className="text-[var(--muted-foreground)]">수입상태</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {payments.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  className="text-center py-12 text-[var(--muted-foreground)]"
-                >
-                  납입 내역이 없습니다.
-                </TableCell>
-              </TableRow>
-            ) : (
-              payments.map((p) => (
-                <TableRow
-                  key={p.id}
-                  className={`border-[var(--border)] ${selected.has(p.id) ? "bg-[rgba(99,102,241,0.04)]" : ""}`}
-                >
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(p.id)}
-                      onChange={() => toggleSelect(p.id)}
-                      className="rounded"
-                      aria-label={`${p.payment_code} 선택`}
-                    />
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-[var(--muted-foreground)]">
-                    {p.payment_code}
-                  </TableCell>
-                  <TableCell className="text-[var(--text)]">
-                    {p.members?.name ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-sm text-[var(--muted-foreground)]">
-                    {p.campaigns?.title ?? "-"}
-                  </TableCell>
-                  <TableCell className="font-medium text-[var(--text)]">
-                    {formatAmount(p.amount)}
-                  </TableCell>
-                  <TableCell className="text-sm text-[var(--muted-foreground)]">
-                    {formatDate(p.pay_date)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <PayStatusBadge status={p.pay_status} />
-                      {p.pay_status === 'refunded' && (
-                        <span
-                          className="text-xs text-[var(--muted-foreground)]"
-                          title={[
-                            p.refund_amount != null
-                              ? `부분환불 ${new Intl.NumberFormat('ko-KR').format(p.refund_amount)}원`
-                              : '전액환불',
-                            p.cancel_reason ? `사유: ${p.cancel_reason.split(':')[0]}` : '',
-                          ].filter(Boolean).join(' | ')}
-                        >
-                          ⓘ
-                        </span>
-                      )}
-                      {p.pay_status === 'paid' && p.toss_payment_key && (
-                        <button
-                          type="button"
-                          onClick={() => setRefundTarget(p)}
-                          className="text-xs px-2 py-0.5 rounded border border-[var(--negative)] text-[var(--negative)] hover:bg-[var(--negative-soft)] transition-colors"
-                        >
-                          환불
-                        </button>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <IncomeStatusBadge status={p.income_status} />
-                  </TableCell>
-                </TableRow>
-              ))
+      <DataTable<PaymentWithRelations>
+        columns={columns}
+        rows={payments}
+        rowKey={(p) => p.id}
+        emptyMessage="납입 내역이 없습니다."
+        selectable
+        selectedIds={selected}
+        onSelectionChange={setSelected}
+        onRowClick={(p) => setDetailTarget(p)}
+        rowActions={(p) =>
+          p.pay_status === "paid" && p.toss_payment_key ? (
+            <button
+              type="button"
+              onClick={() => setRefundTarget(p)}
+              className="rounded border border-[var(--negative)] px-2 py-0.5 text-[11px] text-[var(--negative)] hover:bg-[var(--negative-soft)]"
+            >
+              환불
+            </button>
+          ) : null
+        }
+      />
+
+      <DetailDrawer
+        open={!!detailTarget}
+        onClose={() => setDetailTarget(null)}
+        title={detailTarget ? `납입 상세 · ${detailTarget.payment_code}` : ""}
+        subtitle={
+          detailTarget
+            ? `${detailTarget.members?.name ?? "-"} · ${formatAmount(detailTarget.amount)}`
+            : undefined
+        }
+      >
+        {detailTarget && (
+          <div className="flex flex-col gap-4 text-[13px]">
+            <section>
+              <h3 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+                결제 정보
+              </h3>
+              <dl className="grid grid-cols-[100px_1fr] gap-y-1.5">
+                <dt className="text-[var(--muted-foreground)]">결제일</dt>
+                <dd className="text-[var(--text)]">{formatDate(detailTarget.pay_date)}</dd>
+                <dt className="text-[var(--muted-foreground)]">결제수단</dt>
+                <dd className="text-[var(--text)]">{detailTarget.pg_method ?? "-"}</dd>
+                <dt className="text-[var(--muted-foreground)]">캠페인</dt>
+                <dd className="text-[var(--text)]">{detailTarget.campaigns?.title ?? "-"}</dd>
+                <dt className="text-[var(--muted-foreground)]">납부상태</dt>
+                <dd><PayStatusBadge status={detailTarget.pay_status} /></dd>
+                <dt className="text-[var(--muted-foreground)]">수입상태</dt>
+                <dd><IncomeStatusBadge status={detailTarget.income_status} /></dd>
+              </dl>
+            </section>
+
+            {detailTarget.fail_reason && (
+              <section>
+                <h3 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+                  실패 사유
+                </h3>
+                <div className="rounded border border-[var(--negative)] bg-[var(--negative-soft)] p-3 text-[var(--negative)]">
+                  {detailTarget.fail_reason}
+                </div>
+              </section>
             )}
-          </TableBody>
-        </Table>
-      </div>
+
+            {detailTarget.pay_status === "refunded" && (
+              <section>
+                <h3 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+                  환불 내역
+                </h3>
+                <div className="rounded border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text)]">
+                  {detailTarget.refund_amount != null
+                    ? `부분환불 ${formatAmount(detailTarget.refund_amount)}`
+                    : "전액환불"}
+                  {detailTarget.cancel_reason && (
+                    <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                      사유: {detailTarget.cancel_reason}
+                    </div>
+                  )}
+                  {detailTarget.cancelled_at && (
+                    <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                      처리 시각: {new Date(detailTarget.cancelled_at).toLocaleString("ko-KR")}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }
