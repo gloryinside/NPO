@@ -74,6 +74,9 @@ export async function POST(req: NextRequest) {
     pay_methods,
     ga_tracking_id,
     meta_pixel_id,
+    seo_title,
+    seo_description,
+    og_image_url,
   } = body as {
     title?: string;
     slug?: string;
@@ -88,6 +91,9 @@ export async function POST(req: NextRequest) {
     pay_methods?: string[];
     ga_tracking_id?: string | null;
     meta_pixel_id?: string | null;
+    seo_title?: string | null;
+    seo_description?: string | null;
+    og_image_url?: string | null;
   };
 
   if (!title || typeof title !== "string" || title.trim() === "") {
@@ -140,6 +146,9 @@ export async function POST(req: NextRequest) {
     pay_methods: payMethodsClean ?? ["card"],
     ga_tracking_id: ga_tracking_id?.trim() || null,
     meta_pixel_id: meta_pixel_id?.trim() || null,
+    seo_title: seo_title?.trim() || null,
+    seo_description: seo_description?.trim() || null,
+    og_image_url: og_image_url?.trim() || null,
   };
 
   const { data: campaign, error } = await supabase

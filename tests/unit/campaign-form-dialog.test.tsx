@@ -27,7 +27,7 @@ describe("CampaignFormDialog — 신규 생성", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText(/제목/), {
+    fireEvent.change(screen.getByLabelText(/^제목/), {
       target: { value: "테스트 캠페인" },
     });
     fireEvent.change(screen.getByLabelText(/슬러그/), {
@@ -66,6 +66,9 @@ describe("CampaignFormDialog — 수정", () => {
       pay_methods: null,
       ga_tracking_id: null,
       meta_pixel_id: null,
+      seo_title: null,
+      seo_description: null,
+      og_image_url: null,
       page_content: null,
       published_content: null,
       form_settings: null,

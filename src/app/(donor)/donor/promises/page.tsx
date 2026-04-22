@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { AmountChangeDialog } from "@/components/donor/promises/AmountChangeDialog";
+import { UpdateBillingKeyDialog } from "@/components/donor/promises/UpdateBillingKeyDialog";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 
 type CampaignRef = { id: string; title: string } | null;
@@ -69,6 +70,7 @@ export default function DonorPromisesPage() {
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<AmountDialogState>({ open: false });
+  const [billingKeyTarget, setBillingKeyTarget] = useState<string | null>(null);
 
   const fetchPromises = useCallback(async () => {
     setLoading(true);
@@ -163,6 +165,12 @@ export default function DonorPromisesPage() {
       />
     )}
 
+    <UpdateBillingKeyDialog
+      promiseId={billingKeyTarget}
+      onClose={() => setBillingKeyTarget(null)}
+      onSuccess={() => { setBillingKeyTarget(null); fetchPromises(); }}
+    />
+
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--text)]">내 약정</h1>
@@ -180,7 +188,8 @@ export default function DonorPromisesPage() {
           {promises.map((p) => {
             const isActive = p.status === "active";
             const isSuspended = p.status === "suspended";
-            const canAct = isActive || isSuspended;
+            const isPendingBilling = p.status === "pending_billing";
+            const canAct = isActive || isSuspended || isPendingBilling;
 
             return (
               <div
@@ -251,6 +260,16 @@ export default function DonorPromisesPage() {
                           >
                             금액 변경
                           </button>
+                          {p.type === "regular" && (
+                            <button
+                              type="button"
+                              disabled={actioning === p.id}
+                              onClick={() => setBillingKeyTarget(p.id)}
+                              className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-opacity hover:opacity-80 disabled:opacity-50"
+                            >
+                              결제수단 변경
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={actioning === p.id}
@@ -269,6 +288,16 @@ export default function DonorPromisesPage() {
                           className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-opacity hover:opacity-80 disabled:opacity-50"
                         >
                           재개
+                        </button>
+                      )}
+                      {isPendingBilling && p.type === "regular" && (
+                        <button
+                          type="button"
+                          disabled={actioning === p.id}
+                          onClick={() => setBillingKeyTarget(p.id)}
+                          className="rounded-md border border-[var(--warning)] bg-[var(--warning-soft)] px-3 py-1.5 text-xs font-medium text-[var(--warning)] transition-opacity hover:opacity-80 disabled:opacity-50"
+                        >
+                          카드 등록하기
                         </button>
                       )}
                       <button

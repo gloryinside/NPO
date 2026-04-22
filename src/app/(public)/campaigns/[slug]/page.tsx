@@ -8,8 +8,56 @@ import { PageContentSchema } from "@/lib/campaign-builder/blocks/schema";
 import { CheerWall } from "@/components/cheer/CheerWall";
 import { LiveProgressBar } from "@/components/campaign-blocks/LiveProgressBar";
 import { RecentDonorFeed } from "@/components/campaign-blocks/RecentDonorFeed";
+import { PersonalizedGreeting } from "@/components/campaign-blocks/PersonalizedGreeting";
 
 export const revalidate = 60;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const tenant = await getTenant();
+  if (!tenant) return { title: "캠페인" };
+
+  const supabase = createSupabaseAdminClient();
+  const { data: campaign } = await supabase
+    .from("campaigns")
+    .select("title, description, seo_title, seo_description, thumbnail_url, og_image_url")
+    .eq("org_id", tenant.id)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (!campaign) return { title: "캠페인" };
+
+  const title = (campaign.seo_title as string | null) || (campaign.title as string);
+  const description =
+    ((campaign.seo_description as string | null) ?? null) ||
+    (campaign.description as string | null) ||
+    undefined;
+  const imageUrl =
+    (campaign.og_image_url as string | null) ||
+    (campaign.thumbnail_url as string | null) ||
+    undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website" as const,
+      images: imageUrl ? [{ url: imageUrl }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title,
+      description,
+      images: imageUrl ? [imageUrl] : undefined,
+    },
+  };
+}
 
 export default async function CampaignPublicPage({
   params,
@@ -115,6 +163,9 @@ export default async function CampaignPublicPage({
           {campaign.status === "active" ? "진행중" : "종료"}
         </span>
       </div>
+
+      {/* URL 파라미터 맞춤 인사 */}
+      <PersonalizedGreeting campaignTitle={campaign.title} />
 
       {/* 달성률 progress bar — 실시간 갱신 (60초 polling) */}
       <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">

@@ -14,6 +14,9 @@ export type Campaign = {
   pay_methods: string[] | null;
   ga_tracking_id: string | null;
   meta_pixel_id: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  og_image_url: string | null;
   page_content: Record<string, unknown> | null;
   published_content: Record<string, unknown> | null;
   form_settings: Record<string, unknown> | null;

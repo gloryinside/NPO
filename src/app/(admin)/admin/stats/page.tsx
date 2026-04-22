@@ -15,6 +15,8 @@ import { MemberGrowthChart } from "@/components/admin/charts/member-growth-chart
 import { PayMethodPieChart } from "@/components/admin/charts/pay-method-pie-chart";
 import { ChurnRateChart } from "@/components/admin/charts/churn-rate-chart";
 import { CampaignPerformanceChart } from "@/components/admin/charts/campaign-performance-chart";
+import { CohortRetentionChart } from "@/components/admin/charts/cohort-retention-chart";
+import { fetchCohortRetention } from "@/lib/stats/cohort";
 
 type MonthRow = { month: string; total: number; count: number };
 type MemberGrowth = { month: string; joined: number; churned: number };
@@ -305,7 +307,7 @@ export default async function StatsPage({
 
   // ─── 대시보드 탭 ───────────────────────────────────────────────
   if (tab === "dashboard") {
-    const [monthlyPayments, memberGrowth, unpaid, incomeStatus, churnRisk, churnRate, campaignSettlement] =
+    const [monthlyPayments, memberGrowth, unpaid, incomeStatus, churnRisk, churnRate, campaignSettlement, cohortRows] =
       await Promise.all([
         fetchMonthlyPayments(supabase, tenant.id),
         fetchMemberGrowth(supabase, tenant.id),
@@ -314,6 +316,7 @@ export default async function StatsPage({
         fetchChurnRiskMembersLib(supabase, tenant.id),
         fetchChurnRate(supabase, tenant.id),
         fetchCampaignSettlement(supabase, tenant.id),
+        fetchCohortRetention(supabase, tenant.id, 6, 5),
       ]);
 
     // KPI 집계
@@ -472,6 +475,19 @@ export default async function StatsPage({
             ) : (
               <CampaignPerformanceChart data={campaignSettlement} />
             )}
+          </CardContent>
+        </Card>
+
+        {/* 코호트 잔존율 (최근 6개월 가입자 × 5개월 잔존) */}
+        <Card className="bg-[var(--surface)] border-[var(--border)] mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-[var(--muted-foreground)]">
+              코호트 잔존율
+              <span className="ml-1 font-normal text-xs">(가입 월 기준, 이후 5개월간 paid 결제 비율)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CohortRetentionChart rows={cohortRows} horizonMonths={5} />
           </CardContent>
         </Card>
 

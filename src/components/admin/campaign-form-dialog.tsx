@@ -64,6 +64,9 @@ export function CampaignFormDialog({
   );
   const [gaTrackingId, setGaTrackingId] = useState(campaign?.ga_tracking_id ?? "");
   const [metaPixelId, setMetaPixelId] = useState(campaign?.meta_pixel_id ?? "");
+  const [seoTitle, setSeoTitle] = useState(campaign?.seo_title ?? "");
+  const [seoDescription, setSeoDescription] = useState(campaign?.seo_description ?? "");
+  const [ogImageUrl, setOgImageUrl] = useState(campaign?.og_image_url ?? "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -98,6 +101,9 @@ export function CampaignFormDialog({
         pay_methods: payMethods.length > 0 ? payMethods : ["card"],
         ga_tracking_id: gaTrackingId || null,
         meta_pixel_id: metaPixelId || null,
+        seo_title: seoTitle || null,
+        seo_description: seoDescription || null,
+        og_image_url: ogImageUrl || null,
       };
 
       const url = isEdit
@@ -353,6 +359,56 @@ export function CampaignFormDialog({
                 placeholder="000000000000000"
                 style={inputStyle}
               />
+            </div>
+          </div>
+
+          {/* SEO & OG (Tier A #8) */}
+          <div className="rounded-md border p-3" style={{ borderColor: "var(--border)" }}>
+            <div className="mb-2 text-sm font-semibold" style={{ color: "var(--text)" }}>
+              SEO / 공유 설정
+            </div>
+            <p className="mb-3 text-xs" style={{ color: "var(--muted-foreground)" }}>
+              비워두면 제목·설명·썸네일이 폴백으로 사용됩니다.
+            </p>
+            <div className="flex flex-col gap-2">
+              <div>
+                <Label htmlFor="seo_title" style={{ color: "var(--text)" }}>
+                  공유 제목 (SEO)
+                </Label>
+                <Input
+                  id="seo_title"
+                  value={seoTitle}
+                  onChange={(e) => setSeoTitle(e.target.value)}
+                  placeholder="검색 결과/카카오톡 공유에 표시될 제목"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <Label htmlFor="seo_description" style={{ color: "var(--text)" }}>
+                  SEO 설명 (meta description)
+                </Label>
+                <textarea
+                  id="seo_description"
+                  rows={2}
+                  value={seoDescription}
+                  onChange={(e) => setSeoDescription(e.target.value)}
+                  placeholder="검색 결과 아래 표시될 짧은 설명"
+                  className="rounded-md border px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <Label htmlFor="og_image_url" style={{ color: "var(--text)" }}>
+                  OG 이미지 URL
+                </Label>
+                <Input
+                  id="og_image_url"
+                  value={ogImageUrl}
+                  onChange={(e) => setOgImageUrl(e.target.value)}
+                  placeholder="https://example.com/og-image.png (1200×630 권장)"
+                  style={inputStyle}
+                />
+              </div>
             </div>
           </div>
 

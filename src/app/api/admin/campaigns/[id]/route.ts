@@ -88,6 +88,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     pay_methods,
     ga_tracking_id,
     meta_pixel_id,
+    seo_title,
+    seo_description,
+    og_image_url,
   } = body as {
     title?: string;
     slug?: string;
@@ -102,6 +105,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     pay_methods?: string[];
     ga_tracking_id?: string | null;
     meta_pixel_id?: string | null;
+    seo_title?: string | null;
+    seo_description?: string | null;
+    og_image_url?: string | null;
   };
 
   if (slug !== undefined && !SLUG_REGEX.test(slug)) {
@@ -157,6 +163,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     updateData.ga_tracking_id = ga_tracking_id?.trim() || null;
   if (meta_pixel_id !== undefined)
     updateData.meta_pixel_id = meta_pixel_id?.trim() || null;
+  if (seo_title !== undefined)
+    updateData.seo_title = seo_title?.trim() || null;
+  if (seo_description !== undefined)
+    updateData.seo_description = seo_description?.trim() || null;
+  if (og_image_url !== undefined)
+    updateData.og_image_url = og_image_url?.trim() || null;
 
   const { data: campaign, error } = await supabase
     .from("campaigns")
