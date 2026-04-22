@@ -6,6 +6,10 @@ import type { PromiseWithRelations } from "@/types/promise";
 import { DonorProfileSection } from "@/components/donor/donor-profile-section";
 import { PledgeCancelButton } from "@/components/donor/pledge-cancel-button";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
+import { getDashboardActions } from "@/lib/donor/dashboard-actions";
+import { getUpcomingPaymentsThisMonth } from "@/lib/donor/upcoming-payments";
+import { ActionRequiredBanner } from "@/components/donor/dashboard/action-required-banner";
+import { UpcomingPaymentsCard } from "@/components/donor/dashboard/upcoming-payments-card";
 
 function formatAmount(value: number | null | undefined) {
   if (value == null) return "-";
@@ -77,6 +81,12 @@ export default async function DonorHomePage() {
     0
   );
 
+  // 대시보드 Action Required + 이번 달 예정 납입
+  const [actions, upcomingPayments] = await Promise.all([
+    getDashboardActions(supabase, member.org_id, member.id),
+    getUpcomingPaymentsThisMonth(supabase, member.org_id, member.id),
+  ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -137,6 +147,8 @@ export default async function DonorHomePage() {
         </div>
       </div>
 
+      <ActionRequiredBanner actions={actions} />
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <a
           href="/donor/impact"
@@ -191,6 +203,8 @@ export default async function DonorHomePage() {
           ))}
         </div>
       )}
+
+      <UpcomingPaymentsCard payments={upcomingPayments} />
 
       {latestReceipt && (
         <section>
