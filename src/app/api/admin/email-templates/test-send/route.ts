@@ -5,10 +5,19 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSampleVariables } from '@/lib/email/default-templates';
 import { renderTemplate, renderSubject } from '@/lib/email/template-renderer';
 import type { ScenarioKey } from '@/lib/email/default-templates';
+import { checkCsrf } from '@/lib/security/csrf';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
+  // G-D208: CSRF + rate limit 보강
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   const adminUser = await requireAdminUser();
   const tenant = await requireTenant();
+  const rl = rateLimit(`email-test:${adminUser.id}`, 20, 10 * 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429 });
+  }
   const supabase = createSupabaseAdminClient();
 
   const { scenario, subject, bodyJson } = (await req.json()) as {
