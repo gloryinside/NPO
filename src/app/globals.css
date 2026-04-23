@@ -270,3 +270,13 @@ html, body {
     page-break-after: auto;
   }
 }
+
+/* G-D171: iOS safe-area (notch / dynamic island / home indicator) */
+@supports (padding: max(0px)) {
+  .safe-pb {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+  .safe-pt {
+    padding-top: max(env(safe-area-inset-top), 0.5rem);
+  }
+}

@@ -14,13 +14,10 @@ const supabaseHost = (() => {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // Next.js 16이 워크스페이스 루트를 잘못 추론하는 경우 명시적으로 고정.
-  // (.worktrees 하위 프로젝트가 같은 파일시스템에 있어 상위 디렉토리로 추론됨)
   turbopack: {
     root: path.join(__dirname),
   },
   images: {
-    // G-D89: next/image 최적화 대상 호스트
     remotePatterns: [
       ...(supabaseHost
         ? [
@@ -31,8 +28,39 @@ const nextConfig: NextConfig = {
             },
           ]
         : []),
-      // Toss, 카카오 등 3rd-party 이미지는 필요 시 추가
     ],
+  },
+  // G-D166: Security headers 전역 적용 (report-only CSP로 점진 전환)
+  async headers() {
+    const security = [
+      {
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        value: "geolocation=(), camera=(), microphone=(), payment=(self)",
+      },
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      {
+        key: "Content-Security-Policy-Report-Only",
+        value: [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' https://js.tosspayments.com https://payments.toss.im",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' data: https://fonts.gstatic.com",
+          "img-src 'self' data: blob: https:",
+          "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.tosspayments.com",
+          "frame-src 'self' https://js.tosspayments.com https://payments.toss.im",
+          "frame-ancestors 'self'",
+          "base-uri 'self'",
+          "form-action 'self' https://*.tosspayments.com",
+        ].join("; "),
+      },
+    ];
+    return [{ source: "/:path*", headers: security }];
   },
 };
 
