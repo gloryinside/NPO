@@ -47,6 +47,14 @@
     {
       "path": "/api/cron/auto-publish-campaigns",
       "schedule": "5 21 * * *"
+    },
+    {
+      "path": "/api/cron/lifecycle-emails",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/purge-orphan-storage",
+      "schedule": "0 4 1 * *"
     }
   ]
 }

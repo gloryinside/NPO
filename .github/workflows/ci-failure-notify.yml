@@ -1,0 +1,33 @@
+name: CI failure notifier
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  notify:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_CI_WEBHOOK }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          WORKFLOW_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "SLACK_CI_WEBHOOK secret not set — skip"
+            exit 0
+          fi
+          payload=$(jq -n \
+            --arg name "$WORKFLOW_NAME" \
+            --arg url  "$WORKFLOW_URL" \
+            --arg sha  "$HEAD_SHA" \
+            --arg br   "$BRANCH" \
+            '{text: ("🔴 CI FAILED\n*" + $name + "* (" + $br + "@" + $sha + ")\n" + $url)}')
+          curl -sS -X POST -H 'content-type: application/json' \
+            --data "$payload" "$SLACK_WEBHOOK"
