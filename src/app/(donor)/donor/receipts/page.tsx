@@ -1,5 +1,6 @@
 import { requireDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { EmptyState } from "@/components/donor/ui/EmptyState";
 
 type ReceiptRow = {
   id: string;
@@ -37,6 +38,16 @@ export default async function DonorReceiptsPage() {
 
   const receipts = (data as unknown as ReceiptRow[]) ?? [];
 
+  // 연도별 그룹 + 집계 (일괄 다운로드에 사용)
+  const yearGroups = new Map<number, { total: number; downloadable: number }>();
+  for (const r of receipts) {
+    const g = yearGroups.get(r.year) ?? { total: 0, downloadable: 0 };
+    g.total += 1;
+    if (r.pdf_url) g.downloadable += 1;
+    yearGroups.set(r.year, g);
+  }
+  const years = Array.from(yearGroups.entries()).sort((a, b) => b[0] - a[0]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -47,57 +58,96 @@ export default async function DonorReceiptsPage() {
       </div>
 
       {receipts.length === 0 ? (
-        <div className="rounded-lg border p-8 text-center border-[var(--border)] bg-[var(--surface)]">
-          <p className="text-sm text-[var(--muted-foreground)]">
-            발급된 영수증이 없습니다.
-          </p>
-        </div>
+        <EmptyState
+          icon="🧾"
+          title="발급된 영수증이 없습니다."
+          description="후원 내역에 기반해 연말 기준으로 발급됩니다."
+        />
       ) : (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-          <ul>
-            {receipts.map((r, idx) => (
-              <li
-                key={r.id}
-                className={`flex items-center justify-between p-4 ${
-                  idx > 0 ? "border-t border-[var(--border)]" : ""
-                }`}
-              >
-                <div>
-                  <div className="text-sm font-medium text-[var(--text)]">
-                    {r.year}년 기부금 영수증
-                  </div>
-                  <div className="flex gap-3 mt-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {r.receipt_code}
-                    </span>
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      발급일: {formatDate(r.issued_at)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-semibold text-[var(--text)]">
-                    {formatAmount(r.total_amount)}
-                  </span>
-                  {r.pdf_url ? (
-                    <a
-                      href={`/api/donor/receipts/${r.id}/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--surface-2)] border-[var(--accent)] text-[var(--accent)]"
-                    >
-                      PDF 다운로드
-                    </a>
-                  ) : (
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      PDF 준비 중
-                    </span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <>
+          {/* 연도별 일괄 다운로드 */}
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-[var(--text)]">
+              연도별 일괄 다운로드
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {years.map(([year, g]) => {
+                const disabled = g.downloadable === 0;
+                return (
+                  <a
+                    key={year}
+                    href={`/api/donor/receipts/export?year=${year}`}
+                    {...(disabled ? { "aria-disabled": "true" as const } : {})}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{
+                      borderColor: "var(--accent)",
+                      background: "var(--accent-soft)",
+                      color: "var(--accent)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    📦 {year}년 전체 ZIP ({g.downloadable}/{g.total}건)
+                  </a>
+                );
+              })}
+            </div>
+            <p
+              className="mt-2 text-xs"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              PDF가 생성된 영수증만 포함되며, 제외 내역은 ZIP 내 README.txt
+              에서 확인할 수 있습니다.
+            </p>
+          </section>
+
+          {/* 개별 영수증 목록 */}
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-[var(--text)]">
+              개별 영수증
+            </h2>
+            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+              <ul>
+                {receipts.map((r, idx) => (
+                  <li
+                    key={r.id}
+                    className={`flex items-center justify-between gap-3 p-4 ${
+                      idx > 0 ? "border-t border-[var(--border)]" : ""
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--text)]">
+                        {r.year}년 기부금 영수증
+                      </p>
+                      <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-[var(--muted-foreground)]">
+                        <span className="font-mono">{r.receipt_code}</span>
+                        <span>발급: {formatDate(r.issued_at)}</span>
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-sm font-semibold text-[var(--text)]">
+                        {formatAmount(r.total_amount)}
+                      </span>
+                      {r.pdf_url ? (
+                        <a
+                          href={`/api/donor/receipts/${r.id}/download`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--surface-2)] border-[var(--accent)] text-[var(--accent)]"
+                        >
+                          PDF
+                        </a>
+                      ) : (
+                        <span className="text-xs text-[var(--muted-foreground)]">
+                          준비 중
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        </>
       )}
     </div>
   );

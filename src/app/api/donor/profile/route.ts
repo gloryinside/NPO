@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { writeMemberAudit } from "@/lib/donor/audit-log";
 
 /**
  * PATCH /api/donor/profile
@@ -8,6 +9,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  * 후원자 본인이 자신의 기본 정보(이름/연락처/생년월일)를 수정.
  * email 은 로그인 계정과 연결되어 있으므로 이 엔드포인트에서는 수정 불가.
  * status / member_type 등 관리 속성도 변경 불가.
+ *
+ * G-D25: 변경 전/후 값을 member_audit_log 에 기록 (best-effort).
  */
 export async function PATCH(req: NextRequest) {
   const session = await getDonorSession();
@@ -51,6 +54,13 @@ export async function PATCH(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
+  // 감사용 before 스냅샷
+  const { data: before } = await supabase
+    .from("members")
+    .select("name, phone, birth_date")
+    .eq("id", session.member.id)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("members")
     .update(update)
@@ -63,5 +73,39 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // 변경된 필드만 diff로 기록 (phone은 뒷자리 마스킹)
+  const diff: Record<string, { before: unknown; after: unknown }> = {};
+  if (update.name !== undefined && before?.name !== update.name) {
+    diff.name = { before: before?.name ?? null, after: update.name };
+  }
+  if (update.phone !== undefined && before?.phone !== update.phone) {
+    diff.phone = {
+      before: maskPhone(before?.phone ?? null),
+      after: maskPhone((update.phone as string | null) ?? null),
+    };
+  }
+  if (update.birth_date !== undefined && before?.birth_date !== update.birth_date) {
+    diff.birth_date = {
+      before: before?.birth_date ?? null,
+      after: update.birth_date,
+    };
+  }
+
+  if (Object.keys(diff).length > 0) {
+    await writeMemberAudit(supabase, {
+      orgId: session.member.org_id,
+      memberId: session.member.id,
+      action: "profile_update",
+      diff,
+    });
+  }
+
   return NextResponse.json({ member: data });
+}
+
+function maskPhone(p: string | null): string | null {
+  if (!p) return null;
+  const digits = p.replace(/\D/g, "");
+  if (digits.length < 8) return "***";
+  return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
 }

@@ -88,9 +88,26 @@ export default async function DonorLayout({
         </div>
       </header>
 
+      {/* 모바일 FAB — 새 후원 CTA (G-D09) */}
+      {session && (
+        <a
+          href="/"
+          aria-label="새 후원 시작하기"
+          className="fixed right-4 z-40 inline-flex items-center gap-1.5 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-opacity hover:opacity-90 sm:hidden"
+          style={{
+            background: "var(--accent)",
+            bottom: 72, // 하단 네비바 높이 + 여백
+            textDecoration: "none",
+          }}
+        >
+          ❤️ 새 후원
+        </a>
+      )}
+
       {/* 모바일 하단 네비바 */}
       {session && (
         <nav
+          aria-label="모바일 주요 메뉴"
           className="fixed bottom-0 left-0 right-0 z-40 flex sm:hidden"
           style={{
             background: "var(--surface)",

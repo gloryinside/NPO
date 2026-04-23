@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import type { NotificationPrefs } from '@/lib/donor/notification-prefs'
 
 interface Props {
@@ -25,6 +25,13 @@ export function NotificationPrefsForm({ initial }: Props) {
   const [prefs, setPrefs] = useState<NotificationPrefs>(initial)
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<'idle' | 'ok' | 'err'>('idle')
+
+  // G-D15: 성공 메시지는 3초 뒤 자동 사라지도록
+  useEffect(() => {
+    if (status !== 'ok') return
+    const t = setTimeout(() => setStatus('idle'), 3000)
+    return () => clearTimeout(t)
+  }, [status])
 
   function toggle(key: keyof NotificationPrefs) {
     const next = { ...prefs, [key]: !prefs[key] }
@@ -67,6 +74,7 @@ export function NotificationPrefsForm({ initial }: Props) {
               checked={prefs[key]}
               onChange={() => toggle(key)}
               disabled={isPending}
+              aria-label={label}
               className="sr-only"
             />
             <div

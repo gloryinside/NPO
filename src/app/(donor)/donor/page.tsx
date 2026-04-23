@@ -6,6 +6,7 @@ import type { PromiseWithRelations } from "@/types/promise";
 import { DonorProfileSection } from "@/components/donor/donor-profile-section";
 import { PledgeCancelButton } from "@/components/donor/pledge-cancel-button";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
+import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
 import { getDashboardActions } from "@/lib/donor/dashboard-actions";
 import { getUpcomingPaymentsThisMonth } from "@/lib/donor/upcoming-payments";
 import { ActionRequiredBanner } from "@/components/donor/dashboard/action-required-banner";
@@ -326,6 +327,9 @@ export default async function DonorHomePage() {
                       </span>
                       {status === "paid" && daysSince <= 7 && (
                         <PaymentCancelButton paymentId={p.id} />
+                      )}
+                      {(status === "failed" || status === "unpaid") && (
+                        <PaymentRetryButton paymentId={p.id} />
                       )}
                     </div>
                   </li>

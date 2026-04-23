@@ -3,6 +3,8 @@ import { getDonorSession } from '@/lib/auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getNotificationPrefs } from '@/lib/donor/notification-prefs'
 import { NotificationPrefsForm } from '@/components/donor/settings/NotificationPrefsForm'
+import { PasswordChangeCard } from '@/components/donor/settings/PasswordChangeCard'
+import { AccountDeleteCard } from '@/components/donor/settings/AccountDeleteCard'
 
 export const metadata = { title: '설정' }
 
@@ -12,13 +14,14 @@ export default async function DonorSettingsPage() {
 
   const supabase = createSupabaseAdminClient()
   const prefs = await getNotificationPrefs(supabase, session.member.id)
+  const isSupabaseAuth = session.authMethod === 'supabase'
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div>
         <h1 className="text-2xl font-bold text-[var(--text)]">설정</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          알림 및 계정 환경을 관리하세요.
+          알림, 보안, 계정 환경을 관리하세요.
         </p>
       </div>
 
@@ -35,7 +38,15 @@ export default async function DonorSettingsPage() {
         </div>
       </section>
 
-      {/* 빠른 이동 */}
+      {/* 보안 */}
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
+          보안
+        </h2>
+        <PasswordChangeCard enabled={isSupabaseAuth} />
+      </section>
+
+      {/* 바로가기 */}
       <section>
         <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
           바로가기
@@ -65,6 +76,14 @@ export default async function DonorSettingsPage() {
             </a>
           ))}
         </div>
+      </section>
+
+      {/* 위험 영역 */}
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
+          위험 영역
+        </h2>
+        <AccountDeleteCard authMethod={session.authMethod} />
       </section>
     </div>
   )

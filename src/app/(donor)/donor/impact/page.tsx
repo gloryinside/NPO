@@ -7,6 +7,7 @@ import { ImpactDonutChart } from '@/components/donor/impact/ImpactDonutChart'
 import { ImpactYearlyBar } from '@/components/donor/impact/ImpactYearlyBar'
 import { ImpactMonthlyHeatmap } from '@/components/donor/impact/ImpactMonthlyHeatmap'
 import { ImpactShareActions } from '@/components/donor/impact/ImpactShareActions'
+import { EmptyState } from '@/components/donor/ui/EmptyState'
 
 function formatKRW(n: number): string {
   if (n >= 100_000_000)
@@ -62,22 +63,12 @@ export default async function DonorImpactPage() {
       </div>
 
       {impact.paymentCount === 0 ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] py-20 text-center">
-          <p className="text-5xl mb-4">🌱</p>
-          <p className="text-base font-semibold text-[var(--text)]">
-            아직 후원 내역이 없습니다.
-          </p>
-          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-            첫 후원으로 변화를 시작해보세요.
-          </p>
-          <a
-            href="/"
-            className="mt-6 inline-block rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: 'var(--accent)' }}
-          >
-            캠페인 둘러보기 →
-          </a>
-        </div>
+        <EmptyState
+          icon="🌱"
+          title="아직 후원 내역이 없습니다."
+          description="첫 후원으로 변화를 시작해보세요."
+          cta={{ href: '/', label: '캠페인 둘러보기' }}
+        />
       ) : (
         <>
           {/* ── 히어로 ── */}

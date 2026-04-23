@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { AmountChangeDialog } from "@/components/donor/promises/AmountChangeDialog";
 import { UpdateBillingKeyDialog } from "@/components/donor/promises/UpdateBillingKeyDialog";
+import { EmptyState } from "@/components/donor/ui/EmptyState";
+import { InlineLoading } from "@/components/donor/ui/PageLoading";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 
 type CampaignRef = { id: string; title: string } | null;
@@ -163,11 +165,7 @@ export default function DonorPromisesPage() {
     .reduce((s, p) => s + Number(p.amount ?? 0), 0);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24 text-sm text-[var(--muted-foreground)]">
-        <span className="animate-pulse">불러오는 중…</span>
-      </div>
-    );
+    return <InlineLoading label="약정을 불러오는 중…" />;
   }
 
   return (
@@ -218,13 +216,12 @@ export default function DonorPromisesPage() {
         </div>
 
         {promises.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] py-16 text-center">
-            <p className="text-4xl mb-3">📋</p>
-            <p className="text-sm text-[var(--text)]">등록된 약정이 없습니다.</p>
-            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-              캠페인을 통해 첫 후원을 시작해보세요.
-            </p>
-          </div>
+          <EmptyState
+            icon="📋"
+            title="등록된 약정이 없습니다."
+            description="캠페인을 통해 첫 후원을 시작해보세요."
+            cta={{ href: "/", label: "캠페인 둘러보기" }}
+          />
         ) : (
           <div className="space-y-4">
             {promises.map((p) => {

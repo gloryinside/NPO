@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { DonorPaymentsFilter } from "@/components/donor/donor-payments-filter";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
+import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
 import { Suspense } from "react";
 
@@ -142,14 +143,34 @@ export default async function DonorPaymentsPage({
         </div>
       </div>
 
-      <Suspense>
-        <DonorPaymentsFilter
-          years={years}
-          selectedYear={year ?? ""}
-          selectedMonth={month ?? ""}
-          selectedStatus={status ?? ""}
-        />
-      </Suspense>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Suspense>
+          <DonorPaymentsFilter
+            years={years}
+            selectedYear={year ?? ""}
+            selectedMonth={month ?? ""}
+            selectedStatus={status ?? ""}
+          />
+        </Suspense>
+        {total > 0 && (
+          <a
+            href={`/api/donor/payments/export?${new URLSearchParams({
+              ...(year ? { year } : {}),
+              ...(month ? { month } : {}),
+              ...(status ? { status } : {}),
+            }).toString()}`}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+            style={{
+              borderColor: "var(--accent)",
+              background: "var(--accent-soft)",
+              color: "var(--accent)",
+              textDecoration: "none",
+            }}
+          >
+            📥 CSV 내보내기
+          </a>
+        )}
+      </div>
 
       <div
         className="rounded-lg border overflow-hidden"
@@ -234,10 +255,15 @@ export default async function DonorPaymentsPage({
                     )}
                   </TableCell>
                   <TableCell>
-                    {p.pay_status === 'paid' && p.pay_date && (() => {
-                      const daysSince = (Date.now() - new Date(p.pay_date as string).getTime()) / 86400000;
-                      return daysSince <= 7 ? <PaymentCancelButton paymentId={p.id} /> : null;
-                    })()}
+                    <div className="flex items-center gap-2">
+                      {p.pay_status === 'paid' && p.pay_date && (() => {
+                        const daysSince = (Date.now() - new Date(p.pay_date as string).getTime()) / 86400000;
+                        return daysSince <= 7 ? <PaymentCancelButton paymentId={p.id} /> : null;
+                      })()}
+                      {(p.pay_status === 'failed' || p.pay_status === 'unpaid') && (
+                        <PaymentRetryButton paymentId={p.id} />
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
