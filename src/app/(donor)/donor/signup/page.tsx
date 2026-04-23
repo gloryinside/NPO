@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { Suspense } from "react";
 import { getDonorSession } from "@/lib/auth";
 import { DonorSignupForm } from "@/components/donor/signup-form";
+import { isDonorAuthBypassEnabled } from "@/lib/auth/donor-bypass";
 
 /**
  * Phase 7-B / G-118: 초대 URL(`/donor/signup?ref=코드`) 공유 시 카톡/페북 미리보기 지원.
@@ -50,6 +51,11 @@ export default async function DonorSignupPage() {
   const session = await getDonorSession();
   if (session) {
     redirect("/donor");
+  }
+
+  // 개발용 우회 모드에서는 회원가입 불필요 — bypass 로그인으로 이동
+  if (isDonorAuthBypassEnabled()) {
+    redirect("/donor/login");
   }
 
   return (

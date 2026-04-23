@@ -3,6 +3,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getTenant } from "@/lib/tenant/context";
 import { findReferrerByCode } from "@/lib/donor/referral";
+import { isDonorAuthBypassEnabled } from "@/lib/auth/donor-bypass";
+import { generateMemberCode } from "@/lib/codes";
 
 /**
  * 현재 로그인한 Supabase 유저의 이메일로 members 행을 찾아
@@ -102,6 +104,44 @@ export async function POST(req: NextRequest) {
   }
 
   if (!member) {
+    // 개발용 우회 모드: member 없어도 자동 생성 후 연결
+    if (isDonorAuthBypassEnabled()) {
+      const { data: lastMember } = await admin
+        .from("members")
+        .select("member_code")
+        .eq("org_id", tenant.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const year = new Date().getFullYear();
+      let nextSeq = 1;
+      const lastCode = lastMember?.member_code as string | undefined;
+      const parsed = lastCode?.match(/^M-(\d{4})(\d{5})$/);
+      if (parsed && Number(parsed[1]) === year) nextSeq = Number(parsed[2]) + 1;
+      const memberCode = generateMemberCode(year, nextSeq);
+
+      const { data: created, error: createErr } = await admin
+        .from("members")
+        .insert({
+          org_id: tenant.id,
+          member_code: memberCode,
+          name: "테스트 후원자",
+          status: "active",
+          email,
+          supabase_uid: user.id,
+          join_path: "dev_bypass",
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (createErr || !created) {
+        return NextResponse.json({ error: "멤버 생성 실패" }, { status: 500 });
+      }
+      await tryApplyReferrer(created.id);
+      return NextResponse.json({ ok: true, member_id: created.id });
+    }
+
     return NextResponse.json(
       {
         error:
