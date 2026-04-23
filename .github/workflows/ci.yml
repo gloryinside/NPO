@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Type + Lint + Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.5
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install deps (pnpm)
+        run: pnpm install --frozen-lockfile
+        continue-on-error: true
+
+      - name: Install (fallback npm ci)
+        if: failure()
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint (soft)
+        run: npx next lint || true
+
+      - name: Unit tests
+        env:
+          NODE_ENV: test
+          NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "dummy"
+          SUPABASE_SERVICE_ROLE_KEY: "dummy"
+          OTP_JWT_SECRET: "test-secret-32-bytes-long-string"
+        run: npx vitest run --reporter=default
+
+  migration-check:
+    name: Migration filename lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify migration filename format
+        run: |
+          set -e
+          bad=0
+          for f in supabase/migrations/*.sql; do
+            base=$(basename "$f")
+            if ! echo "$base" | grep -Eq '^[0-9]{14}_[a-z0-9_]+\.sql$'; then
+              echo "Invalid migration name: $base"
+              bad=1
+            fi
+          done
+          exit $bad

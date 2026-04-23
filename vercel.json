@@ -23,6 +23,22 @@
     {
       "path": "/api/cron/birthday-greeting",
       "schedule": "15 15 * * *"
+    },
+    {
+      "path": "/api/cron/cancel-stale-payments",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/auto-close-campaigns",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/notify-churn-risk",
+      "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/cron/retry-failed-emails",
+      "schedule": "15 */4 * * *"
     }
   ]
 }

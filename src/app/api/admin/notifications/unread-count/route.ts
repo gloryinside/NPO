@@ -1,17 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRequestClient } from '@/lib/supabase/request-client';
-import { requireTenant } from '@/lib/tenant/context';
+import { NextResponse } from 'next/server';
+import { requireAdminApi } from '@/lib/auth/api-guard';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
-export async function GET(req: NextRequest) {
-  const supabase = createRequestClient(req);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  let tenantId: string;
-  try { const t = await requireTenant(); tenantId = t.id; } catch {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });
-  }
+export async function GET() {
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const tenantId = guard.ctx.tenant.id;
 
   const admin = createSupabaseAdminClient();
   const { count } = await admin

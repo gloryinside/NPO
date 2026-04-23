@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRequestClient } from '@/lib/supabase/request-client';
-import { requireTenant } from '@/lib/tenant/context';
+import { requireAdminApi } from '@/lib/auth/api-guard';
 import { ThemeConfigSchema } from '@/lib/theme/config';
 
 export async function PATCH(req: NextRequest) {
-  const supabase = createRequestClient(req);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  let tenantId: string;
-  try {
-    const tenant = await requireTenant();
-    tenantId = tenant.id;
-  } catch {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });
-  }
+  // G-D71: admin role 검증 (이전엔 user 존재만 확인)
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const tenantId = guard.ctx.tenant.id;
 
   const body = await req.json();
   const parsed = ThemeConfigSchema.safeParse(body);
