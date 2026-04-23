@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { checkCsrf } from "@/lib/security/csrf";
 import { logAudit } from "@/lib/audit";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
+import { refundPayment } from "@/lib/payments/refund";
 
 /**
  * G-D146: 환불 승인 — 요청자와 다른 admin 이 승인 가능.
@@ -50,16 +51,53 @@ export async function POST(
     );
   }
 
-  const { error } = await supabase
+  // 1) approved 로 전환
+  const nowIso = new Date().toISOString();
+  {
+    const { error } = await supabase
+      .from("refund_approvals")
+      .update({
+        status: "approved",
+        approved_by: user.id,
+        approved_by_email: user.email ?? null,
+        updated_at: nowIso,
+      })
+      .eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // 2) 실제 Toss 환불 호출
+  const exec = await refundPayment({
+    supabase,
+    orgId: tenant.id,
+    paymentId: row.payment_id,
+    reasonCode: "donor_request",
+    reasonNote: row.reason ?? undefined,
+    refundAmount: row.amount,
+  });
+
+  if (!exec.ok) {
+    await supabase
+      .from("refund_approvals")
+      .update({
+        status: "failed",
+        rejected_reason: `toss 실행 실패: ${exec.error}`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    return NextResponse.json(
+      { error: "환불 실행 실패", detail: exec.error },
+      { status: 502 }
+    );
+  }
+
+  await supabase
     .from("refund_approvals")
     .update({
-      status: "approved",
-      approved_by: user.id,
-      approved_by_email: user.email ?? null,
-      updated_at: new Date().toISOString(),
+      status: "executed",
+      executed_at: new Date().toISOString(),
     })
     .eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await logAudit({
     orgId: tenant.id,
@@ -68,9 +106,9 @@ export async function POST(
     action: "payment.refund",
     resourceType: "refund_approval",
     resourceId: id,
-    summary: `환불 승인 (${row.amount.toLocaleString()}원)`,
-    metadata: { paymentId: row.payment_id, approved: true },
+    summary: `환불 실행 (${row.amount.toLocaleString()}원)`,
+    metadata: { paymentId: row.payment_id, executed: true },
   }).catch(() => {});
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, executed: true });
 }
