@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { OtpLoginForm } from "@/components/donor/otp-login-form";
+import { BypassLoginForm } from "@/components/donor/bypass-login-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,7 +76,7 @@ function EmailPasswordForm() {
   );
 }
 
-export function DonorLoginForm() {
+export function DonorLoginForm({ bypass = false }: { bypass?: boolean }) {
   const [tab, setTab] = useState<Tab>("otp");
 
   return (
@@ -88,33 +89,39 @@ export function DonorLoginForm() {
           기부 내역이 있는 계정으로 로그인하세요.
         </p>
 
-        {/* 탭 */}
-        <div className="mb-5 flex rounded-lg border border-[var(--border)] overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setTab("otp")}
-            className="flex-1 py-2 text-sm font-medium transition-colors"
-            style={{
-              background: tab === "otp" ? "var(--accent)" : "var(--surface-2)",
-              color: tab === "otp" ? "#fff" : "var(--muted-foreground)",
-            }}
-          >
-            휴대폰 인증
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("password")}
-            className="flex-1 py-2 text-sm font-medium transition-colors"
-            style={{
-              background: tab === "password" ? "var(--accent)" : "var(--surface-2)",
-              color: tab === "password" ? "#fff" : "var(--muted-foreground)",
-            }}
-          >
-            이메일/비밀번호
-          </button>
-        </div>
+        {bypass ? (
+          <BypassLoginForm />
+        ) : (
+          <>
+            {/* 탭 */}
+            <div className="mb-5 flex rounded-lg border border-[var(--border)] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setTab("otp")}
+                className="flex-1 py-2 text-sm font-medium transition-colors"
+                style={{
+                  background: tab === "otp" ? "var(--accent)" : "var(--surface-2)",
+                  color: tab === "otp" ? "#fff" : "var(--muted-foreground)",
+                }}
+              >
+                휴대폰 인증
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("password")}
+                className="flex-1 py-2 text-sm font-medium transition-colors"
+                style={{
+                  background: tab === "password" ? "var(--accent)" : "var(--surface-2)",
+                  color: tab === "password" ? "#fff" : "var(--muted-foreground)",
+                }}
+              >
+                이메일/비밀번호
+              </button>
+            </div>
 
-        {tab === "otp" ? <OtpLoginForm /> : <EmailPasswordForm />}
+            {tab === "otp" ? <OtpLoginForm /> : <EmailPasswordForm />}
+          </>
+        )}
 
         <p className="mt-5 text-center text-sm text-[var(--muted-foreground)]">
           아직 계정이 없으신가요?{" "}
