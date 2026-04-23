@@ -14,6 +14,27 @@ const sharedResolve = {
 export default defineConfig({
   resolve: sharedResolve,
   test: {
+    // G-D142: coverage 기본 옵션 (vitest run --coverage 로 활성)
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov", "html"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/**/*.d.ts",
+        "src/app/**/layout.tsx",
+        "src/app/**/page.tsx",
+        "src/components/**",
+      ],
+      thresholds: {
+        // 초기 기준선 — 점진 상향. lines 기준.
+        lines: 15,
+        functions: 20,
+        branches: 60,
+        statements: 15,
+      },
+    },
     projects: [
       {
         resolve: sharedResolve,

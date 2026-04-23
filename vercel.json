@@ -39,6 +39,14 @@
     {
       "path": "/api/cron/retry-failed-emails",
       "schedule": "15 */4 * * *"
+    },
+    {
+      "path": "/api/cron/classify-lifecycle",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/auto-publish-campaigns",
+      "schedule": "5 21 * * *"
     }
   ]
 }
