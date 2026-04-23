@@ -12,6 +12,7 @@ import {
 import { DonorPaymentsFilter } from "@/components/donor/donor-payments-filter";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
+import { PaymentsExportBar } from "@/components/donor/payments-export-bar";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
 import { Suspense } from "react";
 
@@ -153,22 +154,11 @@ export default async function DonorPaymentsPage({
           />
         </Suspense>
         {total > 0 && (
-          <a
-            href={`/api/donor/payments/export?${new URLSearchParams({
-              ...(year ? { year } : {}),
-              ...(month ? { month } : {}),
-              ...(status ? { status } : {}),
-            }).toString()}`}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
-            style={{
-              borderColor: "var(--accent)",
-              background: "var(--accent-soft)",
-              color: "var(--accent)",
-              textDecoration: "none",
-            }}
-          >
-            📥 CSV 내보내기
-          </a>
+          <PaymentsExportBar
+            year={year ?? ""}
+            month={month ?? ""}
+            status={status ?? ""}
+          />
         )}
       </div>
 

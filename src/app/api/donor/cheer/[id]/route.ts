@@ -3,6 +3,7 @@ import { getDonorSession } from '@/lib/auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { softDeleteOwnCheer } from '@/lib/cheer/messages'
 import { revalidateCheerCampaignPath } from '@/lib/cheer/revalidate'
+import { checkCsrf } from '@/lib/security/csrf'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -11,7 +12,9 @@ type RouteContext = { params: Promise<{ id: string }> }
  *   - 본인이 쓴 응원 soft-delete (hidden=true, hidden_reason='self_deleted')
  *   - admin hidden 처리된 건은 덮어쓰지 않음(lib에서 hidden=false 조건)
  */
-export async function DELETE(_req: Request, { params }: RouteContext) {
+export async function DELETE(req: Request, { params }: RouteContext) {
+  const csrf = checkCsrf(req)
+  if (csrf) return csrf
   const session = await getDonorSession()
   if (!session) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

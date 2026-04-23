@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getOrgTossKeys } from '@/lib/toss/keys'
 import { issueBillingKey } from '@/lib/billing/toss-billing'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
+import { checkCsrf } from '@/lib/security/csrf'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -20,6 +21,8 @@ type RouteContext = { params: Promise<{ id: string }> }
  * - 발급 성공 시 toss_billing_key + customer_key 교체, status → active (pending_billing이었다면)
  */
 export async function POST(req: NextRequest, { params }: RouteContext) {
+  const csrf = checkCsrf(req)
+  if (csrf) return csrf
   const session = await getDonorSession()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -3,8 +3,11 @@ import { getDonorSession } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { parseThemePreference, serializeThemeCookie } from '@/lib/theme/preference';
+import { checkCsrf } from '@/lib/security/csrf';
 
 export async function POST(req: Request): Promise<Response> {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

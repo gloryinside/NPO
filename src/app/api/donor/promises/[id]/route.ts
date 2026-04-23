@@ -6,6 +6,7 @@ import { renderAmountChangeEmail } from "@/lib/promises/amount-change-email";
 import { sendEmail } from "@/lib/email/send-email";
 import { logNotification, wasSentForRefWithin } from "@/lib/email/notification-log";
 import { getNotificationPrefs } from "@/lib/donor/notification-prefs";
+import { checkCsrf } from "@/lib/security/csrf";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -23,6 +24,8 @@ type RouteContext = { params: Promise<{ id: string }> };
  * - completed promises cannot be changed
  */
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });

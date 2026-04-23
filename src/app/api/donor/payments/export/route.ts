@@ -64,6 +64,9 @@ export async function GET(req: NextRequest) {
   const yearRaw = sp.get("year");
   const monthRaw = sp.get("month");
   const statusRaw = sp.get("status");
+  // G-D34: 커스텀 날짜 범위 — year/month 보다 우선 적용
+  const fromRaw = sp.get("from");
+  const toRaw = sp.get("to");
 
   const year = yearRaw ? Number(yearRaw) : null;
   const month = monthRaw ? Number(monthRaw) : null;
@@ -74,6 +77,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "유효하지 않은 월" }, { status: 400 });
   }
   const status = statusRaw && ALLOWED_STATUS.has(statusRaw) ? statusRaw : null;
+
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const from = fromRaw && DATE_RE.test(fromRaw) ? fromRaw : null;
+  const to = toRaw && DATE_RE.test(toRaw) ? toRaw : null;
+  if ((fromRaw && !from) || (toRaw && !to)) {
+    return NextResponse.json(
+      { error: "날짜 형식은 YYYY-MM-DD 이어야 합니다." },
+      { status: 400 }
+    );
+  }
+  if (from && to && from > to) {
+    return NextResponse.json(
+      { error: "시작일이 종료일보다 늦을 수 없습니다." },
+      { status: 400 }
+    );
+  }
 
   const supabase = createSupabaseAdminClient();
 
@@ -86,7 +105,11 @@ export async function GET(req: NextRequest) {
     .eq("member_id", session.member.id)
     .order("pay_date", { ascending: false, nullsFirst: false });
 
-  if (year !== null) {
+  // 날짜 필터: from/to 가 우선, 없으면 year/month 로 폴백
+  if (from || to) {
+    if (from) query = query.gte("pay_date", from);
+    if (to) query = query.lte("pay_date", to);
+  } else if (year !== null) {
     if (month !== null) {
       const ym = `${year}-${String(month).padStart(2, "0")}`;
       const lastDay = new Date(year, month, 0).getDate();
@@ -149,14 +172,16 @@ export async function GET(req: NextRequest) {
   const body = CSV_BOM + lines.join("\r\n");
 
   const today = new Date().toISOString().slice(0, 10);
-  const filterLabel = [
-    year !== null ? `${year}` : "all",
-    month !== null ? `${String(month).padStart(2, "0")}` : null,
-    status,
-  ]
-    .filter(Boolean)
-    .join("-");
-  const filename = `payments_${filterLabel || "all"}_${today}.csv`;
+  const filterLabel = (() => {
+    if (from || to) return `${from ?? "start"}_${to ?? "end"}`;
+    const parts = [
+      year !== null ? `${year}` : "all",
+      month !== null ? String(month).padStart(2, "0") : null,
+      status,
+    ].filter(Boolean);
+    return parts.join("-") || "all";
+  })();
+  const filename = `payments_${filterLabel}_${today}.csv`;
 
   return new NextResponse(body, {
     status: 200,

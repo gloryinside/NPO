@@ -3,6 +3,8 @@ import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
+import { sendEmail } from "@/lib/email/send-email";
+import { checkCsrf } from "@/lib/security/csrf";
 import { cookies } from "next/headers";
 
 /**
@@ -21,6 +23,8 @@ import { cookies } from "next/headers";
  * Hard-delete는 추후 관리자 요청 플로우로 분리.
  */
 export async function DELETE(req: NextRequest) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
@@ -68,6 +72,48 @@ export async function DELETE(req: NextRequest) {
   const admin = createSupabaseAdminClient();
   const suffix = session.member.id.slice(0, 8);
   const now = new Date().toISOString();
+
+  // 0) 삭제 전 확인 이메일 (G-D27) — best-effort
+  //    members 마스킹 이후에는 원 이메일을 알 수 없으므로 먼저 발송
+  const originalEmail = session.member.email || session.user?.email || null;
+  const originalName = session.member.name;
+  const orgName = await (async () => {
+    const { data } = await admin
+      .from("orgs")
+      .select("name")
+      .eq("id", session.member.org_id)
+      .maybeSingle();
+    return data?.name ?? "후원 기관";
+  })();
+  if (originalEmail) {
+    const whenKST = new Date().toLocaleString("ko-KR", {
+      timeZone: "Asia/Seoul",
+    });
+    await sendEmail({
+      to: originalEmail,
+      subject: `[${orgName}] 계정 삭제 처리 안내`,
+      html: `
+        <div style="font-family: -apple-system, 'Noto Sans KR', sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1f2937;">
+          <h1 style="font-size: 20px; margin: 0 0 16px;">계정 삭제가 처리되었습니다</h1>
+          <p>${originalName}님 안녕하세요,</p>
+          <p>${whenKST} 기준으로 <b>${orgName}</b> 후원자 계정 삭제 요청이 처리되었습니다.</p>
+          <div style="background:#f9fafb; border-left:3px solid #ef4444; padding:12px 16px; margin:16px 0;">
+            <p style="margin:0; font-size:14px;">
+              · 개인정보(이름·연락처·생년월일)는 마스킹 처리되었습니다.<br/>
+              · 진행 중이던 모든 약정(정기/일시)이 자동 해지되었습니다.<br/>
+              · 과거 후원 이력과 영수증은 회계·세무 목적으로 보존됩니다.
+            </p>
+          </div>
+          <p style="font-size:13px; color:#6b7280;">
+            본인이 진행하지 않은 요청이라면 즉시 support 로 문의해주세요.
+          </p>
+          <p style="font-size:13px; color:#6b7280; margin-top:24px;">
+            그동안의 후원에 진심으로 감사드립니다.
+          </p>
+        </div>
+      `,
+    }).catch(() => {});
+  }
 
   // 1) members 마스킹 + withdrawn
   const { error: memberErr } = await admin

@@ -55,7 +55,9 @@ export async function ensureReferralCode(
   const existing = await getMemberReferralCode(supabase, memberId)
   if (existing) return { ok: true, code: existing }
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // G-D32: 8자 × 31자모 공간(~8×10^11) vs. 회원 수 — 충돌 극히 드물지만 10회로 여유.
+  //   생성 자체가 ms 단위 → 10회 재시도도 사용자 체감 부담 없음.
+  for (let attempt = 0; attempt < 10; attempt++) {
     const code = generate()
     const { data, error } = await supabase
       .from('referral_codes')

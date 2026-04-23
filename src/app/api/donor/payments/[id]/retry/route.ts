@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { retryChargePayment } from "@/lib/payments/retry-charge";
+import { checkCsrf } from "@/lib/security/csrf";
 
 /**
  * G-D06 / G-D24: 후원자 본인 결제 재시도
@@ -12,9 +13,11 @@ import { retryChargePayment } from "@/lib/payments/retry-charge";
  *  - rate limit: member 1h/3회 + payment 1d/5회 (retry-charge 내부)
  */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });

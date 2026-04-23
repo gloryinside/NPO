@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
+import { checkCsrf } from "@/lib/security/csrf";
 
 /**
  * PATCH /api/donor/profile
@@ -13,6 +14,8 @@ import { writeMemberAudit } from "@/lib/donor/audit-log";
  * G-D25: 변경 전/후 값을 member_audit_log 에 기록 (best-effort).
  */
 export async function PATCH(req: NextRequest) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });

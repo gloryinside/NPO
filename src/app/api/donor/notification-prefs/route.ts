@@ -6,6 +6,7 @@ import {
   updateNotificationPrefs,
 } from '@/lib/donor/notification-prefs'
 import type { NotificationPrefs } from '@/lib/donor/notification-prefs'
+import { checkCsrf } from '@/lib/security/csrf'
 
 export async function GET() {
   const session = await getDonorSession()
@@ -17,6 +18,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const csrf = checkCsrf(req)
+  if (csrf) return csrf
   const session = await getDonorSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

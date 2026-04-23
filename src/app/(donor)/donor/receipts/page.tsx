@@ -73,11 +73,28 @@ export default async function DonorReceiptsPage() {
             <div className="flex flex-wrap gap-2">
               {years.map(([year, g]) => {
                 const disabled = g.downloadable === 0;
-                return (
+                const title = disabled
+                  ? `${year}년 영수증은 아직 PDF가 생성되지 않았습니다.`
+                  : `${g.downloadable}건의 PDF를 ZIP으로 다운로드`;
+                return disabled ? (
+                  <span
+                    key={year}
+                    title={title}
+                    {...{ "aria-disabled": "true" as const }}
+                    className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium opacity-50"
+                    style={{
+                      borderColor: "var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    📦 {year}년 ZIP (PDF 준비 중 · {g.total}건)
+                  </span>
+                ) : (
                   <a
                     key={year}
                     href={`/api/donor/receipts/export?year=${year}`}
-                    {...(disabled ? { "aria-disabled": "true" as const } : {})}
+                    title={title}
                     className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80"
                     style={{
                       borderColor: "var(--accent)",

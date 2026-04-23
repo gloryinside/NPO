@@ -8,6 +8,7 @@ import {
   getReferralStats,
 } from '@/lib/donor/referral'
 import { ReferralCodeCard } from '@/components/donor/invite/ReferralCodeCard'
+import { ReferralRetryButton } from '@/components/donor/invite/ReferralRetryButton'
 
 function formatKRW(n: number): string {
   return n.toLocaleString('ko-KR') + '원'
@@ -61,6 +62,7 @@ export default async function DonorInvitePage() {
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">
             오류: {ensured.error}
           </p>
+          <ReferralRetryButton />
         </div>
       </div>
     )
