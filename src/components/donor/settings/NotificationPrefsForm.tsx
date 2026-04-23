@@ -7,15 +7,29 @@ interface Props {
   initial: NotificationPrefs
 }
 
+const PREF_ITEMS: {
+  key: keyof NotificationPrefs
+  label: string
+  desc: string
+  icon: string
+}[] = [
+  {
+    key: 'amount_change',
+    label: '정기후원 금액 변경 알림',
+    desc: '후원 금액이 변경될 때 이메일로 알려드립니다.',
+    icon: '💰',
+  },
+]
+
 export function NotificationPrefsForm({ initial }: Props) {
   const [prefs, setPrefs] = useState<NotificationPrefs>(initial)
   const [isPending, startTransition] = useTransition()
-  const [message, setMessage] = useState<string | null>(null)
+  const [status, setStatus] = useState<'idle' | 'ok' | 'err'>('idle')
 
   function toggle(key: keyof NotificationPrefs) {
     const next = { ...prefs, [key]: !prefs[key] }
     setPrefs(next)
-    setMessage(null)
+    setStatus('idle')
 
     startTransition(async () => {
       const res = await fetch('/api/donor/notification-prefs', {
@@ -23,61 +37,67 @@ export function NotificationPrefsForm({ initial }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [key]: next[key] }),
       })
-      if (res.ok) {
-        setMessage('저장되었습니다.')
-      } else {
-        setPrefs(prefs)
-        setMessage('저장에 실패했습니다. 다시 시도해주세요.')
-      }
+      setStatus(res.ok ? 'ok' : 'err')
+      if (!res.ok) setPrefs(prefs)
     })
   }
 
   return (
-    <section>
-      <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: '1rem' }}>
-        이메일 수신 설정
-      </h2>
-
-      <label
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '1rem',
-          border: '1px solid var(--border)',
-          borderRadius: 8,
-          cursor: isPending ? 'wait' : 'pointer',
-          opacity: isPending ? 0.7 : 1,
-        }}
-      >
-        <div>
-          <div style={{ fontWeight: 500, marginBottom: 4 }}>
-            정기후원 금액 변경 알림
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>
-            후원 금액이 변경될 때 감사 이메일을 받습니다
-          </div>
-        </div>
-        <input
-          type="checkbox"
-          checked={prefs.amount_change}
-          onChange={() => toggle('amount_change')}
-          disabled={isPending}
-          style={{ width: 18, height: 18, cursor: 'pointer' }}
-        />
-      </label>
-
-      {message && (
-        <p
+    <div className={isPending ? 'opacity-70 pointer-events-none' : ''}>
+      {PREF_ITEMS.map(({ key, label, desc, icon }, idx) => (
+        <label
+          key={key}
+          className="flex cursor-pointer items-start justify-between gap-4 px-5 py-4"
           style={{
-            marginTop: '0.75rem',
-            fontSize: 13,
-            color: message.includes('실패') ? 'var(--destructive)' : 'var(--muted-foreground)',
+            borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
           }}
         >
-          {message}
-        </p>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-xl">{icon}</span>
+            <div>
+              <p className="text-sm font-medium text-[var(--text)]">{label}</p>
+              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{desc}</p>
+            </div>
+          </div>
+
+          {/* 커스텀 토글 */}
+          <div className="relative mt-0.5 shrink-0">
+            <input
+              type="checkbox"
+              checked={prefs[key]}
+              onChange={() => toggle(key)}
+              disabled={isPending}
+              className="sr-only"
+            />
+            <div
+              className="h-6 w-11 rounded-full transition-colors duration-200"
+              style={{
+                background: prefs[key] ? 'var(--accent)' : 'var(--border)',
+              }}
+            />
+            <div
+              className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
+              style={{
+                transform: prefs[key] ? 'translateX(1.25rem)' : 'translateX(0.125rem)',
+              }}
+            />
+          </div>
+        </label>
+      ))}
+
+      {/* 상태 피드백 */}
+      {status !== 'idle' && (
+        <div
+          className="border-t px-5 py-3 text-xs font-medium"
+          style={{
+            borderColor: 'var(--border)',
+            color: status === 'ok' ? 'var(--positive)' : 'var(--negative)',
+            background: status === 'ok' ? 'var(--positive-soft)' : 'var(--negative-soft)',
+          }}
+        >
+          {status === 'ok' ? '✓ 저장되었습니다.' : '✗ 저장에 실패했습니다. 다시 시도해주세요.'}
+        </div>
       )}
-    </section>
+    </div>
   )
 }

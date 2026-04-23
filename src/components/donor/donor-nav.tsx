@@ -48,11 +48,13 @@ function tabStyle(active: boolean): React.CSSProperties {
     fontSize: 14,
     textDecoration: "none",
     fontWeight: active ? 500 : 400,
+    borderTop: "none",
+    borderLeft: "none",
+    borderRight: "none",
     borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
     paddingBottom: 2,
     transition: "color 0.15s",
     background: "none",
-    border: "none",
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
@@ -91,7 +93,7 @@ function DropdownGroup({ group }: { group: NavGroup }) {
       <button
         type="button"
         aria-haspopup="menu"
-        aria-expanded={open ? "true" : "false"}
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         style={{
           ...baseStyle,

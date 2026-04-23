@@ -12,8 +12,9 @@ export default async function DonorLayout({
   const session = await getDonorSession();
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       <header
+        className="sticky top-0 z-40"
         style={{
           height: 56,
           borderBottom: "1px solid var(--border)",
@@ -21,8 +22,10 @@ export default async function DonorLayout({
           display: "flex",
           alignItems: "center",
           padding: "0 1rem",
+          gap: "0.75rem",
         }}
       >
+        {/* 로고 */}
         <a
           href="/donor"
           style={{
@@ -30,36 +33,39 @@ export default async function DonorLayout({
             textDecoration: "none",
             display: "inline-flex",
             alignItems: "center",
+            flexShrink: 0,
           }}
         >
           <LogoWithText variant="header" size="md" />
         </a>
-        {session && <DonorNav />}
-        <nav
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            gap: "1rem",
-            alignItems: "center",
-          }}
+
+        {/* 데스크탑 내비 */}
+        {session && (
+          <div className="hidden sm:flex">
+            <DonorNav />
+          </div>
+        )}
+
+        {/* 우측 액션 */}
+        <div
+          className="ml-auto flex items-center gap-3"
         >
           <ThemeToggle persistToServer={!!session} />
+
           {session ? (
             <>
               <span
-                style={{
-                  color: "var(--muted-foreground)",
-                  fontSize: 14,
-                }}
+                className="hidden sm:inline text-sm"
+                style={{ color: "var(--muted-foreground)" }}
               >
                 {session.member.name}님
               </span>
               <form action={logoutDonor}>
                 <button
                   type="submit"
+                  className="text-sm transition-opacity hover:opacity-70"
                   style={{
                     color: "var(--muted-foreground)",
-                    fontSize: 14,
                     background: "none",
                     border: "none",
                     cursor: "pointer",
@@ -73,23 +79,51 @@ export default async function DonorLayout({
           ) : (
             <a
               href="/donor/login"
-              style={{
-                color: "var(--muted-foreground)",
-                fontSize: 14,
-                textDecoration: "none",
-              }}
+              className="text-sm"
+              style={{ color: "var(--muted-foreground)", textDecoration: "none" }}
             >
               로그인
             </a>
           )}
-        </nav>
+        </div>
       </header>
+
+      {/* 모바일 하단 네비바 */}
+      {session && (
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-40 flex sm:hidden"
+          style={{
+            background: "var(--surface)",
+            borderTop: "1px solid var(--border)",
+          }}
+        >
+          {[
+            { href: "/donor", icon: "🏠", label: "홈" },
+            { href: "/donor/promises", icon: "📋", label: "약정" },
+            { href: "/donor/payments", icon: "💳", label: "납입" },
+            { href: "/donor/impact", icon: "✨", label: "임팩트" },
+            { href: "/donor/settings", icon: "⚙️", label: "설정" },
+          ].map(({ href, icon, label }) => (
+            <a
+              key={href}
+              href={href}
+              className="flex flex-1 flex-col items-center justify-center py-2 text-xs transition-opacity hover:opacity-70"
+              style={{
+                color: "var(--muted-foreground)",
+                textDecoration: "none",
+                gap: 2,
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
+              <span>{label}</span>
+            </a>
+          ))}
+        </nav>
+      )}
+
       <main
-        style={{
-          maxWidth: 800,
-          margin: "0 auto",
-          padding: "2rem 1rem",
-        }}
+        className="mx-auto px-4 pt-6 pb-24 sm:pb-8"
+        style={{ maxWidth: 800 }}
       >
         {children}
       </main>
