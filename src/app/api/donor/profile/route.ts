@@ -31,11 +31,15 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { name, phone, birthDate } = body as {
-    name?: string;
-    phone?: string | null;
-    birthDate?: string | null;
-  };
+  const { name, phone, birthDate, postalCode, addressLine1, addressLine2 } =
+    body as {
+      name?: string;
+      phone?: string | null;
+      birthDate?: string | null;
+      postalCode?: string | null;
+      addressLine1?: string | null;
+      addressLine2?: string | null;
+    };
 
   const update: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -52,6 +56,25 @@ export async function PATCH(req: NextRequest) {
   }
   if (birthDate !== undefined) {
     update.birth_date = birthDate && typeof birthDate === "string" ? birthDate : null;
+  }
+  // G-D157: 주소 3필드
+  if (postalCode !== undefined) {
+    const pc = typeof postalCode === "string" ? postalCode.trim() : "";
+    if (pc && !/^\d{5}$/.test(pc)) {
+      return NextResponse.json(
+        { error: "우편번호는 5자리 숫자여야 합니다." },
+        { status: 400 }
+      );
+    }
+    update.postal_code = pc || null;
+  }
+  if (addressLine1 !== undefined) {
+    update.address_line1 =
+      typeof addressLine1 === "string" ? addressLine1.trim() || null : null;
+  }
+  if (addressLine2 !== undefined) {
+    update.address_line2 =
+      typeof addressLine2 === "string" ? addressLine2.trim() || null : null;
   }
 
   if (Object.keys(update).length <= 1) {

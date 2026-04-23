@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   // paymentKey 우선, 없으면 orderId(idempotency_key) 로 조회
   let query = supabase
     .from("payments")
-    .select("id, org_id, pay_status, toss_payment_key, idempotency_key")
+    .select("id, org_id, pay_status, toss_payment_key, idempotency_key, member_id, amount")
     .limit(1);
 
   if (paymentKey) {
@@ -214,6 +214,43 @@ export async function POST(req: NextRequest) {
         updated_at: nowIso,
       })
       .eq("id", payment.id);
+  } else if (eventType === "CHARGEBACK" || eventType === "DISPUTE_CREATED") {
+    // G-D147: 카드 분쟁 수신 — chargebacks insert + 회원 위험 플래그
+    const data = (payload as { data?: Record<string, unknown> }).data ?? {};
+    const caseId =
+      typeof data.caseId === "string"
+        ? (data.caseId as string)
+        : typeof data.disputeId === "string"
+          ? (data.disputeId as string)
+          : null;
+    const reasonCode =
+      typeof data.reasonCode === "string" ? (data.reasonCode as string) : null;
+    const reasonText =
+      typeof data.reasonText === "string"
+        ? (data.reasonText as string)
+        : typeof data.message === "string"
+          ? (data.message as string)
+          : null;
+    const amt = Number(
+      (data.amount as number | undefined) ?? payment.amount ?? 0
+    );
+
+    await supabase.from("chargebacks").insert({
+      org_id: payment.org_id,
+      payment_id: payment.id,
+      member_id: payment.member_id ?? null,
+      amount: amt,
+      reason_code: reasonCode,
+      reason_text: reasonText,
+      toss_case_id: caseId,
+      evidence_json: data,
+    });
+    if (payment.member_id) {
+      await supabase
+        .from("members")
+        .update({ chargeback_risk: true })
+        .eq("id", payment.member_id);
+    }
   }
 
   return NextResponse.json({ ok: true });
