@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "후원자 포털",
+  "short_name": "후원자",
+  "description": "나의 후원 약정, 납입 내역, 영수증, 임팩트를 한 곳에서 관리하세요.",
+  "start_url": "/donor",
+  "scope": "/donor",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "lang": "ko",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}

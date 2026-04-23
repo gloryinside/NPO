@@ -83,8 +83,16 @@ import { NextResponse } from "next/server";
 /**
  * 미통과 시 403 응답 반환, 통과 시 null.
  *   const blocked = checkCsrf(req); if (blocked) return blocked;
+ *
+ * G-D48: 사용자 친화 메시지 + code 필드 추가로 클라이언트가 새로고침 유도 가능.
  */
 export function checkCsrf(req: NextRequest | Request): Response | null {
   if (isCsrfSafe(req)) return null;
-  return NextResponse.json({ error: "CSRF_FORBIDDEN" }, { status: 403 });
+  return NextResponse.json(
+    {
+      error: "요청이 거부되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.",
+      code: "CSRF_FORBIDDEN",
+    },
+    { status: 403 }
+  );
 }

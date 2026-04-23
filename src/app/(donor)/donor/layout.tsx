@@ -1,9 +1,20 @@
+import type { Metadata, Viewport } from "next";
 import { getDonorSession } from "@/lib/auth";
 import { logoutDonor } from "./actions";
+import { EmailVerifyBanner } from "@/components/donor/auth/EmailVerifyBanner";
+
+// G-D63: PWA manifest — 홈 화면 추가, standalone 모드
+export const metadata: Metadata = {
+  manifest: "/manifest.json",
+};
+export const viewport: Viewport = {
+  themeColor: "#7c3aed",
+};
 import { DonorNav } from "@/components/donor/donor-nav";
 import { LogoWithText } from "@/components/brand/logo-with-text";
 import { ThemeToggle } from "@/components/brand/theme-toggle";
 import { SessionKeepalive } from "@/components/donor/auth/SessionKeepalive";
+import { SessionExpiredGuard } from "@/components/donor/auth/SessionExpiredGuard";
 import { OfflineBanner } from "@/components/donor/ui/OfflineBanner";
 import { DonorFAB } from "@/components/donor/ui/DonorFAB";
 
@@ -17,6 +28,7 @@ export default async function DonorLayout({
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       {session && <SessionKeepalive />}
+      {session && <SessionExpiredGuard />}
       <OfflineBanner />
       <header
         className="sticky top-0 z-40"
@@ -130,12 +142,60 @@ export default async function DonorLayout({
         </nav>
       )}
 
+      {/* G-D64: Skip-to-content 링크 */}
+      <a
+        href="#content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[70] focus:rounded-lg focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        style={{ background: "var(--accent)" }}
+      >
+        본 내용으로 건너뛰기
+      </a>
+
       <main
+        id="content"
+        role="main"
         className="mx-auto px-4 pt-6 pb-24 sm:pb-8"
         style={{ maxWidth: 800 }}
       >
+        {/* G-D55: Supabase 이메일 계정 미인증 안내 */}
+        {session?.authMethod === "supabase" &&
+          session.user?.email &&
+          !session.user.email_confirmed_at && (
+            <EmailVerifyBanner email={session.user.email} />
+          )}
         {children}
       </main>
+
+      {/* G-D61: Legal 풋터 */}
+      <footer
+        className="mx-auto mt-8 px-4 py-6 text-center text-xs"
+        style={{ maxWidth: 800, color: "var(--muted-foreground)" }}
+        data-print-hide="true"
+      >
+        <nav aria-label="정책" className="flex flex-wrap justify-center gap-4">
+          <a
+            href="/privacy"
+            className="hover:underline"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            개인정보처리방침
+          </a>
+          <a
+            href="/terms"
+            className="hover:underline"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            이용약관
+          </a>
+          <a
+            href="/contact"
+            className="hover:underline"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            문의하기
+          </a>
+        </nav>
+      </footer>
     </div>
   );
 }

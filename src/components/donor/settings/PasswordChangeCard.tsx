@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { checkPasswordStrength } from "@/lib/security/password-policy";
 
 /**
  * G-D01: 비밀번호 변경 카드
@@ -19,8 +20,9 @@ export function PasswordChangeCard({ enabled }: { enabled: boolean }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (next.length < 8) {
-      setStatus({ kind: "err", msg: "새 비밀번호는 8자 이상이어야 합니다." });
+    const strength = checkPasswordStrength(next);
+    if (!strength.ok) {
+      setStatus({ kind: "err", msg: strength.error ?? "비밀번호가 약합니다." });
       return;
     }
     if (next !== confirm) {
@@ -79,7 +81,7 @@ export function PasswordChangeCard({ enabled }: { enabled: boolean }) {
       />
       <Field
         id="new-pwd"
-        label="새 비밀번호 (8자 이상)"
+        label="새 비밀번호 (8자 이상, 2종류 이상 혼용)"
         type="password"
         value={next}
         onChange={setNext}

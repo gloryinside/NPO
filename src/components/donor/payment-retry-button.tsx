@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useOnline } from "@/components/donor/ui/useOnline";
 
 /**
  * G-D06 / G-D29: 실패·미납 결제 재시도 버튼 + 쿨다운 카운트다운
@@ -12,6 +13,7 @@ import { useRouter } from "next/navigation";
  */
 export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
   const router = useRouter();
+  const online = useOnline();
   const [busy, setBusy] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [, setTick] = useState(0);
@@ -41,6 +43,7 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
         success?: boolean;
         message?: string;
         error?: string;
+        code?: string;
         retryAfterMs?: number;
       };
       if (res.status === 429 && typeof data.retryAfterMs === "number") {
@@ -51,6 +54,17 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
         );
         return;
       }
+      // G-D46: 빌링키 없을 때 약정 페이지로 직접 안내
+      if (res.status === 400 && data.code === "BILLING_KEY_MISSING") {
+        if (
+          confirm(
+            "결제 수단이 등록되지 않아 재시도할 수 없습니다.\n지금 카드를 등록하시겠습니까?"
+          )
+        ) {
+          router.push("/donor/promises");
+        }
+        return;
+      }
       if (!res.ok) {
         alert(data.error ?? "재시도에 실패했습니다.");
         return;
@@ -58,9 +72,14 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
       if (data.success) {
         alert("결제가 성공적으로 재처리되었습니다.");
       } else {
-        alert(
-          `재시도가 실패했습니다: ${data.message ?? "결제 승인이 거절되었습니다."}\n\n카드 변경 후 다시 시도해주세요.`
-        );
+        if (
+          confirm(
+            `재시도가 실패했습니다: ${data.message ?? "결제 승인이 거절되었습니다."}\n\n카드를 변경하시겠습니까?`
+          )
+        ) {
+          router.push("/donor/promises");
+          return;
+        }
       }
       router.refresh();
     } finally {
@@ -72,11 +91,13 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
     <button
       type="button"
       onClick={handleClick}
-      disabled={busy || onCooldown}
+      disabled={busy || onCooldown || !online}
       title={
-        onCooldown
-          ? `${remainingSec}초 뒤 재시도 가능`
-          : "이 결제를 다시 시도"
+        !online
+          ? "오프라인 상태에서는 재시도할 수 없습니다"
+          : onCooldown
+            ? `${remainingSec}초 뒤 재시도 가능`
+            : "이 결제를 다시 시도"
       }
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
       style={{
@@ -85,7 +106,13 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
         border: "1px solid var(--warning)",
       }}
     >
-      {busy ? "처리 중…" : onCooldown ? `${remainingSec}s 후 재시도` : "재시도"}
+      {!online
+        ? "오프라인"
+        : busy
+          ? "처리 중…"
+          : onCooldown
+            ? `${remainingSec}s 후 재시도`
+            : "재시도"}
     </button>
   );
 }

@@ -122,6 +122,9 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       customer_key: customerKey,
       // pending_billing 상태였다면 active로 복원
       status: promise.status === 'pending_billing' ? 'active' : promise.status,
+      // G-D50: 카드 만료일 저장 (사전 알림용)
+      card_expiry_year: normalizeExpiryYear(cardExpirationYear),
+      card_expiry_month: Number(cardExpirationMonth),
     })
     .eq('id', promiseId)
     .eq('member_id', session.member.id)
@@ -134,4 +137,16 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   }
 
   return NextResponse.json({ ok: true })
+}
+
+/**
+ * G-D50: Toss가 "25" 형태(2자리)로 넘길 수 있어 4자리 연도로 정규화.
+ */
+function normalizeExpiryYear(yearRaw: string | undefined): number | null {
+  if (!yearRaw) return null
+  const n = Number(yearRaw)
+  if (!Number.isFinite(n)) return null
+  if (n >= 2000 && n <= 2100) return n
+  if (n >= 0 && n <= 99) return 2000 + n
+  return null
 }

@@ -99,7 +99,8 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("payments")
     .select(
-      "id, pay_date, amount, pay_status, pay_method, note, campaigns(title), promises(promise_code, type), receipts(receipt_code)"
+      "id, pay_date, amount, pay_status, pay_method, note, campaigns(title), promises(promise_code, type), receipts(receipt_code)",
+      { count: "exact" }
     )
     .eq("org_id", session.member.org_id)
     .eq("member_id", session.member.id)
@@ -122,13 +123,19 @@ export async function GET(req: NextRequest) {
   }
   if (status) query = query.eq("pay_status", status);
 
-  const { data, error } = await query.range(0, 4999);
+  const LIMIT = 5000;
+  // G-D58: 총 건수 확인 (count) + truncate 여부 경고
+  const { data, error, count } = await query
+    .range(0, LIMIT - 1)
+    .returns<unknown[]>();
   if (error) {
     return NextResponse.json(
       { error: "내역을 불러올 수 없습니다.", detail: error.message },
       { status: 500 }
     );
   }
+  const totalCount = typeof count === "number" ? count : null;
+  const truncated = totalCount !== null && totalCount > LIMIT;
 
   type Row = {
     id: string;
@@ -169,7 +176,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const body = CSV_BOM + lines.join("\r\n");
+  // G-D58: truncate 경고를 CSV 최상단 주석 + HTTP 헤더로 노출
+  const header = truncated
+    ? `# 주의: 총 ${totalCount}건 중 ${LIMIT}건만 포함. 연도·월 필터로 분할 내보내기 권장.\r\n`
+    : "";
+  const body = CSV_BOM + header + lines.join("\r\n");
 
   const today = new Date().toISOString().slice(0, 10);
   const filterLabel = (() => {
@@ -183,12 +194,15 @@ export async function GET(req: NextRequest) {
   })();
   const filename = `payments_${filterLabel}_${today}.csv`;
 
-  return new NextResponse(body, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Cache-Control": "private, no-store",
-    },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Cache-Control": "private, no-store",
+  };
+  if (totalCount !== null) {
+    headers["X-Total-Count"] = String(totalCount);
+    headers["X-Included-Count"] = String(rows.length);
+    if (truncated) headers["X-Truncated"] = "true";
+  }
+  return new NextResponse(body, { status: 200, headers });
 }

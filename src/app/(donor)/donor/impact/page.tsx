@@ -168,18 +168,31 @@ export default async function DonorImpactPage() {
                       const pct = Math.round(
                         (c.amount / impact.totalAmount) * 100
                       )
+                      // G-D51: 평균 금액 표시
+                      const avg =
+                        c.count > 0 ? Math.round(c.amount / c.count) : 0
                       return (
                         <li
                           key={c.campaignId ?? '__none__'}
                           className="flex items-center justify-between gap-3 rounded-lg px-3 py-2"
                           style={{ background: 'var(--surface-2)' }}
                         >
-                          <span
-                            className="truncate text-sm"
-                            style={{ color: 'var(--text)' }}
-                          >
-                            {c.title}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="truncate text-sm"
+                              style={{ color: 'var(--text)' }}
+                            >
+                              {c.title}
+                            </p>
+                            {avg > 0 && (
+                              <p
+                                className="text-xs"
+                                style={{ color: 'var(--muted-foreground)' }}
+                              >
+                                평균 {formatKRWFull(avg)} / 회
+                              </p>
+                            )}
+                          </div>
                           <div className="shrink-0 text-right">
                             <p
                               className="text-sm font-semibold"

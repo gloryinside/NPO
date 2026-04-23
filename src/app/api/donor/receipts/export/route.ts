@@ -86,6 +86,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // G-D59: 메모리 보호 — 한 번에 200건 이상은 분할 요청 유도
+  const MAX_ROWS = 200;
+  if (rows.length > MAX_ROWS) {
+    return NextResponse.json(
+      {
+        error: `영수증이 너무 많습니다 (${rows.length}건). 연도별 또는 분기별로 나눠서 요청해주세요.`,
+        code: "TOO_MANY_RECEIPTS",
+        max: MAX_ROWS,
+      },
+      { status: 413 }
+    );
+  }
+
   const zip = new JSZip();
   const targetYear = rows[0].year;
   const folder = zip.folder(`영수증_${targetYear}`) ?? zip;

@@ -95,6 +95,37 @@ export default async function DonorSettingsPage() {
         </div>
       </section>
 
+      {/* 데이터 내보내기 (G-D62) */}
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
+          내 데이터
+        </h2>
+        <div
+          className="rounded-2xl border p-5"
+          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+        >
+          <p className="text-sm font-medium text-[var(--text)]">
+            본인 데이터 일괄 내보내기
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            프로필, 약정, 납입, 영수증 메타, 응원 메시지, 계정 활동 이력을 JSON 으로 다운로드합니다.
+            (개인정보 보호법·GDPR 제15조 본인확인)
+          </p>
+          <a
+            href="/api/donor/account/export"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
+            style={{
+              borderColor: 'var(--accent)',
+              background: 'var(--accent-soft)',
+              color: 'var(--accent)',
+              textDecoration: 'none',
+            }}
+          >
+            📥 JSON 내보내기
+          </a>
+        </div>
+      </section>
+
       {/* 위험 영역 */}
       <section>
         <h2 className="mb-4 text-base font-semibold text-[var(--text)]">

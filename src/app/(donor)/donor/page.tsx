@@ -9,6 +9,7 @@ import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
 import { getDashboardActions } from "@/lib/donor/dashboard-actions";
 import { getUpcomingPaymentsThisMonth } from "@/lib/donor/upcoming-payments";
+import { getExpiringCards } from "@/lib/donor/card-expiry";
 import { ActionRequiredBanner } from "@/components/donor/dashboard/action-required-banner";
 import { UpcomingPaymentsCard } from "@/components/donor/dashboard/upcoming-payments-card";
 
@@ -117,9 +118,10 @@ export default async function DonorHomePage() {
     0
   );
 
-  const [actions, upcomingPayments] = await Promise.all([
+  const [actions, upcomingPayments, expiringCards] = await Promise.all([
     getDashboardActions(supabase, member.org_id, member.id),
     getUpcomingPaymentsThisMonth(supabase, member.org_id, member.id),
+    getExpiringCards(supabase, member.org_id, member.id, 60),
   ]);
 
   const greeting = (() => {
@@ -189,13 +191,81 @@ export default async function DonorHomePage() {
       {/* ── 액션 배너 ── */}
       <ActionRequiredBanner actions={actions} />
 
+      {/* ── 카드 만료 임박 (G-D50) ── */}
+      {expiringCards.length > 0 && (
+        <section
+          role="alert"
+          className="rounded-2xl border p-4"
+          style={{
+            borderColor: "var(--warning)",
+            background: "var(--warning-soft)",
+          }}
+        >
+          <p className="text-sm font-semibold" style={{ color: "var(--warning)" }}>
+            💳 결제 카드 만료 임박
+          </p>
+          <ul
+            className="mt-2 space-y-1 text-xs"
+            style={{ color: "var(--text)" }}
+          >
+            {expiringCards.map((c) => (
+              <li key={c.promiseId}>
+                <b>{c.campaignTitle ?? "정기후원"}</b> —{" "}
+                {c.expiryYear}/{String(c.expiryMonth).padStart(2, "0")} 만료
+                {c.daysUntilExpiry < 0
+                  ? " (이미 만료)"
+                  : ` (D-${c.daysUntilExpiry})`}
+              </li>
+            ))}
+          </ul>
+          <a
+            href="/donor/promises"
+            className="mt-3 inline-block rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+            style={{ background: "var(--warning)", textDecoration: "none" }}
+          >
+            카드 업데이트하기 →
+          </a>
+        </section>
+      )}
+
+      {/* ── 첫 후원 온보딩 (활성 약정 0 && 누적 0) — G-D57 ── */}
+      {activePromises.length === 0 && totalAmount === 0 && (
+        <section
+          className="rounded-2xl p-6 text-center"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--accent-soft) 0%, var(--surface) 100%)",
+            border: "1px solid var(--accent)",
+          }}
+        >
+          <p className="text-4xl mb-3">🎁</p>
+          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
+            첫 후원을 시작해보세요
+          </p>
+          <p
+            className="mt-1 text-sm"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            작은 정기후원부터 변화가 시작됩니다.
+          </p>
+          <a
+            href="/"
+            className="mt-4 inline-block rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
+            style={{ background: "var(--accent)", textDecoration: "none" }}
+          >
+            캠페인 둘러보기 →
+          </a>
+        </section>
+      )}
+
       {/* ── 빠른 이동 ── */}
-      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { href: "/donor/impact", label: "✨ 나의 임팩트", accent: true },
-          { href: "/donor/promises", label: "📋 약정 관리", accent: false },
-          { href: "/donor/payments", label: "💳 납입 내역", accent: false },
+          { href: "/donor/impact", label: "✨ 임팩트", accent: true },
+          { href: "/donor/promises", label: "📋 약정", accent: false },
+          { href: "/donor/payments", label: "💳 납입", accent: false },
           { href: "/donor/receipts", label: "🧾 영수증", accent: false },
+          { href: "/donor/cheer", label: "💬 응원", accent: false }, // G-D56
         ].map(({ href, label, accent }) => (
           <a
             key={href}

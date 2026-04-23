@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { checkPasswordStrength } from "@/lib/security/password-policy";
 
 /**
  * G-D26: 비밀번호 재설정 폼
@@ -30,8 +31,9 @@ export function ResetPasswordForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (pwd.length < 8) {
-      setState({ kind: "err", msg: "비밀번호는 8자 이상이어야 합니다." });
+    const strength = checkPasswordStrength(pwd);
+    if (!strength.ok) {
+      setState({ kind: "err", msg: strength.error ?? "비밀번호가 약합니다." });
       return;
     }
     if (pwd !== confirm) {
@@ -107,7 +109,7 @@ export function ResetPasswordForm() {
           className="block text-sm"
           style={{ color: "var(--muted-foreground)" }}
         >
-          새 비밀번호 (8자 이상)
+          새 비밀번호 (8자 이상, 2종류 이상 혼용)
         </label>
         <input
           id="new-pwd"

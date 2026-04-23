@@ -50,11 +50,27 @@ export default async function DonorReceiptsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">기부금 영수증</h1>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          발급된 기부금 영수증을 확인하고 다운로드하세요.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text)]">기부금 영수증</h1>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            발급된 기부금 영수증을 확인하고 다운로드하세요.
+          </p>
+        </div>
+        {receipts.length > 0 && (
+          <a
+            href="/donor/receipts/tax-summary"
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
+            style={{
+              borderColor: "var(--accent)",
+              background: "var(--accent-soft)",
+              color: "var(--accent)",
+              textDecoration: "none",
+            }}
+          >
+            📋 연말정산 요약
+          </a>
+        )}
       </div>
 
       {receipts.length === 0 ? (

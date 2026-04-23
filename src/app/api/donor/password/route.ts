@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
 import { checkCsrf } from "@/lib/security/csrf";
+import { checkPasswordStrength } from "@/lib/security/password-policy";
 
 /**
  * G-D01: 후원자 본인 비밀번호 변경
@@ -41,11 +42,9 @@ export async function PATCH(req: NextRequest) {
   const newPassword =
     typeof body.newPassword === "string" ? body.newPassword : "";
 
-  if (newPassword.length < 8) {
-    return NextResponse.json(
-      { error: "새 비밀번호는 8자 이상이어야 합니다." },
-      { status: 400 }
-    );
+  const strength = checkPasswordStrength(newPassword);
+  if (!strength.ok) {
+    return NextResponse.json({ error: strength.error }, { status: 400 });
   }
   if (currentPassword === newPassword) {
     return NextResponse.json(
