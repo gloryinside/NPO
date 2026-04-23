@@ -47,6 +47,23 @@ export function rateLimit(
   };
 }
 
+/**
+ * G-D73: Redis 우선 + in-memory 폴백. async 필요 — 호출측이 await 해야 함.
+ * 인프라가 없으면 즉시 in-memory 사용 (성능 저하 없음).
+ */
+export async function rateLimitAsync(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<RateLimitResult> {
+  const { redisEnabled, rateLimitRedis } = await import("./rate-limit-redis");
+  if (redisEnabled()) {
+    const r = await rateLimitRedis(key, limit, windowMs);
+    if (r) return r;
+  }
+  return rateLimit(key, limit, windowMs);
+}
+
 /** 요청 헤더에서 best-effort client IP 추출. */
 export function getClientIp(headers: Headers): string {
   const xff = headers.get("x-forwarded-for");

@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/email/send-email";
 import { logNotification, wasSentForRefWithin } from "@/lib/email/notification-log";
 import { getNotificationPrefs } from "@/lib/donor/notification-prefs";
 import { checkCsrf } from "@/lib/security/csrf";
+import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -30,6 +31,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
+  const rl = enforceDonorLimit(session.member.id, "promise:patch");
+  if (!rl.allowed) return limitResponse(rl);
+
 
   const { id } = await params;
 

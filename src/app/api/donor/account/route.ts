@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
 import { sendEmail } from "@/lib/email/send-email";
 import { checkCsrf } from "@/lib/security/csrf";
+import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 import { cookies } from "next/headers";
 
 /**
@@ -29,6 +30,8 @@ export async function DELETE(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
+  const rl = enforceDonorLimit(session.member.id, "account:delete", "sensitive");
+  if (!rl.allowed) return limitResponse(rl);
 
   let body: { currentPassword?: unknown; confirmText?: unknown };
   try {

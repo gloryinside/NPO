@@ -3,6 +3,7 @@ import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
 import { checkCsrf } from "@/lib/security/csrf";
+import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 
 /**
  * PATCH /api/donor/profile
@@ -20,6 +21,8 @@ export async function PATCH(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
+  const rl = enforceDonorLimit(session.member.id, "profile:patch");
+  if (!rl.allowed) return limitResponse(rl);
 
   let body: Record<string, unknown>;
   try {

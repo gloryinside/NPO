@@ -48,9 +48,39 @@ order by table_name;
 - Vercel 다중 인스턴스 환경에서는 인스턴스당 카운트 → 총량 초과 가능
 - 운영 확장 시 Vercel KV / Upstash Redis 교체 필요
 
+## 5-A. Payment 일관성 보장 (G-D76 / G-D77 / G-D79)
+
+### 이중 처리 방지 (G-D76)
+`payments.toss_payment_key` / `payments.idempotency_key` 에 org 범위 UNIQUE 부분 인덱스.
+같은 key 로 두 번째 INSERT 는 `23505` (unique_violation) 으로 실패 — 호출자(웹훅/confirm)는 이 코드를 "이미 처리됨"으로 취급해야 함.
+
+### 미결제 자동 만료 (G-D77)
+`/api/cron/cancel-stale-payments` — 매일 03:00 (Vercel cron).
+기준:
+- `pay_status = 'unpaid' | 'pending'`
+- `requested_at < now() - 24h`
+→ `cancelled` 로 전환, `cancel_reason = 'stale_timeout'`.
+
+### Confirm vs Webhook race (G-D79)
+동일 `toss_payment_key` 에 대해 `/api/donations/confirm` 과 `/api/webhooks/toss` 가 동시에 상태를 업데이트할 수 있음.
+방어선:
+1. UNIQUE 인덱스 (G-D76) — 새 row 생성은 1회로 제한
+2. `update ... where pay_status <> 'paid'` — 이미 paid 된 row 는 재업데이트 없음
+3. ERP 웹훅은 멱등성 키로 호출
+
+## 5-B. Billing key 재시도 (G-D78)
+`/api/cron/retry-billing` — 매일 01:00.
+실패 payment 중 `retry_count < 3` 대상을 재청구. 간격 (`lib/billing/retry-service.ts` → `RETRY_INTERVALS_MS`):
+- `retry_count=0` → +1일
+- `retry_count=1` → +3일
+- `retry_count=2` → +7일
+
+3회 모두 실패 시 promise `suspended` + donor 알림 발송.
+
 ## 6. Webhook 보안 (G-D72)
-- `/api/webhooks/toss` — HMAC 서명 검증
-- Toss IP 화이트리스트는 현재 미적용 — 공식 문서 참조 후 운영 환경에서 리버스 프록시 측 제어 권장
+- `/api/webhooks/toss` — HMAC 서명 검증 + IP 화이트리스트
+- `TOSS_WEBHOOK_ALLOWED_IPS` 환경변수에 CIDR 콤마 구분 설정 시 활성
+- 미설정이면 기존 동작(모든 IP 허용 + HMAC 검증)
 
 ## 7. Deploy 롤백
 1. Vercel Deployments → 직전 성공 빌드 → **Promote to Production**

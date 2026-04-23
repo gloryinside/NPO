@@ -5,6 +5,7 @@ import {
   otpSessionCookieConfig,
 } from "@/lib/auth/otp-session";
 import { checkCsrf } from "@/lib/security/csrf";
+import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 
 /**
  * G-D30: 세션 비활성 타임아웃 연장용 엔드포인트 (슬라이딩 세션).
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
+  const rl = enforceDonorLimit(session.member.id, "session:bump", "low-noise");
+  if (!rl.allowed) return limitResponse(rl);
   if (session.authMethod !== "otp") {
     return NextResponse.json({ ok: true, refreshed: false });
   }

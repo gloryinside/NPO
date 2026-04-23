@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { softDeleteOwnCheer } from '@/lib/cheer/messages'
 import { revalidateCheerCampaignPath } from '@/lib/cheer/revalidate'
 import { checkCsrf } from '@/lib/security/csrf'
+import { enforceDonorLimit, limitResponse } from '@/lib/security/endpoint-limits'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -19,6 +20,8 @@ export async function DELETE(req: Request, { params }: RouteContext) {
   if (!session) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
+  const rl = enforceDonorLimit(session.member.id, 'cheer:delete')
+  if (!rl.allowed) return limitResponse(rl)
   const { id } = await params
 
   const supabase = createSupabaseAdminClient()

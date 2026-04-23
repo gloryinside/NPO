@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
 import { checkCsrf } from "@/lib/security/csrf";
 import { checkPasswordStrength } from "@/lib/security/password-policy";
+import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 
 /**
  * G-D01: 후원자 본인 비밀번호 변경
@@ -22,6 +23,8 @@ export async function PATCH(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
+  const rl = enforceDonorLimit(session.member.id, "password:change", "sensitive");
+  if (!rl.allowed) return limitResponse(rl);
 
   if (session.authMethod !== "supabase" || !session.user?.email) {
     return NextResponse.json(

@@ -7,6 +7,7 @@ import {
 } from '@/lib/donor/notification-prefs'
 import type { NotificationPrefs } from '@/lib/donor/notification-prefs'
 import { checkCsrf } from '@/lib/security/csrf'
+import { enforceDonorLimit, limitResponse } from '@/lib/security/endpoint-limits'
 
 export async function GET() {
   const session = await getDonorSession()
@@ -22,6 +23,8 @@ export async function PATCH(req: NextRequest) {
   if (csrf) return csrf
   const session = await getDonorSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const rl = enforceDonorLimit(session.member.id, 'notif:patch')
+  if (!rl.allowed) return limitResponse(rl)
 
   let body: Partial<NotificationPrefs>
   try {

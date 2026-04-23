@@ -3,6 +3,9 @@ import crypto from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getOrgTossKeys } from "@/lib/toss/keys";
 import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
+import { getClientIp } from "@/lib/rate-limit";
+import { isIpInAllowList } from "@/lib/security/ip-cidr";
+import { reportEvent } from "@/lib/observability/report";
 
 /**
  * POST /api/webhooks/toss
@@ -25,6 +28,16 @@ import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
  * 본 구현은 자체 proxy/relay를 통과하는 webhook을 HMAC 으로 보호하는 용도.
  */
 export async function POST(req: NextRequest) {
+  // G-D72: IP 화이트리스트 (환경변수 TOSS_WEBHOOK_ALLOWED_IPS 설정 시 활성)
+  const clientIp = getClientIp(req.headers);
+  if (!isIpInAllowList(clientIp, process.env.TOSS_WEBHOOK_ALLOWED_IPS)) {
+    await reportEvent("webhook.toss.ip_rejected", {
+      domain: "webhook",
+      tags: { ip: clientIp },
+    });
+    return NextResponse.json({ error: "ip not allowed" }, { status: 403 });
+  }
+
   const rawBody = await req.text();
 
   let payload: Record<string, unknown>;
