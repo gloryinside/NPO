@@ -6,6 +6,7 @@ import { NotificationPrefsForm } from '@/components/donor/settings/NotificationP
 import { PasswordChangeCard } from '@/components/donor/settings/PasswordChangeCard'
 import { AccountDeleteCard } from '@/components/donor/settings/AccountDeleteCard'
 import { LocaleToggle } from '@/components/donor/ui/LocaleToggle'
+import { ConsentCard } from '@/components/donor/settings/ConsentCard'
 
 export const metadata = { title: '설정' }
 
@@ -16,6 +17,16 @@ export default async function DonorSettingsPage() {
   const supabase = createSupabaseAdminClient()
   const prefs = await getNotificationPrefs(supabase, session.member.id)
   const isSupabaseAuth = session.authMethod === 'supabase'
+
+  // G-D98: consent 초기값 조회
+  const { data: consentRow } = await supabase
+    .from('members')
+    .select('marketing_consent, marketing_consent_at')
+    .eq('id', session.member.id)
+    .maybeSingle()
+  const marketingConsent = Boolean(consentRow?.marketing_consent)
+  const marketingConsentAt =
+    (consentRow?.marketing_consent_at as string | null) ?? null
 
   return (
     <div className="space-y-10">
@@ -37,6 +48,17 @@ export default async function DonorSettingsPage() {
         >
           <NotificationPrefsForm initial={prefs} />
         </div>
+      </section>
+
+      {/* 마케팅 수신 동의 (G-D98) */}
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
+          수신 동의
+        </h2>
+        <ConsentCard
+          initial={marketingConsent}
+          initialAt={marketingConsentAt}
+        />
       </section>
 
       {/* 보안 */}

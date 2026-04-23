@@ -41,7 +41,14 @@ export type AuditAction =
   | "settings.update_org"
   // 사용자
   | "user.invite"
-  | "user.delete";
+  | "user.delete"
+  // G-D99: 관리자 자체 활동
+  | "admin.login"
+  | "admin.logout"
+  | "admin.password_change"
+  | "admin.password_reset_request"
+  | "admin.data_export"
+  | "admin.org_settings_change";
 
 /**
  * action별 metadata 필드 권장 스키마 (런타임 강제는 안 함, 조회 시 참조).

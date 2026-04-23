@@ -94,6 +94,14 @@ export function LoginForm() {
           >
             {loading ? "로그인 중..." : "로그인"}
           </Button>
+          <p className="text-center text-xs">
+            <a
+              href="/admin/password/forgot"
+              className="text-[var(--muted-foreground)] hover:underline"
+            >
+              비밀번호를 잊으셨나요?
+            </a>
+          </p>
         </form>
       </div>
     </div>

@@ -15,6 +15,7 @@ import { LogoWithText } from "@/components/brand/logo-with-text";
 import { ThemeToggle } from "@/components/brand/theme-toggle";
 import { SessionKeepalive } from "@/components/donor/auth/SessionKeepalive";
 import { SessionExpiredGuard } from "@/components/donor/auth/SessionExpiredGuard";
+import { WebVitalsReporter } from "@/components/observability/WebVitalsReporter";
 import { OfflineBanner } from "@/components/donor/ui/OfflineBanner";
 import { DonorFAB } from "@/components/donor/ui/DonorFAB";
 
@@ -29,6 +30,7 @@ export default async function DonorLayout({
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       {session && <SessionKeepalive />}
       {session && <SessionExpiredGuard />}
+      <WebVitalsReporter />
       <OfflineBanner />
       <header
         className="sticky top-0 z-40"
