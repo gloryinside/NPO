@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getDonorSession } from '@/lib/auth'
 import { getDonorImpact } from '@/lib/donor/impact'
 import { loadKoreanFonts } from '@/lib/og/fonts'
+import { fallbackOgResponse } from '@/lib/og/fallback'
 
 /**
  * GET /api/donor/impact/og
@@ -36,21 +37,24 @@ export async function GET(_req: NextRequest) {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  const supabase = createSupabaseAdminClient()
-  const impact = await getDonorImpact(supabase, session.member.org_id, session.member.id)
+  // G-123: 세션 통과 이후 DB/렌더 실패는 SVG fallback으로 200.
+  // 인증 실패(401)는 fallback 대상 아님 — 크롤러가 아니라 본인 전용 경로.
+  try {
+    const supabase = createSupabaseAdminClient()
+    const impact = await getDonorImpact(supabase, session.member.org_id, session.member.id)
 
-  const { data: orgRow } = await supabase
-    .from('orgs')
-    .select('name')
-    .eq('id', session.member.org_id)
-    .maybeSingle()
+    const { data: orgRow } = await supabase
+      .from('orgs')
+      .select('name')
+      .eq('id', session.member.org_id)
+      .maybeSingle()
 
-  const orgName = (orgRow?.name as string) ?? '기관'
-  const maskedName = maskName(session.member.name)
-  const fonts = await loadKoreanFonts()
-  const fontFamily = fonts ? 'NotoSansKR, sans-serif' : 'sans-serif'
+    const orgName = (orgRow?.name as string) ?? '기관'
+    const maskedName = maskName(session.member.name)
+    const fonts = await loadKoreanFonts()
+    const fontFamily = fonts ? 'NotoSansKR, sans-serif' : 'sans-serif'
 
-  const image = new ImageResponse(
+    const image = new ImageResponse(
     (
       <div
         style={{
@@ -115,11 +119,19 @@ export async function GET(_req: NextRequest) {
     },
   )
 
-  // G-98: 개인화 카드라 CDN 공용 캐시는 피하고, 브라우저/엣지 private cache 5분.
-  // 같은 세션에서 프리뷰 반복/소셜 미리보기 여러 번 생성 시 DB/렌더 비용 절감.
-  image.headers.set(
-    'Cache-Control',
-    'private, max-age=300, stale-while-revalidate=60'
-  )
-  return image
+    // G-98: 개인화 카드라 CDN 공용 캐시는 피하고, 브라우저/엣지 private cache 5분.
+    // 같은 세션에서 프리뷰 반복/소셜 미리보기 여러 번 생성 시 DB/렌더 비용 절감.
+    image.headers.set(
+      'Cache-Control',
+      'private, max-age=300, stale-while-revalidate=60'
+    )
+    return image
+  } catch (err) {
+    console.error('[impact-og] render failed, serving SVG fallback:', err)
+    return fallbackOgResponse({
+      headline: '나의 후원 임팩트',
+      subhead: '함께한 후원의 기록',
+      gradient: ['#1a3a5c', '#7c3aed'],
+    })
+  }
 }

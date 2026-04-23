@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { findReferrerByCode } from '@/lib/donor/referral'
 import { maskName } from '@/lib/cheer/messages'
 import { loadKoreanFonts } from '@/lib/og/fonts'
+import { fallbackOgResponse } from '@/lib/og/fallback'
 
 /**
  * GET /api/public/invite-og?ref=<code>
@@ -68,19 +69,23 @@ export async function loadInviteOgContext(
 
 export async function GET(req: NextRequest) {
   const ref = req.nextUrl.searchParams.get('ref')
-  const supabase = createSupabaseAdminClient()
-  const { orgName, inviterName } = await loadInviteOgContext(supabase, ref)
-  const maskedInviter = inviterName ? maskName(inviterName) : null
 
-  const fonts = await loadKoreanFonts()
-  const fontFamily = fonts ? 'NotoSansKR, sans-serif' : 'sans-serif'
+  // G-123: 어떤 단계에서 실패하든 SVG fallback으로 200 OK 보장.
+  // 카톡/페북 크롤러가 "미리보기 없음"을 표시하지 않도록 방어.
+  try {
+    const supabase = createSupabaseAdminClient()
+    const { orgName, inviterName } = await loadInviteOgContext(supabase, ref)
+    const maskedInviter = inviterName ? maskName(inviterName) : null
 
-  const headline = maskedInviter
-    ? `${maskedInviter}님이 초대했어요`
-    : '함께 후원해요'
-  const subhead = `${orgName} 후원 프로그램`
+    const fonts = await loadKoreanFonts()
+    const fontFamily = fonts ? 'NotoSansKR, sans-serif' : 'sans-serif'
 
-  const image = new ImageResponse(
+    const headline = maskedInviter
+      ? `${maskedInviter}님이 초대했어요`
+      : '함께 후원해요'
+    const subhead = `${orgName} 후원 프로그램`
+
+    const image = new ImageResponse(
     (
       <div
         style={{
@@ -150,11 +155,19 @@ export async function GET(req: NextRequest) {
     },
   )
 
-  // 공용 캐시 — 초대 코드/기관명은 코드 생명주기 동안 변경 없음.
-  // CDN 1일, 브라우저 1시간 — 카톡/페북 크롤러 재방문 시 DB/렌더 절감.
-  image.headers.set(
-    'Cache-Control',
-    'public, max-age=3600, s-maxage=86400, stale-while-revalidate=3600',
-  )
-  return image
+    // 공용 캐시 — 초대 코드/기관명은 코드 생명주기 동안 변경 없음.
+    // CDN 1일, 브라우저 1시간 — 카톡/페북 크롤러 재방문 시 DB/렌더 절감.
+    image.headers.set(
+      'Cache-Control',
+      'public, max-age=3600, s-maxage=86400, stale-while-revalidate=3600',
+    )
+    return image
+  } catch (err) {
+    console.error('[invite-og] render failed, serving SVG fallback:', err)
+    return fallbackOgResponse({
+      headline: '함께 후원해요',
+      subhead: '후원 프로그램에 초대합니다',
+      gradient: ['#1e3a8a', '#7c3aed'],
+    })
+  }
 }
