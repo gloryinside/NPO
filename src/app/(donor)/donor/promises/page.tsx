@@ -82,6 +82,8 @@ export default function DonorPromisesPage() {
   const [actioning, setActioning] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<AmountDialogState>({ open: false });
   const [billingKeyTarget, setBillingKeyTarget] = useState<string | null>(null);
+  // G-D41: 과거 약정(해지/완료) 표시 토글
+  const [showEnded, setShowEnded] = useState(false);
 
   const fetchPromises = useCallback(async () => {
     setLoading(true);
@@ -164,6 +166,15 @@ export default function DonorPromisesPage() {
     .filter((p) => p.status === "active" && p.type === "regular")
     .reduce((s, p) => s + Number(p.amount ?? 0), 0);
 
+  // G-D41: 현재/과거 약정 분리
+  const livePromises = promises.filter(
+    (p) => p.status === "active" || p.status === "pending_billing" || p.status === "suspended"
+  );
+  const endedPromises = promises.filter(
+    (p) => p.status === "cancelled" || p.status === "completed"
+  );
+  const visible = showEnded ? promises : livePromises;
+
   if (loading) {
     return <InlineLoading label="약정을 불러오는 중…" />;
   }
@@ -222,9 +233,16 @@ export default function DonorPromisesPage() {
             description="캠페인을 통해 첫 후원을 시작해보세요."
             cta={{ href: "/", label: "캠페인 둘러보기" }}
           />
+        ) : livePromises.length === 0 && !showEnded ? (
+          <EmptyState
+            icon="📭"
+            title="진행 중인 약정이 없습니다."
+            description={`과거에 해지·완료된 약정이 ${endedPromises.length}건 있습니다.`}
+            cta={{ href: "/", label: "새 후원 시작하기" }}
+          />
         ) : (
           <div className="space-y-4">
-            {promises.map((p) => {
+            {visible.map((p) => {
               const isActive = p.status === "active";
               const isSuspended = p.status === "suspended";
               const isPendingBilling = p.status === "pending_billing";
@@ -339,6 +357,27 @@ export default function DonorPromisesPage() {
             })}
           </div>
         )}
+
+        {/* G-D41: 과거 약정 토글 (해지/완료 있을 때만) */}
+        {endedPromises.length > 0 && (
+          <div className="flex justify-center pt-2">
+            <button
+              type="button"
+              onClick={() => setShowEnded((v) => !v)}
+              {...{ "aria-pressed": (showEnded ? "true" : "false") as "true" | "false" }}
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface-2)",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              {showEnded
+                ? `과거 약정 숨기기`
+                : `과거 약정 보기 (${endedPromises.length}건)`}
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
@@ -420,7 +459,7 @@ function ActionBtn({
       type="button"
       disabled={busy}
       onClick={onClick}
-      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 py-2 text-xs font-medium transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-40"
       style={VARIANT_STYLE[variant]}
     >
       {busy ? "…" : label}

@@ -5,6 +5,7 @@ import { getNotificationPrefs } from '@/lib/donor/notification-prefs'
 import { NotificationPrefsForm } from '@/components/donor/settings/NotificationPrefsForm'
 import { PasswordChangeCard } from '@/components/donor/settings/PasswordChangeCard'
 import { AccountDeleteCard } from '@/components/donor/settings/AccountDeleteCard'
+import { LocaleToggle } from '@/components/donor/ui/LocaleToggle'
 
 export const metadata = { title: '설정' }
 
@@ -44,6 +45,22 @@ export default async function DonorSettingsPage() {
           보안
         </h2>
         <PasswordChangeCard enabled={isSupabaseAuth} />
+      </section>
+
+      {/* 언어 설정 (G-D44) */}
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
+          언어 / Language
+        </h2>
+        <div
+          className="flex items-center justify-between rounded-2xl border px-5 py-4"
+          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+        >
+          <p className="text-sm text-[var(--text)]">
+            표시 언어를 선택하세요.
+          </p>
+          <LocaleToggle />
+        </div>
       </section>
 
       {/* 바로가기 */}

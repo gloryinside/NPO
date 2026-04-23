@@ -123,7 +123,13 @@ export default async function DonorHomePage() {
   ]);
 
   const greeting = (() => {
-    const h = new Date().getHours();
+    // KST 기준 시간대별 인사 (G-D42)
+    const hStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Seoul",
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date());
+    const h = Number(hStr);
     if (h < 12) return "좋은 아침이에요";
     if (h < 18) return "안녕하세요";
     return "좋은 저녁이에요";

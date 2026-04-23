@@ -19,6 +19,30 @@ const PREF_ITEMS: {
     desc: '후원 금액이 변경될 때 이메일로 알려드립니다.',
     icon: '💰',
   },
+  {
+    key: 'payment_confirmation',
+    label: '결제 완료 알림',
+    desc: '후원금 결제가 완료되면 확인 이메일을 보내드립니다.',
+    icon: '✅',
+  },
+  {
+    key: 'receipt_issued',
+    label: '영수증 발급 알림',
+    desc: '기부금 영수증 PDF가 생성되면 알려드립니다.',
+    icon: '🧾',
+  },
+  {
+    key: 'promise_status',
+    label: '약정 상태 변경 알림',
+    desc: '약정이 일시중지·재개·해지되면 이메일로 알려드립니다.',
+    icon: '📋',
+  },
+  {
+    key: 'campaign_update',
+    label: '캠페인 소식',
+    desc: '후원하신 캠페인의 진행 소식과 후기를 받습니다.',
+    icon: '📣',
+  },
 ]
 
 export function NotificationPrefsForm({ initial }: Props) {

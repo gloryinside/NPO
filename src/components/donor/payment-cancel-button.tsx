@@ -22,8 +22,9 @@ export function PaymentCancelButton({ paymentId }: { paymentId: string }) {
   return (
     <>
       <button
+        type="button"
         onClick={() => setShowModal(true)}
-        className="text-xs px-2 py-1 rounded"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-xs px-3 py-2"
         style={{ color: 'var(--negative)', border: '1px solid var(--negative)' }}
       >
         취소

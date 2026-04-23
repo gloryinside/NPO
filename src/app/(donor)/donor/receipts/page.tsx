@@ -149,12 +149,12 @@ export default async function DonorReceiptsPage() {
                           href={`/api/donor/receipts/${r.id}/download`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--surface-2)] border-[var(--accent)] text-[var(--accent)]"
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--surface-2)] border-[var(--accent)] text-[var(--accent)]"
                         >
                           PDF
                         </a>
                       ) : (
-                        <span className="text-xs text-[var(--muted-foreground)]">
+                        <span className="inline-flex min-h-11 items-center text-xs text-[var(--muted-foreground)]">
                           준비 중
                         </span>
                       )}

@@ -69,6 +69,16 @@ export function AccountDeleteCard({ authMethod }: { authMethod: "supabase" | "ot
           해지됩니다. 과거 후원 이력과 영수증은 회계·세무 목적으로 보존됩니다.
         </p>
 
+        {/* G-D45: 결제 수단 영구 삭제 경고 */}
+        <ul
+          className="mt-3 space-y-1 text-xs"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <li>• 등록된 <b style={{ color: "var(--text)" }}>카드 결제 수단(빌링키)</b>이 영구 삭제됩니다.</li>
+          <li>• 다시 후원하시려면 <b style={{ color: "var(--text)" }}>새로 가입</b>하고 결제 수단을 재등록해야 합니다.</li>
+          <li>• 일시 중단을 원하면 삭제 대신 각 약정에서 <b style={{ color: "var(--text)" }}>일시중지</b>를 사용하세요.</li>
+        </ul>
+
         {!expanded ? (
           <button
             type="button"
@@ -140,8 +150,8 @@ export function AccountDeleteCard({ authMethod }: { authMethod: "supabase" | "ot
                 className="mt-0.5"
               />
               <span style={{ color: "var(--text)" }}>
-                삭제 후에는 되돌릴 수 없으며, 활성 약정이 자동 해지됨을
-                이해했습니다.
+                삭제 후에는 되돌릴 수 없으며, 활성 약정과 등록된 카드가
+                영구 삭제됨을 이해했습니다.
               </span>
             </label>
 

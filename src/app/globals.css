@@ -213,3 +213,60 @@ html, body {
   .animate-ken-burns,
   .animate-marquee { animation: none !important; }
 }
+
+/* ===== G-D40: 프린트 스타일 ===== */
+@media print {
+  /* 네비·FAB·액션 버튼 숨김 */
+  header,
+  nav,
+  [data-print-hide],
+  a[href="/donor/login"],
+  button {
+    display: none !important;
+  }
+
+  /* 배경 흰색, 잉크 보존을 위해 그림자·배경 제거 */
+  * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  body,
+  main {
+    background: #fff !important;
+  }
+
+  /* 페이지 여백 */
+  @page {
+    margin: 1.5cm 1cm;
+  }
+
+  /* 링크 URL 표시 — 영수증/임팩트에서 출처 보존 */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 10pt;
+    color: #666 !important;
+  }
+  /* 내부 링크·의미 없는 링크는 URL 표기 생략 */
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after,
+  a[data-print-no-url]::after {
+    content: "";
+  }
+
+  /* 큰 섹션 페이지 구분 */
+  section {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}

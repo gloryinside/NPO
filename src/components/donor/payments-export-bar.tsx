@@ -35,12 +35,14 @@ export function PaymentsExportBar({
   const href = `/api/donor/payments/export?${params.toString()}`;
   const canExport = custom ? Boolean(from || to) : true;
 
+  const ariaPressed = custom ? ("true" as const) : ("false" as const);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
         type="button"
         onClick={() => setCustom((v) => !v)}
-        aria-pressed={custom}
+        {...{ "aria-pressed": ariaPressed }}
         className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
         style={{
           borderColor: "var(--border)",
@@ -94,7 +96,7 @@ export function PaymentsExportBar({
 
       <a
         href={canExport ? href : undefined}
-        aria-disabled={canExport ? undefined : "true"}
+        {...(canExport ? {} : { "aria-disabled": "true" as const })}
         className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
         style={{
           borderColor: "var(--accent)",

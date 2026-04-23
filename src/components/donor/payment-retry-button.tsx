@@ -78,7 +78,7 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
           ? `${remainingSec}초 뒤 재시도 가능`
           : "이 결제를 다시 시도"
       }
-      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
       style={{
         background: "var(--warning-soft)",
         color: "var(--warning)",

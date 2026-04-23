@@ -4,6 +4,8 @@ import { DonorNav } from "@/components/donor/donor-nav";
 import { LogoWithText } from "@/components/brand/logo-with-text";
 import { ThemeToggle } from "@/components/brand/theme-toggle";
 import { SessionKeepalive } from "@/components/donor/auth/SessionKeepalive";
+import { OfflineBanner } from "@/components/donor/ui/OfflineBanner";
+import { DonorFAB } from "@/components/donor/ui/DonorFAB";
 
 export default async function DonorLayout({
   children,
@@ -15,6 +17,7 @@ export default async function DonorLayout({
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       {session && <SessionKeepalive />}
+      <OfflineBanner />
       <header
         className="sticky top-0 z-40"
         style={{
@@ -90,21 +93,8 @@ export default async function DonorLayout({
         </div>
       </header>
 
-      {/* 모바일 FAB — 새 후원 CTA (G-D09) */}
-      {session && (
-        <a
-          href="/"
-          aria-label="새 후원 시작하기"
-          className="fixed right-4 z-40 inline-flex items-center gap-1.5 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-opacity hover:opacity-90 sm:hidden"
-          style={{
-            background: "var(--accent)",
-            bottom: 72, // 하단 네비바 높이 + 여백
-            textDecoration: "none",
-          }}
-        >
-          ❤️ 새 후원
-        </a>
-      )}
+      {/* 모바일 FAB — 새 후원 CTA (G-D09/D37) */}
+      {session && <DonorFAB />}
 
       {/* 모바일 하단 네비바 */}
       {session && (
