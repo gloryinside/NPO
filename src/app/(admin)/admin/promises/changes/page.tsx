@@ -66,22 +66,33 @@ export default async function PromiseChangesPage({
         </p>
       </div>
 
-      {/* 기간 필터 */}
-      <nav className="flex gap-2">
-        {allowedDays.map((d) => (
-          <a
-            key={d}
-            href={`/admin/promises/changes?days=${d}`}
-            className={`rounded-md border px-3 py-1.5 text-sm transition-opacity hover:opacity-80 ${
-              d === days
-                ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
-                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)]'
-            }`}
-          >
-            {d}일
-          </a>
-        ))}
-      </nav>
+      {/* 기간 필터 + CSV 내보내기 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav className="flex gap-2">
+          {allowedDays.map((d) => (
+            <a
+              key={d}
+              href={`/admin/promises/changes?days=${d}`}
+              className={`rounded-md border px-3 py-1.5 text-sm transition-opacity hover:opacity-80 ${
+                d === days
+                  ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
+                  : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)]'
+              }`}
+            >
+              {d}일
+            </a>
+          ))}
+        </nav>
+
+        {/* G-114: 현재 필터 기간을 그대로 CSV로 다운로드 */}
+        <a
+          href={`/api/admin/promises/changes/export.csv?days=${days}`}
+          className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:border-[var(--accent)]"
+          download
+        >
+          CSV 내보내기
+        </a>
+      </div>
 
       {/* 지표 카드 4종 */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

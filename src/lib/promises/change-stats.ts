@@ -151,3 +151,61 @@ export async function getPromiseChangeStats(
     topDecreases,
   }
 }
+
+/**
+ * G-114: CSV 내보내기용 평탄 목록. 집계 없이 원본 행을 시간 역순으로 반환.
+ * 기본 limit 10000 — 기관당 수백~수천 건 범위 가정. 그 이상 필요하면
+ * SQL 페이지네이션을 별도 설계.
+ */
+export interface ExportChangeRow {
+  id: string
+  promiseId: string
+  memberId: string
+  memberName: string | null
+  campaignTitle: string | null
+  previousAmount: number
+  newAmount: number
+  delta: number
+  direction: 'up' | 'down' | 'same'
+  actor: string | null
+  reason: string | null
+  createdAt: string
+}
+
+export async function listChangesForExport(
+  supabase: SupabaseClient,
+  orgId: string,
+  opts?: { sinceDays?: number; limit?: number }
+): Promise<ExportChangeRow[]> {
+  const sinceDays = opts?.sinceDays ?? 180
+  const limit = Math.min(Math.max(1, opts?.limit ?? 10000), 50000)
+  const sinceIso = new Date(
+    Date.now() - sinceDays * 24 * 60 * 60 * 1000
+  ).toISOString()
+
+  const { data } = await supabase
+    .from('promise_amount_changes')
+    .select(
+      'id, promise_id, member_id, previous_amount, new_amount, direction, actor, reason, created_at, members(name), promises(campaigns(title))'
+    )
+    .eq('org_id', orgId)
+    .gte('created_at', sinceIso)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  type Raw = RawRow & { actor: string | null; reason: string | null }
+  return ((data ?? []) as unknown as Raw[]).map((r) => ({
+    id: r.id,
+    promiseId: r.promise_id,
+    memberId: r.member_id,
+    memberName: r.members?.name ?? null,
+    campaignTitle: r.promises?.campaigns?.title ?? null,
+    previousAmount: Number(r.previous_amount),
+    newAmount: Number(r.new_amount),
+    delta: Number(r.new_amount) - Number(r.previous_amount),
+    direction: r.direction,
+    actor: r.actor,
+    reason: r.reason,
+    createdAt: r.created_at,
+  }))
+}
