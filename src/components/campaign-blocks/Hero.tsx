@@ -1,6 +1,15 @@
 import Image from 'next/image';
 
-export function Hero({ block }: { block: { props: any } }) {
+// G-D94: any → 구체 타입
+type HeroProps = {
+  backgroundImageAssetId?: string | null;
+  headline: string;
+  subheadline?: string | null;
+  ctaLabel: string;
+  ctaAnchorBlockId?: string | null;
+};
+
+export function Hero({ block }: { block: { props: HeroProps } }) {
   const { backgroundImageAssetId, headline, subheadline, ctaLabel, ctaAnchorBlockId } = block.props;
   return (
     <section className="relative h-[70vh] min-h-[420px] w-full overflow-hidden">

@@ -1,6 +1,14 @@
 import Image from 'next/image';
 
-export function ImageSingle({ block }: { block: { props: any } }) {
+// G-D94: any → 구체 타입
+type ImageSingleProps = {
+  assetId?: string | null;
+  altText: string;
+  caption?: string | null;
+  linkUrl?: string | null;
+};
+
+export function ImageSingle({ block }: { block: { props: ImageSingleProps } }) {
   const { assetId, altText, caption, linkUrl } = block.props;
   const img = assetId ? (
     <Image src={assetId} alt={altText} width={1200} height={800} className="h-auto w-full rounded-lg" />

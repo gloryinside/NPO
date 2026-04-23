@@ -15,6 +15,12 @@ export interface CampaignReport {
     paidCount: number
     uniqueDonors: number
     avgAmount: number
+    /** G-D83 */
+    failedCount: number
+    cancelledCount: number
+    refundCount: number
+    refundAmount: number
+    failureRatio: number // 0~1 (failed+cancelled / attempted)
   }
   dailyRaised: Array<{ date: string; amount: number; count: number }>
   topDonors: Array<{ memberName: string; amount: number; count: number }>
@@ -106,6 +112,32 @@ export async function getCampaignReport(
   const goal = Number(campaign.goal_amount ?? 0)
   const goalPct = goal > 0 ? Math.min(Math.round((raised / goal) * 100), 999) : null
 
+  // G-D83: failed/cancelled/refund 집계
+  const { data: nonPaidRaw } = await supabase
+    .from('payments')
+    .select('pay_status, refund_amount')
+    .eq('campaign_id', campaignId)
+    .in('pay_status', ['failed', 'cancelled', 'refunded'])
+
+  let failedCount = 0
+  let cancelledCount = 0
+  let refundCount = 0
+  let refundAmount = 0
+  for (const r of (nonPaidRaw ?? []) as Array<{
+    pay_status: string
+    refund_amount: number | null
+  }>) {
+    if (r.pay_status === 'failed') failedCount++
+    else if (r.pay_status === 'cancelled') cancelledCount++
+    else if (r.pay_status === 'refunded') {
+      refundCount++
+      refundAmount += Number(r.refund_amount ?? 0)
+    }
+  }
+  const attempted = paidCount + failedCount + cancelledCount + refundCount
+  const failureRatio =
+    attempted > 0 ? (failedCount + cancelledCount) / attempted : 0
+
   return {
     campaign: {
       id: campaign.id as string,
@@ -121,6 +153,11 @@ export async function getCampaignReport(
       paidCount,
       uniqueDonors: uniqueMembers.size,
       avgAmount: paidCount > 0 ? Math.round(raised / paidCount) : 0,
+      failedCount,
+      cancelledCount,
+      refundCount,
+      refundAmount,
+      failureRatio,
     },
     dailyRaised,
     topDonors,

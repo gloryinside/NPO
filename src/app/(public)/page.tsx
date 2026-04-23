@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -231,12 +232,16 @@ export default async function PublicPage({
         style={{ '--hero-bg': heroBg } as React.CSSProperties}
       >
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+          {/* G-D89: next/image 로 최적화 (LCP 개선) */}
           {org?.logo_url && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
+            <Image
               src={org.logo_url}
               alt={`${org.name ?? tenant.name} 로고`}
+              width={200}
+              height={64}
+              priority
               className="h-16 w-auto mx-auto mb-6 object-contain"
+              unoptimized={org.logo_url.endsWith(".svg")}
             />
           )}
           <h1 className="text-4xl font-bold mb-4 text-[var(--text)]">

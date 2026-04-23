@@ -86,3 +86,13 @@ order by table_name;
 1. Vercel Deployments → 직전 성공 빌드 → **Promote to Production**
 2. DB 스키마 롤백: 각 마이그레이션에 주석으로 `-- rollback: DROP ...` 명시 필요 (현재 일부만 작성됨 — G-D68 개선 과제)
 3. Resend / Toss billing: cron 일시 중단은 `vercel.json` 의 schedule을 `* * 31 2 *` (절대 매치되지 않는 날짜)로 변경 후 재배포
+
+## 8. 로컬 pre-commit 훅 (G-D95)
+
+```bash
+bash scripts/install-git-hooks.sh
+```
+
+- typecheck (`tsc --noEmit`) 실패 시 커밋 차단
+- 마이그레이션 파일명 형식 위반 시 커밋 차단
+- `console.log` 발견 시 경고 (차단 X)

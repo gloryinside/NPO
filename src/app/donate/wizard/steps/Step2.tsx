@@ -301,6 +301,19 @@ export function Step2({
         </div>
       )}
 
+      {/* G-D86: 영수증 발급 안내 — 공제 유형·발급 시점·연말정산 연동 */}
+      <div className="rounded-lg border bg-[var(--surface-2)] border-[var(--border)] p-3 text-xs text-[var(--muted-foreground)] leading-relaxed">
+        <p className="font-medium text-[var(--text)] mb-1">
+          🧾 기부금 영수증 안내
+        </p>
+        <ul className="space-y-0.5 list-disc pl-4">
+          <li>연말정산 시 <b>기부금 세액공제</b> 대상 (공제율은 기관 인증에 따름)</li>
+          <li>발급 시점: 매년 1월 국세청 연말정산 간소화 자료 일괄 제출</li>
+          <li>등록한 이메일로도 PDF 사본 발송</li>
+          <li>영수증 발급을 원하시면 <b>본인인증</b>이 필요합니다</li>
+        </ul>
+      </div>
+
       <label className="flex items-center gap-2 text-sm text-[var(--text)]">
         <input
           type="checkbox"

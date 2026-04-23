@@ -77,6 +77,45 @@ export default async function CampaignReportPage({
         <MetricCard label="고유 후원자" value={`${totals.uniqueDonors}명`} color="var(--warning)" />
       </section>
 
+      {/* G-D83: 품질 지표 (실패·환불) */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard
+          label="결제 실패"
+          value={`${totals.failedCount}건`}
+          sub={
+            totals.failureRatio > 0
+              ? `실패율 ${(totals.failureRatio * 100).toFixed(1)}%`
+              : undefined
+          }
+          color="var(--negative)"
+        />
+        <MetricCard
+          label="사용자 취소"
+          value={`${totals.cancelledCount}건`}
+          color="var(--muted-foreground)"
+        />
+        <MetricCard
+          label="환불"
+          value={`${totals.refundCount}건`}
+          sub={
+            totals.refundAmount > 0
+              ? `${formatKRW(totals.refundAmount)} 환급`
+              : undefined
+          }
+          color="var(--warning)"
+        />
+        <MetricCard
+          label="순 모금액"
+          value={formatKRW(totals.raised - totals.refundAmount)}
+          sub={
+            totals.refundAmount > 0
+              ? `환불 차감 후`
+              : `환불 없음`
+          }
+          color="var(--accent)"
+        />
+      </section>
+
       {/* 일별 추이 */}
       <section>
         <h2 className="text-lg font-semibold text-[var(--text)] mb-4">일별 모금 추이 (일별 + 누적)</h2>
