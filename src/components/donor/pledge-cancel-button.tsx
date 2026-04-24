@@ -9,7 +9,12 @@ export function PledgeCancelButton({ pledgeId }: { pledgeId: string }) {
   const [showModal, setShowModal] = useState(false);
 
   async function handleCancel() {
-    const res = await fetch(`/api/donor/pledges/${pledgeId}/cancel`, { method: 'PATCH' });
+    // SP-3: 중복된 /api/donor/pledges/[id]/cancel 대신 promises PATCH 로 통일
+    const res = await fetch(`/api/donor/promises/${pledgeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel' }),
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       alert(data.error ?? '해지 실패');

@@ -1,38 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDonorSession } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { checkCsrf } from '@/lib/security/csrf';
-import { enforceDonorLimit, limitResponse } from '@/lib/security/endpoint-limits';
 
+/**
+ * SP-3: Deprecated. 신규 클라이언트는 PATCH /api/donor/promises/[id] { action: "cancel" } 사용.
+ *
+ * 외부 통합이나 구버전 클라이언트 호환을 위해 307 Temporary Redirect 로 통일.
+ * 307은 메서드와 본문을 보존하므로 PATCH 가 유지된다.
+ */
 export async function PATCH(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
-  const session = await getDonorSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const rl = enforceDonorLimit(session.member.id, 'pledge:cancel', 'sensitive');
-  if (!rl.allowed) return limitResponse(rl);
-
   const { id } = await params;
-  const supabase = createSupabaseAdminClient();
-
-  const { data: pledge } = await supabase
-    .from('promises')
-    .select('id, status, member_id, org_id')
-    .eq('id', id)
-    .eq('member_id', session.member.id)
-    .eq('org_id', session.member.org_id)
-    .maybeSingle();
-
-  if (!pledge) return NextResponse.json({ error: '약정 정보를 찾을 수 없습니다.' }, { status: 404 });
-  if (pledge.status !== 'active') return NextResponse.json({ error: '해지 가능한 상태가 아닙니다.' }, { status: 400 });
-
-  await supabase
-    .from('promises')
-    .update({ status: 'cancelled' })
-    .eq('id', id);
-
-  return NextResponse.json({ ok: true });
+  const target = new URL(
+    `/api/donor/promises/${encodeURIComponent(id)}`,
+    _req.url,
+  );
+  return NextResponse.redirect(target, 307);
 }
