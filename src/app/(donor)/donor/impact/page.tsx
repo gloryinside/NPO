@@ -284,6 +284,7 @@ export default async function DonorImpactPage() {
                 }}
               >
                 <table className="w-full">
+                  <caption className="sr-only">연도별 후원 내역 상세</caption>
                   <thead
                     style={{
                       background: 'var(--surface-2)',
@@ -363,7 +364,7 @@ export default async function DonorImpactPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: 'var(--accent)' }}
               >
-                🎁 친구 초대하기
+                <span aria-hidden="true">🎁</span> 친구 초대하기
               </a>
               <a
                 href="/donor"

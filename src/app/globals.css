@@ -210,6 +210,16 @@ html, body {
 .animate-marquee { animation: marquee 40s linear infinite; }
 
 @media (prefers-reduced-motion: reduce) {
+  /* SP-6: 전역 모션 감소 — 모든 애니메이션과 트랜지션을 실질적으로 비활성화.
+     기존 ken-burns/marquee 규칙은 더 구체적이므로 계속 우선. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
   .animate-ken-burns,
   .animate-marquee { animation: none !important; }
 }
