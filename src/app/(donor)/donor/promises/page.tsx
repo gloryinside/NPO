@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { AmountChangeDialog } from "@/components/donor/promises/AmountChangeDialog";
 import { UpdateBillingKeyDialog } from "@/components/donor/promises/UpdateBillingKeyDialog";
+import { CancelConfirmModal } from "@/components/donor/cancel-confirm-modal";
 import { EmptyState } from "@/components/donor/ui/EmptyState";
 import { InlineLoading } from "@/components/donor/ui/PageLoading";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
@@ -76,12 +77,37 @@ function formatDate(value: string | null) {
 
 type AmountDialogState = { open: true; promise: DonorPromise } | { open: false };
 
+type ActionKind = "suspend" | "cancel" | "resume";
+type ConfirmTarget = {
+  id: string;
+  action: ActionKind;
+  title: string;
+} | null;
+
+const ACTION_COPY: Record<ActionKind, { label: string; message: string }> = {
+  cancel: {
+    label: "해지하기",
+    message:
+      "정기후원을 해지하시겠습니까? 다음 회차부터 자동결제가 중단됩니다.",
+  },
+  suspend: {
+    label: "일시중지",
+    message:
+      "정기후원을 일시중지하시겠습니까? 재개 전까지 결제가 실행되지 않습니다.",
+  },
+  resume: {
+    label: "재개하기",
+    message: "일시중지된 약정을 다시 시작하시겠습니까?",
+  },
+};
+
 export default function DonorPromisesPage() {
   const [promises, setPromises] = useState<DonorPromise[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<AmountDialogState>({ open: false });
   const [billingKeyTarget, setBillingKeyTarget] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   // G-D41: 과거 약정(해지/완료) 표시 토글
   const [showEnded, setShowEnded] = useState(false);
 
@@ -107,13 +133,15 @@ export default function DonorPromisesPage() {
     fetchPromises();
   }, [fetchPromises]);
 
-  async function handleAction(
-    id: string,
-    action: "suspend" | "cancel" | "resume"
-  ) {
-    const label =
-      action === "cancel" ? "해지" : action === "resume" ? "재개" : "일시중지";
-    if (!confirm(`약정을 ${label}하시겠습니까?`)) return;
+  function requestAction(promise: DonorPromise, action: ActionKind) {
+    setConfirmTarget({
+      id: promise.id,
+      action,
+      title: promise.campaigns?.title ?? "정기후원",
+    });
+  }
+
+  async function executeAction(id: string, action: ActionKind) {
     setActioning(id);
     try {
       const res = await fetch(`/api/donor/promises/${id}`, {
@@ -202,6 +230,20 @@ export default function DonorPromisesPage() {
           fetchPromises();
         }}
       />
+
+      {confirmTarget && (
+        <CancelConfirmModal
+          title={`${confirmTarget.title} ${ACTION_COPY[confirmTarget.action].label}`}
+          message={ACTION_COPY[confirmTarget.action].message}
+          confirmLabel={ACTION_COPY[confirmTarget.action].label}
+          onConfirm={async () => {
+            const target = confirmTarget;
+            setConfirmTarget(null);
+            await executeAction(target.id, target.action);
+          }}
+          onClose={() => setConfirmTarget(null)}
+        />
+      )}
 
       <div className="space-y-6">
         {/* 헤더 + 요약 */}
@@ -322,7 +364,7 @@ export default function DonorPromisesPage() {
                               <ActionBtn
                                 label="일시중지"
                                 busy={busy}
-                                onClick={() => handleAction(p.id, "suspend")}
+                                onClick={() => requestAction(p, "suspend")}
                               />
                             </>
                           )}
@@ -330,7 +372,7 @@ export default function DonorPromisesPage() {
                             <ActionBtn
                               label="재개"
                               busy={busy}
-                              onClick={() => handleAction(p.id, "resume")}
+                              onClick={() => requestAction(p, "resume")}
                               variant="positive"
                             />
                           )}
@@ -345,7 +387,7 @@ export default function DonorPromisesPage() {
                           <ActionBtn
                             label="해지"
                             busy={busy}
-                            onClick={() => handleAction(p.id, "cancel")}
+                            onClick={() => requestAction(p, "cancel")}
                             variant="danger"
                           />
                         </div>
