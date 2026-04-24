@@ -34,6 +34,13 @@ function buildItems(actions: DashboardActions): Item[] {
       href: '/donor/promises',
     });
   }
+  if ((actions.pendingBillingPromises ?? 0) > 0) {
+    items.push({
+      label: `카드 미등록 (${actions.pendingBillingPromises}건) — 정기결제 카드 등록을 완료해야 후원이 진행됩니다`,
+      linkLabel: '카드 등록하기',
+      href: '/donor/promises',
+    });
+  }
   return items;
 }
 

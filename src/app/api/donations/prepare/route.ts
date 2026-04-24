@@ -4,7 +4,7 @@ import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { generatePaymentCode, generateMemberCode } from "@/lib/codes";
 import { getOrgTossKeys } from "@/lib/toss/keys";
-import { sendOfflineDonationReceived } from "@/lib/email";
+import { sendOfflineDonationReceived, sendBillingKeyFailedEmail } from "@/lib/email";
 import { issueBillingKey } from "@/lib/billing/toss-billing";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -377,6 +377,16 @@ export async function POST(req: NextRequest) {
         } else {
           console.warn('[donations/prepare] 빌링키 발급 실패:', result.error);
           regularBillingKeyFailed = true;
+          // 카드 등록 실패 즉시 후원자에게 이메일 알림 (fire-and-forget)
+          if (email) {
+            const org = orgData as { name?: string } | null;
+            sendBillingKeyFailedEmail({
+              orgId: tenant.id,
+              to: email,
+              memberName: (memberName as string | undefined)?.trim() ?? '후원자',
+              orgName: org?.name ?? tenant.name,
+            });
+          }
         }
       }
     }

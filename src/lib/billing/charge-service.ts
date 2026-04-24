@@ -17,10 +17,12 @@ export async function processMonthlyCharges(orgId: string): Promise<{ charged: n
   const { data: payments, error } = await supabase
     .from('payments')
     .select(
-      '*, promises!inner(toss_billing_key, customer_key, amount, pay_method, member_id)',
+      '*, promises!inner(toss_billing_key, customer_key, amount, pay_method, member_id, status)',
     )
     .eq('org_id', orgId)
     .eq('pay_status', 'pending')
+    // pending_billing 약정(카드 미등록)은 청구 대상에서 제외 — promise.status로 2차 필터
+    .eq('promises.status', 'active')
     .lte('pay_date', today)
     .is('toss_payment_key', null);
 
@@ -40,6 +42,7 @@ export async function processMonthlyCharges(orgId: string): Promise<{ charged: n
       amount: number;
       pay_method: string;
       member_id: string;
+      status: string;
     };
 
     if (!promise.toss_billing_key || !promise.customer_key) continue;

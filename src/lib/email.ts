@@ -221,3 +221,24 @@ export function sendWelcomeEmail(params: WelcomeEmailParams): void {
     console.error("[email] sendWelcomeEmail failed:", err);
   });
 }
+
+export type BillingKeyFailedEmailParams = {
+  orgId: string;
+  to: string;
+  memberName: string;
+  orgName: string;
+};
+
+export function sendBillingKeyFailedEmail(params: BillingKeyFailedEmailParams): void {
+  const { orgId, to, memberName, orgName } = params;
+
+  // billing_key_failed 템플릿이 없으면 billing_failed 템플릿으로 폴백
+  sendViaTemplate(orgId, 'billing_failed', {
+    name: memberName,
+    orgName,
+    amount: '—',
+    reason: '카드 정보를 다시 확인해 주세요. 마이페이지 > 약정 > 카드 변경에서 재등록할 수 있습니다.',
+  }, to, orgName).catch((err) => {
+    console.error("[email] sendBillingKeyFailedEmail failed:", err);
+  });
+}

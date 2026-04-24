@@ -71,6 +71,7 @@ export default async function AdminDashboardPage() {
     pendingRefundRes,
     emailBounceRes,
     openInquiryRes,
+    pendingBillingRes,
   ] = await Promise.all([
     supabase
       .from("members")
@@ -151,11 +152,18 @@ export default async function AdminDashboardPage() {
       .select("*", { count: "exact", head: true })
       .eq("org_id", tenantId)
       .eq("status", "open"),
+    // 카드 미등록(pending_billing) 약정 건수
+    supabase
+      .from("promises")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", tenantId)
+      .eq("status", "pending_billing"),
   ]);
 
   const pendingRefundCount = pendingRefundRes.count ?? 0;
   const emailBounceCount = emailBounceRes.count ?? 0;
   const openInquiryCount = openInquiryRes.count ?? 0;
+  const pendingBillingCount = pendingBillingRes.count ?? 0;
   const totalMembers = membersRes.count ?? 0;
   const monthAmount = (monthAmountRes.data ?? []).reduce(
     (acc: number, r: { amount: number | null }) => acc + Number(r.amount ?? 0),
@@ -271,6 +279,11 @@ export default async function AdminDashboardPage() {
               label="미처리 문의"
               count={openInquiryCount}
               href="/admin/inquiries"
+            />
+            <TodoItem
+              label="카드 미등록 약정"
+              count={pendingBillingCount}
+              href="/admin/promises?status=pending_billing"
             />
             {failReasonMap.size > 0 && (
               <div className="mt-2">

@@ -330,6 +330,16 @@ export default function DonorPromisesPage() {
                     }}
                   />
 
+                  {/* pending_billing 경고 배너 — 카드 미등록 */}
+                  {isPendingBilling && (
+                    <div className="flex items-center gap-2 border-b border-[var(--warning)] bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-5 py-2.5">
+                      <span className="text-sm" aria-hidden>⚠️</span>
+                      <p className="text-xs font-medium text-[var(--warning)]">
+                        카드 등록이 완료되지 않았습니다. 아래 &apos;카드 등록&apos; 버튼을 눌러 정기결제를 활성화해 주세요.
+                      </p>
+                    </div>
+                  )}
+
                   {/* 뿌듯함 블록 — 진행 중 약정에만 (G-D173) */}
                   {!isEnded && <PromiseImpactBlock promise={p} />}
 

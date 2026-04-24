@@ -11,6 +11,7 @@ export interface DashboardActions {
   failedPayments: number;
   missingRrnReceipts: number;
   recentAdminChanges: number;
+  pendingBillingPromises?: number;
 }
 
 export async function getDashboardActions(
@@ -52,11 +53,21 @@ export async function getDashboardActions(
     .eq('actor', 'admin')
     .gte('created_at', thirtyDaysAgo);
 
-  const [failed, rrn, changes] = await Promise.all([failedQ, rrnQ, changesQ]);
+  const pendingBillingQ = supabase
+    .from('promises')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .eq('member_id', memberId)
+    .eq('status', 'pending_billing');
+
+  const [failed, rrn, changes, pendingBilling] = await Promise.all([
+    failedQ, rrnQ, changesQ, pendingBillingQ,
+  ]);
 
   return {
     failedPayments: failed.error ? 0 : failed.count ?? 0,
     missingRrnReceipts: rrn.error ? 0 : rrn.count ?? 0,
     recentAdminChanges: changes.error ? 0 : changes.count ?? 0,
+    pendingBillingPromises: pendingBilling.error ? 0 : pendingBilling.count ?? 0,
   };
 }
