@@ -51,7 +51,7 @@ export async function HeroSection({ memberName, snapshot }: HeroSectionProps) {
       }}
     >
       <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-        {greeting} <span aria-hidden="true">👋</span>
+        {greeting}
       </p>
       <h1 className="mt-1 text-2xl font-bold" style={{ color: "var(--text)" }}>
         {memberName}
@@ -85,7 +85,7 @@ export async function HeroSection({ memberName, snapshot }: HeroSectionProps) {
         {snapshot.streak >= 3 ? (
           <StatPill
             label={t("donor.dashboard.stats.streak")}
-            value={`🔥 ${snapshot.streak}${t("donor.dashboard.stats.streak_suffix")}`}
+            value={`${snapshot.streak}${t("donor.dashboard.stats.streak_suffix")}`}
           />
         ) : daysUntilNext !== null ? (
           <StatPill

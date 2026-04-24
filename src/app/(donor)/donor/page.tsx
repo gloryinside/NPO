@@ -120,7 +120,6 @@ export default async function DonorHomePage() {
             className="text-sm font-semibold"
             style={{ color: "var(--warning)" }}
           >
-            <span aria-hidden="true">💳</span>{" "}
             {t("donor.dashboard.card_expiry.title")}
           </p>
           <ul
@@ -184,34 +183,6 @@ export default async function DonorHomePage() {
           </a>
         </section>
       )}
-
-      {/* ── 빠른 이동 ── */}
-      <nav
-        className="grid grid-cols-2 gap-3 sm:grid-cols-5"
-        aria-label="빠른 이동"
-      >
-        {[
-          { href: "/donor/impact", icon: "✨", label: "임팩트", accent: true },
-          { href: "/donor/promises", icon: "📋", label: "약정", accent: false },
-          { href: "/donor/payments", icon: "💳", label: "납입", accent: false },
-          { href: "/donor/receipts", icon: "🧾", label: "영수증", accent: false },
-          { href: "/donor/cheer", icon: "💬", label: "응원", accent: false },
-        ].map(({ href, icon, label, accent }) => (
-          <a
-            key={href}
-            href={href}
-            className="rounded-xl px-4 py-3 text-sm font-medium transition-opacity hover:opacity-80"
-            style={{
-              textDecoration: "none",
-              background: accent ? "var(--accent)" : "var(--surface-2)",
-              color: accent ? "#fff" : "var(--text)",
-              border: accent ? "none" : "1px solid var(--border)",
-            }}
-          >
-            <span aria-hidden="true">{icon}</span> {label}
-          </a>
-        ))}
-      </nav>
 
       {/* ── 약정·납입·영수증·프로필 (스트리밍) ── */}
       <Suspense fallback={<DashboardBodySkeleton />}>

@@ -31,15 +31,6 @@ export default async function DonorSettingsPage() {
   const marketingConsentAt =
     (consentRow?.marketing_consent_at as string | null) ?? null
 
-  const shortcuts = [
-    { href: '/donor', icon: '🏠', label: t('donor.settings.shortcut.home') },
-    { href: '/donor/promises', icon: '📋', label: t('donor.settings.shortcut.promises') },
-    { href: '/donor/payments', icon: '💳', label: t('donor.settings.shortcut.payments') },
-    { href: '/donor/receipts', icon: '🧾', label: t('donor.settings.shortcut.receipts') },
-    { href: '/donor/impact', icon: '✨', label: t('donor.settings.shortcut.impact') },
-    { href: '/donor/invite', icon: '🎁', label: t('donor.settings.shortcut.invite') },
-  ]
-
   return (
     <div className="space-y-10">
       <div>
@@ -91,32 +82,6 @@ export default async function DonorSettingsPage() {
             {t('donor.settings.language_hint')}
           </p>
           <LocaleToggle />
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
-          {t('donor.settings.section.shortcuts')}
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {shortcuts.map(({ href, icon, label }) => (
-            <a
-              key={href}
-              href={href}
-              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-opacity hover:opacity-80"
-              style={{
-                textDecoration: 'none',
-                border: '1px solid var(--border)',
-                background: 'var(--surface-2)',
-                color: 'var(--text)',
-              }}
-            >
-              <span style={{ fontSize: 18 }} aria-hidden="true">
-                {icon}
-              </span>
-              {label}
-            </a>
-          ))}
         </div>
       </section>
 

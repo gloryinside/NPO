@@ -63,7 +63,7 @@ export function SessionsCard() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            <span aria-hidden="true">🖥️</span> {t("donor.sessions.title")}
+            {t("donor.sessions.title")}
           </h3>
           <p className="mt-1 text-xs" style={{ color: "var(--muted-foreground)" }}>
             {t("donor.sessions.subtitle")}
