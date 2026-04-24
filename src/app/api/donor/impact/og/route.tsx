@@ -31,17 +31,28 @@ function formatKRW(n: number): string {
   return `${n.toLocaleString('ko-KR')}원`
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const session = await getDonorSession()
   if (!session) {
     return new Response('Unauthorized', { status: 401 })
   }
 
+  // SP-2: ?year=YYYY 파라미터 지원 — 연도별 OG 공유 카드
+  const yearParam = req.nextUrl.searchParams.get('year')
+  const yearNum = yearParam ? parseInt(yearParam, 10) : undefined
+  const yearFilter =
+    yearNum !== undefined && Number.isFinite(yearNum) ? yearNum : undefined
+
   // G-123: 세션 통과 이후 DB/렌더 실패는 SVG fallback으로 200.
   // 인증 실패(401)는 fallback 대상 아님 — 크롤러가 아니라 본인 전용 경로.
   try {
     const supabase = createSupabaseAdminClient()
-    const impact = await getDonorImpact(supabase, session.member.org_id, session.member.id)
+    const impact = await getDonorImpact(
+      supabase,
+      session.member.org_id,
+      session.member.id,
+      yearFilter,
+    )
 
     const { data: orgRow } = await supabase
       .from('orgs')

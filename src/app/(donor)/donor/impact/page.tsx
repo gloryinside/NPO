@@ -8,6 +8,7 @@ import { ImpactYearlyBar } from '@/components/donor/impact/ImpactYearlyBar'
 import { ImpactMonthlyHeatmap } from '@/components/donor/impact/ImpactMonthlyHeatmap'
 import { ImpactShareActions } from '@/components/donor/impact/ImpactShareActions'
 import { EmptyState } from '@/components/donor/ui/EmptyState'
+import { YearSelector } from '@/components/donor/impact/year-selector'
 
 function formatKRW(n: number): string {
   if (n >= 100_000_000)
@@ -53,13 +54,25 @@ export default async function DonorImpactPage() {
   return (
     <div className="space-y-8">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">
-          {member.name}님의 임팩트
-        </h1>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          지금까지의 후원이 만들어낸 변화를 확인하세요.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text)]">
+            {member.name}님의 임팩트
+          </h1>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            지금까지의 후원이 만들어낸 변화를 확인하세요.
+          </p>
+        </div>
+        {impact.byYear.length > 0 && (
+          <YearSelector
+            currentYear={new Date().getUTCFullYear()}
+            selectedYear={new Date().getUTCFullYear()}
+            availableYears={[
+              new Date().getUTCFullYear(),
+              ...impact.byYear.map((y) => y.year),
+            ]}
+          />
+        )}
       </div>
 
       {impact.paymentCount === 0 ? (
