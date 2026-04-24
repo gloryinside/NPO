@@ -1,5 +1,5 @@
 export type MemberStatus = "active" | "inactive" | "deceased";
-export type MemberType = "individual" | "corporate";
+export type MemberType = "individual" | "corporate" | "volunteer" | "prospect";
 
 export type Member = {
   id: string;

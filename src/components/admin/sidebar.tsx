@@ -36,9 +36,16 @@ const NAV: NavGroup[] = [
     items: [
       { label: "후원자 관리", href: "/admin/members" },
       { label: "후원자 중복 관리", href: "/admin/members/duplicates" },
+      { label: "CRM (봉사자·잠재후원자)", href: "/admin/crm" },
       { label: "약정 관리", href: "/admin/promises" },
       { label: "약정 변경 추이", href: "/admin/promises/changes" },
       { label: "납입 관리", href: "/admin/payments" },
+    ],
+  },
+  {
+    group: "ERP",
+    items: [
+      { label: "수입결의", href: "/admin/erp/reconcile" },
     ],
   },
   {
@@ -66,6 +73,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: "문의 관리", href: "/admin/inquiries" },
       { label: "게시판 (공지/FAQ)", href: "/admin/board" },
+      { label: "수동 메시지 발송", href: "/admin/communications" },
     ],
   },
   {

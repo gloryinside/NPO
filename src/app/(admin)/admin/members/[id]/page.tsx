@@ -73,6 +73,8 @@ const MEMBER_STATUS_LABEL: Record<MemberStatus, string> = {
 const MEMBER_TYPE_LABEL: Record<MemberType, string> = {
   individual: "개인",
   corporate: "법인",
+  volunteer: "자원봉사자",
+  prospect: "잠재후원자",
 };
 
 const PROMISE_STATUS_LABEL: Record<PromiseStatus, string> = {

@@ -26,6 +26,8 @@ const STATUS_LABEL: Record<string, string> = {
 const TYPE_LABEL: Record<string, string> = {
   individual: "개인",
   corporate: "법인",
+  volunteer: "자원봉사자",
+  prospect: "잠재후원자",
 };
 
 /**

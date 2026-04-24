@@ -28,7 +28,7 @@ type Row = {
   phone: string | null;
   email: string | null;
   birth_date: string | null;
-  member_type: "individual" | "corporate";
+  member_type: "individual" | "corporate" | "volunteer" | "prospect";
   status: "active" | "inactive" | "deceased";
   join_path: string | null;
   note: string | null;
@@ -62,6 +62,8 @@ const HEADER_MAP: Record<string, keyof Row> = {
 function normalizeMemberType(raw: string): Row["member_type"] {
   const s = raw.trim().toLowerCase();
   if (s === "법인" || s === "corporate" || s === "company") return "corporate";
+  if (s === "자원봉사자" || s === "봉사자" || s === "volunteer") return "volunteer";
+  if (s === "잠재후원자" || s === "잠재" || s === "prospect") return "prospect";
   return "individual";
 }
 
