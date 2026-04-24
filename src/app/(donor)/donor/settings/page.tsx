@@ -10,13 +10,25 @@ import { AccountDeleteCard } from '@/components/donor/settings/AccountDeleteCard
 import { LocaleToggle } from '@/components/donor/ui/LocaleToggle'
 import { ConsentCard } from '@/components/donor/settings/ConsentCard'
 import { SessionsCard } from '@/components/donor/settings/SessionsCard'
+import { SettingsTabs, type SettingsTabKey } from '@/components/donor/settings/SettingsTabs'
 
 export const metadata = { title: 'Settings' }
 
-export default async function DonorSettingsPage() {
+const VALID_TABS: SettingsTabKey[] = ['notifications', 'security', 'preferences', 'account']
+
+export default async function DonorSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
   const session = await getDonorSession()
   if (!session) redirect('/donor/login')
   const t = await getT()
+
+  const { tab: rawTab } = await searchParams
+  const activeTab: SettingsTabKey = VALID_TABS.includes(rawTab as SettingsTabKey)
+    ? (rawTab as SettingsTabKey)
+    : 'notifications'
 
   const supabase = createSupabaseAdminClient()
   const prefs = await getNotificationPrefs(supabase, session.member.id)
@@ -32,7 +44,7 @@ export default async function DonorSettingsPage() {
     (consentRow?.marketing_consent_at as string | null) ?? null
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[var(--text)]">{t('donor.settings.title')}</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
@@ -40,86 +52,100 @@ export default async function DonorSettingsPage() {
         </p>
       </div>
 
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
-          {t('donor.settings.section.notifications')}
-        </h2>
-        <div
-          className="overflow-hidden rounded-2xl border"
-          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
-        >
-          <NotificationPrefsForm initial={prefs} />
+      <SettingsTabs
+        active={activeTab}
+        labels={{
+          notifications: t('donor.settings.tab.notifications'),
+          security: t('donor.settings.tab.security'),
+          preferences: t('donor.settings.tab.preferences'),
+          account: t('donor.settings.tab.account'),
+        }}
+      />
+
+      {activeTab === 'notifications' && (
+        <div className="space-y-6">
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-[var(--muted-foreground)]">
+              {t('donor.settings.section.notifications')}
+            </h2>
+            <div
+              className="overflow-hidden rounded-2xl border"
+              style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+            >
+              <NotificationPrefsForm initial={prefs} />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-[var(--muted-foreground)]">
+              {t('donor.settings.section.consent')}
+            </h2>
+            <ConsentCard initial={marketingConsent} initialAt={marketingConsentAt} />
+          </section>
         </div>
-      </section>
+      )}
 
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
-          {t('donor.settings.section.consent')}
-        </h2>
-        <ConsentCard initial={marketingConsent} initialAt={marketingConsentAt} />
-      </section>
-
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
-          {t('donor.settings.section.security')}
-        </h2>
+      {activeTab === 'security' && (
         <div className="space-y-3">
           <PasswordChangeCard enabled={isSupabaseAuth} />
           <MfaCard />
           <SessionsCard />
         </div>
-      </section>
+      )}
 
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
-          {t('donor.settings.section.language')}
-        </h2>
-        <div
-          className="flex items-center justify-between rounded-2xl border px-5 py-4"
-          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
-        >
-          <p className="text-sm text-[var(--text)]">
-            {t('donor.settings.language_hint')}
-          </p>
-          <LocaleToggle />
+      {activeTab === 'preferences' && (
+        <div className="space-y-6">
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-[var(--muted-foreground)]">
+              {t('donor.settings.section.language')}
+            </h2>
+            <div
+              className="flex items-center justify-between rounded-2xl border px-5 py-4"
+              style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+            >
+              <p className="text-sm text-[var(--text)]">
+                {t('donor.settings.language_hint')}
+              </p>
+              <LocaleToggle />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-[var(--muted-foreground)]">
+              {t('donor.settings.section.data')}
+            </h2>
+            <div
+              className="rounded-2xl border p-5"
+              style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+            >
+              <p className="text-sm font-medium text-[var(--text)]">
+                {t('donor.settings.data.title')}
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                {t('donor.settings.data.body')}
+              </p>
+              <a
+                href="/api/donor/account/export"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
+                style={{
+                  borderColor: 'var(--accent)',
+                  background: 'var(--accent-soft)',
+                  color: 'var(--accent)',
+                  textDecoration: 'none',
+                }}
+              >
+                <span aria-hidden="true">📥</span> {t('donor.settings.data.cta')}
+              </a>
+            </div>
+          </section>
         </div>
-      </section>
+      )}
 
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
-          {t('donor.settings.section.data')}
-        </h2>
-        <div
-          className="rounded-2xl border p-5"
-          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
-        >
-          <p className="text-sm font-medium text-[var(--text)]">
-            {t('donor.settings.data.title')}
-          </p>
-          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            {t('donor.settings.data.body')}
-          </p>
-          <a
-            href="/api/donor/account/export"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
-            style={{
-              borderColor: 'var(--accent)',
-              background: 'var(--accent-soft)',
-              color: 'var(--accent)',
-              textDecoration: 'none',
-            }}
-          >
-            <span aria-hidden="true">📥</span> {t('donor.settings.data.cta')}
-          </a>
+      {activeTab === 'account' && (
+        <div>
+          <AccountDeleteCard authMethod={session.authMethod} />
         </div>
-      </section>
-
-      <section>
-        <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
-          {t('donor.settings.section.danger')}
-        </h2>
-        <AccountDeleteCard authMethod={session.authMethod} />
-      </section>
+      )}
     </div>
   )
 }

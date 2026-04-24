@@ -131,6 +131,10 @@ export const DONOR_MESSAGES: Record<DonorLocale, Record<string, string>> = {
     // Settings page
     "donor.settings.title": "설정",
     "donor.settings.subtitle": "알림, 보안, 계정 환경을 관리하세요.",
+    "donor.settings.tab.notifications": "알림",
+    "donor.settings.tab.security": "보안",
+    "donor.settings.tab.preferences": "환경설정",
+    "donor.settings.tab.account": "계정",
     "donor.settings.section.notifications": "이메일 알림",
     "donor.settings.section.consent": "수신 동의",
     "donor.settings.section.security": "보안",
@@ -390,6 +394,10 @@ export const DONOR_MESSAGES: Record<DonorLocale, Record<string, string>> = {
 
     "donor.settings.title": "Settings",
     "donor.settings.subtitle": "Manage notifications, security, and account.",
+    "donor.settings.tab.notifications": "Notifications",
+    "donor.settings.tab.security": "Security",
+    "donor.settings.tab.preferences": "Preferences",
+    "donor.settings.tab.account": "Account",
     "donor.settings.section.notifications": "Email notifications",
     "donor.settings.section.consent": "Consent",
     "donor.settings.section.security": "Security",
