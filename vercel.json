@@ -87,6 +87,14 @@
     {
       "path": "/api/cron/auto-resume-promises",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/recompute-tiers",
+      "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/build-gift-queue",
+      "schedule": "0 6 * * *"
     }
   ]
 }

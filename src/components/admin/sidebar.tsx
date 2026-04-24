@@ -36,16 +36,45 @@ const NAV: NavGroup[] = [
     items: [
       { label: "후원자 관리", href: "/admin/members" },
       { label: "후원자 중복 관리", href: "/admin/members/duplicates" },
+      { label: "회원 태그", href: "/admin/member-tags" },
       { label: "CRM (봉사자·잠재후원자)", href: "/admin/crm" },
+      { label: "자원봉사 활동", href: "/admin/volunteer-activities" },
       { label: "약정 관리", href: "/admin/promises" },
       { label: "약정 변경 추이", href: "/admin/promises/changes" },
       { label: "납입 관리", href: "/admin/payments" },
+      { label: "물품기부", href: "/admin/in-kind" },
+    ],
+  },
+  {
+    group: "결연·수혜자",
+    items: [
+      { label: "수혜자 관리", href: "/admin/beneficiaries" },
+      { label: "결연 매칭", href: "/admin/sponsorships" },
+      { label: "편지·번역 큐", href: "/admin/sponsor-letters" },
+    ],
+  },
+  {
+    group: "사업관리",
+    items: [
+      { label: "사업/프로그램", href: "/admin/programs" },
+      { label: "행사·이벤트", href: "/admin/events" },
+      { label: "기념품 발송", href: "/admin/gift-shipments" },
+      { label: "기념품 룰 설정", href: "/admin/gift-rules" },
+    ],
+  },
+  {
+    group: "채널·우편",
+    items: [
+      { label: "모금 채널", href: "/admin/donation-channels" },
+      { label: "채널별 통계", href: "/admin/channel-stats" },
+      { label: "DM 우편 캠페인", href: "/admin/mail-campaigns" },
     ],
   },
   {
     group: "ERP",
     items: [
       { label: "수입결의", href: "/admin/erp/reconcile" },
+      { label: "세금계산서 큐", href: "/admin/tax-invoices" },
     ],
   },
   {
