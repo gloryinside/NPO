@@ -125,10 +125,24 @@ BEGIN
   ) t;
 
   -- 7. 액션: 결제 실패 (재시도 가능한 건만)
-  SELECT COUNT(*) INTO v_failed_count
-  FROM payments
-  WHERE org_id = p_org_id AND member_id = p_member_id
-    AND pay_status = 'failed' AND retry_count < 3;
+  -- retry_count 컬럼 존재 여부를 런타임에 확인해 동적 SQL 분기
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'payments'
+      AND column_name = 'retry_count'
+  ) THEN
+    EXECUTE
+      'SELECT COUNT(*) FROM payments
+         WHERE org_id = $1 AND member_id = $2
+           AND pay_status = ''failed'' AND retry_count < 3'
+      INTO v_failed_count
+      USING p_org_id, p_member_id;
+  ELSE
+    SELECT COUNT(*) INTO v_failed_count
+    FROM payments
+    WHERE org_id = p_org_id AND member_id = p_member_id
+      AND pay_status = 'failed';
+  END IF;
 
   -- 8. 액션: 주민번호 미입력 영수증 (올해, 영수증 신청했지만 rrn 대기)
   SELECT COUNT(*) INTO v_rrn_count
