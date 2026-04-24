@@ -13,12 +13,10 @@ import {
 } from "@/components/donor/dashboard/dashboard-skeleton";
 import { ActionRequiredBanner } from "@/components/donor/dashboard/action-required-banner";
 import { UpcomingPaymentsCard } from "@/components/donor/dashboard/upcoming-payments-card";
-import { DonorProfileSection } from "@/components/donor/donor-profile-section";
 import { PledgeCancelButton } from "@/components/donor/pledge-cancel-button";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
 import type { DonorDashboardSnapshot } from "@/types/dashboard";
-import type { Member } from "@/types/member";
 
 function formatAmount(value: number | null | undefined): string {
   if (value == null) return "-";
@@ -184,9 +182,9 @@ export default async function DonorHomePage() {
         </section>
       )}
 
-      {/* ── 약정·납입·영수증·프로필 (스트리밍) ── */}
+      {/* ── 약정·납입·영수증 (스트리밍) ── */}
       <Suspense fallback={<DashboardBodySkeleton />}>
-        <DashboardBody snapshot={snapshot} member={member} />
+        <DashboardBody snapshot={snapshot} />
       </Suspense>
     </div>
   );
@@ -194,14 +192,14 @@ export default async function DonorHomePage() {
 
 async function DashboardBody({
   snapshot,
-  member,
 }: {
   snapshot: DonorDashboardSnapshot;
-  member: Member;
 }) {
   const t = await getT();
   return (
-    <div className="space-y-8">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      {/* 좌측 주 영역 (2/3) */}
+      <div className="space-y-8 lg:col-span-2">
       {/* 활성 약정 */}
       {snapshot.active_promises.length > 0 && (
         <section>
@@ -344,7 +342,10 @@ async function DashboardBody({
           )}
         </div>
       </section>
+      </div>
 
+      {/* 우측 보조 영역 (1/3) */}
+      <div className="space-y-8">
       {/* 영수증 */}
       {snapshot.latest_receipt && (
         <section>
@@ -401,20 +402,7 @@ async function DashboardBody({
           </div>
         </section>
       )}
-
-      {/* 프로필 */}
-      <section>
-        <SectionHeader title={t("donor.dashboard.section.my_info")} />
-        <DonorProfileSection
-          member={{
-            id: member.id,
-            name: member.name,
-            phone: member.phone ?? null,
-            email: member.email ?? null,
-            birth_date: member.birth_date ?? null,
-          }}
-        />
-      </section>
+      </div>
     </div>
   );
 }

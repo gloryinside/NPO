@@ -18,6 +18,12 @@ export type Member = {
   identity_verified_at?: string | null;
   /** 암호화된 주민등록번호 (pgp_sym_encrypt). 평문은 서버에서만 복호화. */
   id_number_encrypted?: string | null;
+  /** G-D157 우편번호 (KR 5자리). */
+  postal_code?: string | null;
+  /** G-D157 기본 주소. */
+  address_line1?: string | null;
+  /** G-D157 상세 주소. */
+  address_line2?: string | null;
   created_at: string;
   updated_at: string;
 };

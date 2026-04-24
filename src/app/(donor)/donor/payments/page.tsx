@@ -57,7 +57,14 @@ function formatDate(value: string | null) {
   }
 }
 
-type SearchParams = Promise<{ year?: string; month?: string; status?: string }>;
+type SearchParams = Promise<{
+  year?: string;
+  month?: string;
+  status?: string;
+  page?: string;
+}>;
+
+const PAGE_SIZE = 20;
 
 export default async function DonorPaymentsPage({
   searchParams,
@@ -68,7 +75,8 @@ export default async function DonorPaymentsPage({
   const t = await getT();
   const supabase = createSupabaseAdminClient();
 
-  const { year, month, status } = await searchParams;
+  const { year, month, status, page: pageRaw } = await searchParams;
+  const page = Math.max(1, Number(pageRaw) || 1);
 
   // Fetch all payments first to derive year list, then filter
   // For performance on large data, we fetch filtered directly via date range
@@ -98,12 +106,39 @@ export default async function DonorPaymentsPage({
     query = query.eq("pay_status", status);
   }
 
-  const { data, count } = await query.range(0, 999);
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+  const { data, count } = await query.range(from, to);
   const payments = (data as unknown as PaymentWithRelations[]) ?? [];
   const total = count ?? payments.length;
-  const totalPaid = payments
-    .filter((p) => p.pay_status === "paid")
-    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Filtered sum of paid amount (separate query to count all rows, not just current page)
+  let paidSumQuery = supabase
+    .from("payments")
+    .select("amount")
+    .eq("org_id", member.org_id)
+    .eq("member_id", member.id)
+    .eq("pay_status", "paid");
+  if (year) {
+    const y = Number(year);
+    if (month) {
+      const m = Number(month);
+      const start = `${y}-${String(m).padStart(2, "0")}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      paidSumQuery = paidSumQuery.gte("pay_date", start).lte("pay_date", end);
+    } else {
+      paidSumQuery = paidSumQuery
+        .gte("pay_date", `${y}-01-01`)
+        .lte("pay_date", `${y}-12-31`);
+    }
+  }
+  const { data: paidRows } = await paidSumQuery;
+  const totalPaid = (paidRows ?? []).reduce(
+    (sum: number, r: { amount: number | null }) => sum + Number(r.amount ?? 0),
+    0
+  );
 
   // Derive available years from unfiltered data for the year selector
   const { data: yearRows } = await supabase
@@ -254,6 +289,86 @@ export default async function DonorPaymentsPage({
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <PaymentsPagination
+          page={page}
+          totalPages={totalPages}
+          year={year}
+          month={month}
+          status={status}
+        />
+      )}
     </div>
+  );
+}
+
+function PaymentsPagination({
+  page,
+  totalPages,
+  year,
+  month,
+  status,
+}: {
+  page: number;
+  totalPages: number;
+  year?: string;
+  month?: string;
+  status?: string;
+}) {
+  function href(p: number): string {
+    const sp = new URLSearchParams();
+    if (year) sp.set("year", year);
+    if (month) sp.set("month", month);
+    if (status) sp.set("status", status);
+    if (p > 1) sp.set("page", String(p));
+    const q = sp.toString();
+    return q ? `?${q}` : "/donor/payments";
+  }
+
+  const prev = page > 1 ? page - 1 : null;
+  const next = page < totalPages ? page + 1 : null;
+
+  return (
+    <nav
+      aria-label="페이지 이동"
+      className="flex items-center justify-center gap-2 pt-4 text-sm"
+    >
+      {prev ? (
+        <a
+          href={href(prev)}
+          className="rounded-md border px-3 py-1.5"
+          style={{ borderColor: "var(--border)", color: "var(--text)" }}
+        >
+          이전
+        </a>
+      ) : (
+        <span
+          className="rounded-md border px-3 py-1.5 opacity-40"
+          style={{ borderColor: "var(--border)" }}
+        >
+          이전
+        </span>
+      )}
+      <span style={{ color: "var(--muted-foreground)" }}>
+        {page} / {totalPages}
+      </span>
+      {next ? (
+        <a
+          href={href(next)}
+          className="rounded-md border px-3 py-1.5"
+          style={{ borderColor: "var(--border)", color: "var(--text)" }}
+        >
+          다음
+        </a>
+      ) : (
+        <span
+          className="rounded-md border px-3 py-1.5 opacity-40"
+          style={{ borderColor: "var(--border)" }}
+        >
+          다음
+        </span>
+      )}
+    </nav>
   );
 }

@@ -73,12 +73,16 @@ export default async function DonorLayout({
 
           {session ? (
             <>
-              <span
-                className="hidden sm:inline text-sm"
-                style={{ color: "var(--muted-foreground)" }}
+              <a
+                href="/donor/profile"
+                className="hidden sm:inline text-sm transition-opacity hover:opacity-70"
+                style={{
+                  color: "var(--muted-foreground)",
+                  textDecoration: "none",
+                }}
               >
                 {session.member.name}님
-              </span>
+              </a>
               <form action={logoutDonor}>
                 <button
                   type="submit"

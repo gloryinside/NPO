@@ -118,6 +118,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     joinPath,
     note,
     idNumber,
+    postalCode,
+    addressLine1,
+    addressLine2,
   } = body as {
     name?: string;
     phone?: string | null;
@@ -128,6 +131,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     joinPath?: string | null;
     note?: string | null;
     idNumber?: string | null;
+    postalCode?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
   };
 
   const ALLOWED_STATUS = ["active", "inactive", "deceased"];
@@ -157,6 +163,21 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   }
   if (joinPath !== undefined) update.join_path = joinPath?.trim() || null;
   if (note !== undefined) update.note = note?.trim() || null;
+
+  if (postalCode !== undefined) {
+    const pc = postalCode?.trim() ?? "";
+    if (pc && !/^\d{5}$/.test(pc)) {
+      return NextResponse.json(
+        { error: "우편번호는 5자리 숫자여야 합니다." },
+        { status: 400 }
+      );
+    }
+    update.postal_code = pc || null;
+  }
+  if (addressLine1 !== undefined)
+    update.address_line1 = addressLine1?.trim() || null;
+  if (addressLine2 !== undefined)
+    update.address_line2 = addressLine2?.trim() || null;
 
   if (Object.keys(update).length <= 1 && idNumber === undefined) {
     return NextResponse.json({ error: "수정할 항목이 없습니다." }, { status: 400 });

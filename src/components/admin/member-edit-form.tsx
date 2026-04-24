@@ -21,6 +21,9 @@ type EditForm = {
   note: string;
   /** "" = 변경 없음, "CLEAR" = 삭제, 그 외 = 새 13자리 값 */
   idNumber: string;
+  postalCode: string;
+  addressLine1: string;
+  addressLine2: string;
 };
 
 function toForm(m: Member): EditForm {
@@ -34,6 +37,9 @@ function toForm(m: Member): EditForm {
     joinPath: m.join_path ?? "",
     note: m.note ?? "",
     idNumber: "",
+    postalCode: m.postal_code ?? "",
+    addressLine1: m.address_line1 ?? "",
+    addressLine2: m.address_line2 ?? "",
   };
 }
 
@@ -81,6 +87,9 @@ export function MemberEditForm({ member }: Props) {
         status: form.status,
         joinPath: form.joinPath || null,
         note: form.note || null,
+        postalCode: form.postalCode || null,
+        addressLine1: form.addressLine1 || null,
+        addressLine2: form.addressLine2 || null,
       };
       // idNumber: "" = 변경 없음 (전송 안 함), "CLEAR" = 삭제, 그 외 = 값 설정
       if (form.idNumber === "CLEAR") {
@@ -124,6 +133,21 @@ export function MemberEditForm({ member }: Props) {
         value: member.member_type === "individual" ? "개인" : "법인",
       },
       { label: "가입경로", value: member.join_path ?? "-" },
+      {
+        label: "주소",
+        value: (() => {
+          const parts = [
+            member.postal_code,
+            member.address_line1,
+            member.address_line2,
+          ].filter(Boolean);
+          if (parts.length === 0) return "-";
+          const [pc, ...rest] = parts;
+          return rest.length === 0
+            ? pc
+            : `(${pc}) ${rest.filter(Boolean).join(" ")}`;
+        })(),
+      },
       { label: "메모", value: member.note ?? "-" },
       {
         label: "주민등록번호",
@@ -289,6 +313,41 @@ export function MemberEditForm({ member }: Props) {
             value={form.joinPath}
             onChange={field("joinPath")}
             placeholder="방문, 온라인, 지인 소개 등"
+            className={inputCls}
+          />
+        </div>
+
+        {/* 주소 (G-D157) */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium" style={{ color: "var(--text)" }}>
+            주소
+          </label>
+          <Input
+            id="edit-postal"
+            value={form.postalCode}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                postalCode: e.target.value.replace(/\D/g, ""),
+              }))
+            }
+            placeholder="우편번호 (5자리)"
+            maxLength={5}
+            inputMode="numeric"
+            className={`sm:w-40 ${inputCls}`}
+          />
+          <Input
+            id="edit-addr1"
+            value={form.addressLine1}
+            onChange={field("addressLine1")}
+            placeholder="기본 주소 (도로명/지번)"
+            className={inputCls}
+          />
+          <Input
+            id="edit-addr2"
+            value={form.addressLine2}
+            onChange={field("addressLine2")}
+            placeholder="상세 주소 (동/호수/건물)"
             className={inputCls}
           />
         </div>

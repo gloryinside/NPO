@@ -41,6 +41,32 @@ export async function HeroSection({ memberName, snapshot }: HeroSectionProps) {
     0,
   );
 
+  const secondaryStats: { label: string; value: string }[] = [
+    {
+      label: t("donor.dashboard.stats.active_pledges"),
+      value: `${snapshot.active_promises.length}${t("donor.dashboard.stats.active_unit")}`,
+    },
+    {
+      label: t("donor.dashboard.stats.upcoming"),
+      value:
+        snapshot.upcoming_payments.length > 0
+          ? formatAmount(upcomingTotal)
+          : t("donor.dashboard.stats.upcoming_none"),
+    },
+  ];
+
+  if (snapshot.streak >= 3) {
+    secondaryStats.push({
+      label: t("donor.dashboard.stats.streak"),
+      value: `${snapshot.streak}${t("donor.dashboard.stats.streak_suffix")}`,
+    });
+  } else if (daysUntilNext !== null) {
+    secondaryStats.push({
+      label: t("donor.dashboard.stats.next_payment"),
+      value: `D-${daysUntilNext}`,
+    });
+  }
+
   return (
     <section
       className="rounded-2xl p-6 sm:p-8"
@@ -50,94 +76,71 @@ export async function HeroSection({ memberName, snapshot }: HeroSectionProps) {
         border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
       }}
     >
-      <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-        {greeting}
-      </p>
-      <h1 className="mt-1 text-2xl font-bold" style={{ color: "var(--text)" }}>
-        {memberName}
-        {t("donor.dashboard.hero.honorific")}
-      </h1>
-      <p
-        className="mt-1 text-sm"
-        style={{ color: "var(--muted-foreground)" }}
-      >
-        {t("donor.dashboard.hero.subtitle")}
-      </p>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-5 sm:gap-8">
+        {/* 좌측 — 인사 + 주 지표 (3/5) */}
+        <div className="sm:col-span-3">
+          <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+            {greeting}
+          </p>
+          <h1
+            className="mt-1 text-2xl font-bold"
+            style={{ color: "var(--text)" }}
+          >
+            {memberName}
+            {t("donor.dashboard.hero.honorific")}
+          </h1>
+          <p
+            className="mt-1 text-sm"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            {t("donor.dashboard.hero.subtitle")}
+          </p>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatPill
-          label={t("donor.dashboard.stats.total_donated")}
-          value={formatAmount(snapshot.total_paid)}
-          accent
-        />
-        <StatPill
-          label={t("donor.dashboard.stats.active_pledges")}
-          value={`${snapshot.active_promises.length}${t("donor.dashboard.stats.active_unit")}`}
-        />
-        <StatPill
-          label={t("donor.dashboard.stats.upcoming")}
-          value={
-            snapshot.upcoming_payments.length > 0
-              ? formatAmount(upcomingTotal)
-              : t("donor.dashboard.stats.upcoming_none")
-          }
-        />
-        {snapshot.streak >= 3 ? (
-          <StatPill
-            label={t("donor.dashboard.stats.streak")}
-            value={`${snapshot.streak}${t("donor.dashboard.stats.streak_suffix")}`}
-          />
-        ) : daysUntilNext !== null ? (
-          <StatPill
-            label={t("donor.dashboard.stats.next_payment")}
-            value={`D-${daysUntilNext}`}
-          />
-        ) : (
-          <StatPill label="" value="" />
-        )}
+          <div className="mt-6">
+            <p
+              className="text-xs font-medium"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              {t("donor.dashboard.stats.total_donated")}
+            </p>
+            <p
+              className="mt-1 text-4xl font-bold sm:text-5xl"
+              style={{ color: "var(--accent)" }}
+            >
+              {formatAmount(snapshot.total_paid)}
+            </p>
+          </div>
+        </div>
+
+        {/* 우측 — 보조 지표 세로 스택 (2/5) */}
+        <div className="space-y-2 sm:col-span-2">
+          {secondaryStats.map((s) => (
+            <div
+              key={s.label}
+              className="flex items-center justify-between rounded-xl px-4 py-3"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--surface) 70%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--border) 60%, transparent)",
+              }}
+            >
+              <span
+                className="text-xs"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                {s.label}
+              </span>
+              <span
+                className="text-base font-semibold"
+                style={{ color: "var(--text)" }}
+              >
+                {s.value}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
-  );
-}
-
-function StatPill({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  if (!label && !value) {
-    return <div aria-hidden="true" />;
-  }
-  return (
-    <div
-      className="rounded-xl px-4 py-3"
-      style={{
-        background: accent
-          ? "var(--accent)"
-          : "color-mix(in srgb, var(--surface) 70%, transparent)",
-        border: accent
-          ? "none"
-          : "1px solid color-mix(in srgb, var(--border) 60%, transparent)",
-      }}
-    >
-      <p
-        className="text-xs"
-        style={{
-          color: accent ? "rgba(255,255,255,0.75)" : "var(--muted-foreground)",
-        }}
-      >
-        {label}
-      </p>
-      <p
-        className="mt-1 text-lg font-bold"
-        style={{ color: accent ? "#fff" : "var(--text)" }}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
