@@ -45,9 +45,18 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   }
 
   const action = body.action;
-  if (action !== "suspend" && action !== "cancel" && action !== "changeAmount" && action !== "resume") {
+  if (
+    action !== "suspend" &&
+    action !== "cancel" &&
+    action !== "changeAmount" &&
+    action !== "resume" &&
+    action !== "changePayDay"
+  ) {
     return NextResponse.json(
-      { error: "action 은 suspend, cancel, resume, changeAmount 중 하나여야 합니다." },
+      {
+        error:
+          "action 은 suspend, cancel, resume, changeAmount, changePayDay 중 하나여야 합니다.",
+      },
       { status: 400 }
     );
   }
@@ -238,6 +247,39 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       previousAmount: result.previousAmount,
       historyId: result.historyId,
     });
+  }
+
+  // SP-3: 결제일 변경 — active 약정의 pay_day 를 1~28일로 교체
+  if (action === "changePayDay") {
+    if (promise.status !== "active") {
+      return NextResponse.json(
+        { error: "진행중인 약정만 결제일을 변경할 수 있습니다." },
+        { status: 400 }
+      );
+    }
+    const day = Number(body.pay_day);
+    if (!Number.isFinite(day) || !Number.isInteger(day) || day < 1 || day > 28) {
+      return NextResponse.json(
+        { error: "결제일은 1~28일 사이의 정수여야 합니다." },
+        { status: 400 }
+      );
+    }
+
+    const { error: updateErr } = await supabase
+      .from("promises")
+      .update({ pay_day: day, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("org_id", session.member.org_id)
+      .eq("member_id", session.member.id);
+
+    if (updateErr) {
+      return NextResponse.json(
+        { error: "결제일 변경에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true, pay_day: day });
   }
 
   const nowIso = new Date().toISOString();
