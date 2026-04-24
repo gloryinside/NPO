@@ -184,7 +184,7 @@ export default async function DonorHomePage() {
 
       {/* ── 약정·납입·영수증 (스트리밍) ── */}
       <Suspense fallback={<DashboardBodySkeleton />}>
-        <DashboardBody snapshot={snapshot} />
+        <DashboardBody snapshot={snapshot} memberId={member.id} orgId={member.org_id} />
       </Suspense>
     </div>
   );
@@ -192,10 +192,38 @@ export default async function DonorHomePage() {
 
 async function DashboardBody({
   snapshot,
+  memberId,
+  orgId,
 }: {
   snapshot: DonorDashboardSnapshot;
+  memberId: string;
+  orgId: string;
 }) {
   const t = await getT();
+  const supabase = createSupabaseAdminClient();
+
+  // 공지사항 최근 2건 + 미답변 문의 건수 병렬 조회
+  const [noticeRes, openInquiryRes] = await Promise.all([
+    supabase
+      .from("board_posts")
+      .select("id, title, pinned, published_at")
+      .eq("org_id", orgId)
+      .eq("post_type", "notice")
+      .eq("published", true)
+      .order("pinned", { ascending: false })
+      .order("published_at", { ascending: false })
+      .limit(3),
+    supabase
+      .from("inquiries")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .eq("member_id", memberId)
+      .eq("status", "open"),
+  ]);
+
+  const notices = (noticeRes.data ?? []) as { id: string; title: string; pinned: boolean; published_at: string | null }[];
+  const openInquiries = openInquiryRes.count ?? 0;
+
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
       {/* 좌측 주 영역 (2/3) */}
@@ -346,6 +374,63 @@ async function DashboardBody({
 
       {/* 우측 보조 영역 (1/3) */}
       <div className="space-y-8">
+      {/* 미답변 문의 알림 */}
+      {openInquiries > 0 && (
+        <section
+          role="alert"
+          className="rounded-2xl border border-[var(--warning)] bg-[var(--warning-soft)] p-4"
+        >
+          <p className="text-sm font-semibold text-[var(--warning)]">
+            답변 대기 중인 문의 {openInquiries}건
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            관리자가 문의에 답변을 등록했습니다.
+          </p>
+          <a
+            href="/donor/support/inquiries"
+            className="mt-3 inline-block rounded-lg bg-[var(--warning)] px-3 py-1.5 text-xs font-semibold text-white no-underline"
+          >
+            문의 확인하기 →
+          </a>
+        </section>
+      )}
+
+      {/* 최근 공지사항 */}
+      {notices.length > 0 && (
+        <section>
+          <SectionHeader
+            title="공지사항"
+            href="/donor/support/notice"
+            linkLabel="전체보기"
+          />
+          <ul className="space-y-2">
+            {notices.map((n) => (
+              <li
+                key={n.id}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+              >
+                <a
+                  href="/donor/support/notice"
+                  className="block no-underline"
+                >
+                  <p className="truncate text-sm font-medium text-[var(--text)]">
+                    {n.pinned && (
+                      <span className="mr-1 text-[var(--accent)]">📌</span>
+                    )}
+                    {n.title}
+                  </p>
+                  {n.published_at && (
+                    <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                      {new Date(n.published_at).toLocaleDateString("ko-KR")}
+                    </p>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* 영수증 */}
       {snapshot.latest_receipt && (
         <section>
