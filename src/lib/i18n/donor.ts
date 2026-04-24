@@ -86,6 +86,9 @@ const MESSAGES: Record<DonorLocale, Record<string, string>> = {
     "donor.dashboard.card_expiry.expired": "이미 만료",
     "donor.dashboard.card_expiry.cta": "카드 업데이트하기",
     "donor.dashboard.empty.payments": "납입 내역이 없습니다.",
+    "donor.dashboard.receipt.year_prefix": "",
+    "donor.dashboard.receipt.year_suffix": "년 기부금 영수증",
+    "donor.dashboard.section.my_info": "내 정보",
 
     // 공통
     "common.default_campaign": "정기후원",
@@ -150,6 +153,9 @@ const MESSAGES: Record<DonorLocale, Record<string, string>> = {
     "donor.dashboard.card_expiry.expired": "Already expired",
     "donor.dashboard.card_expiry.cta": "Update card",
     "donor.dashboard.empty.payments": "No payment history.",
+    "donor.dashboard.receipt.year_prefix": "Donation receipt for ",
+    "donor.dashboard.receipt.year_suffix": "",
+    "donor.dashboard.section.my_info": "My profile",
 
     // Common
     "common.default_campaign": "Recurring donation",

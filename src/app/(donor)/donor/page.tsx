@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getDashboardSnapshot } from "@/lib/donor/dashboard-snapshot";
+import { getT } from "@/lib/i18n/donor";
 import { HeroSection } from "@/components/donor/dashboard/hero-section";
 import {
   ActionBannerSkeleton,
@@ -54,6 +55,7 @@ export default async function DonorHomePage() {
   if (!session) redirect("/donor/login");
   const { member } = session;
   const supabase = createSupabaseAdminClient();
+  const t = await getT();
 
   // 단일 RPC — 기존 7개 쿼리를 통합 (RTT 6→1)
   const snapshot = await getDashboardSnapshot(
@@ -68,7 +70,7 @@ export default async function DonorHomePage() {
         className="p-8 text-center text-sm"
         style={{ color: "var(--muted-foreground)" }}
       >
-        대시보드를 불러오는 중 오류가 발생했습니다. 잠시 후 새로고침해 주세요.
+        {t("donor.dashboard.error.load")}
       </div>
     );
   }
@@ -103,7 +105,8 @@ export default async function DonorHomePage() {
             className="text-sm font-semibold"
             style={{ color: "var(--warning)" }}
           >
-            <span aria-hidden="true">💳</span> 결제 카드 만료 임박
+            <span aria-hidden="true">💳</span>{" "}
+            {t("donor.dashboard.card_expiry.title")}
           </p>
           <ul
             className="mt-2 space-y-1 text-xs"
@@ -111,10 +114,13 @@ export default async function DonorHomePage() {
           >
             {snapshot.expiring_cards.map((c) => (
               <li key={c.promise_id}>
-                <b>{c.campaign_title ?? "정기후원"}</b> — {c.expiry_year}/
-                {String(c.expiry_month).padStart(2, "0")} 만료
+                <b>
+                  {c.campaign_title ??
+                    t("donor.dashboard.card_expiry.default_title")}
+                </b>{" "}
+                — {c.expiry_year}/{String(c.expiry_month).padStart(2, "0")}
                 {c.days_until_expiry < 0
-                  ? " (이미 만료)"
+                  ? ` (${t("donor.dashboard.card_expiry.expired")})`
                   : ` (D-${c.days_until_expiry})`}
               </li>
             ))}
@@ -124,7 +130,7 @@ export default async function DonorHomePage() {
             className="mt-3 inline-block rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
             style={{ background: "var(--warning)", textDecoration: "none" }}
           >
-            카드 업데이트하기 →
+            {t("donor.dashboard.card_expiry.cta")} →
           </a>
         </section>
       )}
@@ -146,20 +152,20 @@ export default async function DonorHomePage() {
             className="text-base font-semibold"
             style={{ color: "var(--text)" }}
           >
-            첫 후원을 시작해보세요
+            {t("donor.dashboard.onboarding.title")}
           </p>
           <p
             className="mt-1 text-sm"
             style={{ color: "var(--muted-foreground)" }}
           >
-            작은 정기후원부터 변화가 시작됩니다.
+            {t("donor.dashboard.onboarding.body")}
           </p>
           <a
             href="/"
             className="mt-4 inline-block rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
             style={{ background: "var(--accent)", textDecoration: "none" }}
           >
-            캠페인 둘러보기 →
+            {t("donor.dashboard.onboarding.cta")} →
           </a>
         </section>
       )}
@@ -200,23 +206,24 @@ export default async function DonorHomePage() {
   );
 }
 
-function DashboardBody({
+async function DashboardBody({
   snapshot,
   member,
 }: {
   snapshot: DonorDashboardSnapshot;
   member: Member;
 }) {
+  const t = await getT();
   return (
     <div className="space-y-8">
       {/* 활성 약정 */}
       {snapshot.active_promises.length > 0 && (
         <section>
           <SectionHeader
-            title="활성 약정"
+            title={t("donor.dashboard.section.active_promises")}
             count={snapshot.active_promises.length}
             href="/donor/promises"
-            linkLabel="전체 보기"
+            linkLabel={t("donor.dashboard.section.view_all")}
           />
           <div className="space-y-2">
             {snapshot.active_promises.map((p) => (
@@ -239,13 +246,15 @@ function DashboardBody({
                       className="truncate text-sm font-medium"
                       style={{ color: "var(--text)" }}
                     >
-                      {p.campaigns?.title ?? "정기후원"}
+                      {p.campaigns?.title ?? t("common.default_campaign")}
                     </p>
                     <p
                       className="text-xs"
                       style={{ color: "var(--muted-foreground)" }}
                     >
-                      {formatAmount(p.amount)} · 매월 {p.pay_day ?? "-"}일
+                      {formatAmount(p.amount)} · {t("common.monthly")}{" "}
+                      {p.pay_day ?? "-"}
+                      {t("common.day")}
                     </p>
                   </div>
                 </div>
@@ -270,9 +279,9 @@ function DashboardBody({
       {/* 최근 납입 내역 */}
       <section>
         <SectionHeader
-          title="최근 납입 내역"
+          title={t("donor.dashboard.section.recent_payments")}
           href="/donor/payments"
-          linkLabel="전체 보기"
+          linkLabel={t("donor.dashboard.section.view_all")}
         />
         <div
           className="overflow-hidden rounded-xl"
@@ -286,7 +295,7 @@ function DashboardBody({
               className="p-10 text-center text-sm"
               style={{ color: "var(--muted-foreground)" }}
             >
-              납입 내역이 없습니다.
+              {t("donor.dashboard.empty.payments")}
             </div>
           ) : (
             <ul>
@@ -309,7 +318,7 @@ function DashboardBody({
                         className="truncate text-sm font-medium"
                         style={{ color: "var(--text)" }}
                       >
-                        {p.campaigns?.title ?? "일반 후원"}
+                        {p.campaigns?.title ?? t("common.general_donation")}
                       </p>
                       <p
                         className="text-xs"
@@ -354,9 +363,9 @@ function DashboardBody({
       {snapshot.latest_receipt && (
         <section>
           <SectionHeader
-            title="기부금 영수증"
+            title={t("donor.dashboard.section.receipts")}
             href="/donor/receipts"
-            linkLabel="전체 보기"
+            linkLabel={t("donor.dashboard.section.view_all")}
           />
           <div
             className="flex items-center justify-between rounded-xl px-4 py-4"
@@ -370,7 +379,9 @@ function DashboardBody({
                 className="text-sm font-medium"
                 style={{ color: "var(--text)" }}
               >
-                {snapshot.latest_receipt.year}년 기부금 영수증
+                {t("donor.dashboard.receipt.year_prefix")}
+                {snapshot.latest_receipt.year}
+                {t("donor.dashboard.receipt.year_suffix")}
               </p>
               <p
                 className="mt-0.5 text-xs"
@@ -391,14 +402,14 @@ function DashboardBody({
                   textDecoration: "none",
                 }}
               >
-                PDF 다운로드
+                {t("common.pdf_download")}
               </a>
             ) : (
               <span
                 className="text-xs"
                 style={{ color: "var(--muted-foreground)" }}
               >
-                준비 중
+                {t("common.preparing")}
               </span>
             )}
           </div>
@@ -407,7 +418,7 @@ function DashboardBody({
 
       {/* 프로필 */}
       <section>
-        <SectionHeader title="내 정보" />
+        <SectionHeader title={t("donor.dashboard.section.my_info")} />
         <DonorProfileSection
           member={{
             id: member.id,
