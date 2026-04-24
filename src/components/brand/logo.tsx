@@ -18,7 +18,7 @@ export function Logo({ height = 28, color, className }: LogoProps) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="에버후원금관리"
+      aria-label="Systemever NPOERP"
       className={className}
       style={color ? { color } : undefined}
     >

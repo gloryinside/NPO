@@ -56,7 +56,7 @@ export function LogoWithText({
         </span>
       )}
       <Logo height={logoHeight} />
-      <span>에버후원금관리</span>
+      <span>Systemever NPOERP</span>
     </span>
   );
 }

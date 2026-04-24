@@ -52,6 +52,18 @@ export default async function DonorSettingsPage({
         </p>
       </div>
 
+      {/* 내 정보(프로필) 바로가기 */}
+      <a
+        href="/donor/profile"
+        className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4 no-underline transition-colors hover:bg-[var(--surface-2)]"
+      >
+        <div>
+          <p className="text-sm font-semibold text-[var(--text)]">{t('donor.profile.title')}</p>
+          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{t('donor.profile.subtitle')}</p>
+        </div>
+        <span className="text-[var(--muted-foreground)]">→</span>
+      </a>
+
       <SettingsTabs
         active={activeTab}
         labels={{

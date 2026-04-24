@@ -28,12 +28,14 @@ const NAV: NavGroup[] = [
       { label: "LTV / 코호트", href: "/admin/stats/ltv" },
       { label: "기부금영수증", href: "/admin/receipts" },
       { label: "데이터 품질", href: "/admin/reports/data-health" },
+      { label: "마케팅 지출 분석", href: "/admin/marketing-spend" },
     ],
   },
   {
     group: "후원관리",
     items: [
       { label: "후원자 관리", href: "/admin/members" },
+      { label: "후원자 중복 관리", href: "/admin/members/duplicates" },
       { label: "약정 관리", href: "/admin/promises" },
       { label: "약정 변경 추이", href: "/admin/promises/changes" },
       { label: "납입 관리", href: "/admin/payments" },
@@ -72,6 +74,7 @@ const NAV: NavGroup[] = [
       { label: "기관 설정", href: "/admin/settings" },
       { label: "사용자 관리", href: "/admin/users" },
       { label: "감사 로그", href: "/admin/audit-logs" },
+      { label: "알림 센터", href: "/admin/notifications" },
       { label: "이메일 템플릿", href: "/admin/email-templates" },
       { label: "이메일 반송", href: "/admin/email-bounces" },
       { label: "컴플라이언스", href: "/admin/compliance" },
