@@ -13,6 +13,7 @@ import { DonorPaymentsFilter } from "@/components/donor/donor-payments-filter";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
 import { PaymentsExportBar } from "@/components/donor/payments-export-bar";
+import { getPgErrorMessage } from "@/lib/payments/pg-error-messages";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
 import { Suspense } from "react";
 
@@ -213,7 +214,18 @@ export default async function DonorPaymentsPage({
                     {formatDate(p.pay_date)}
                   </TableCell>
                   <TableCell style={{ color: "var(--text)" }}>
-                    {p.campaigns?.title ?? "일반 후원"}
+                    <div>{p.campaigns?.title ?? "일반 후원"}</div>
+                    {p.pay_status === "failed" && p.fail_reason && (() => {
+                      const { message, action } = getPgErrorMessage(p.fail_reason);
+                      return (
+                        <p
+                          className="mt-1 text-xs"
+                          style={{ color: "var(--negative)" }}
+                        >
+                          {message} {action}
+                        </p>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell
                     className="font-medium"

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/components/donor/ui/useOnline";
+import { getPgErrorMessage } from "@/lib/payments/pg-error-messages";
 
 /**
  * G-D06 / G-D29: 실패·미납 결제 재시도 버튼 + 쿨다운 카운트다운
@@ -72,9 +73,10 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
       if (data.success) {
         alert("결제가 성공적으로 재처리되었습니다.");
       } else {
+        const { message, action } = getPgErrorMessage(data.code);
         if (
           confirm(
-            `재시도가 실패했습니다: ${data.message ?? "결제 승인이 거절되었습니다."}\n\n카드를 변경하시겠습니까?`
+            `재시도가 실패했습니다.\n${message} ${action}\n\n카드를 변경하시겠습니까?`
           )
         ) {
           router.push("/donor/promises");
