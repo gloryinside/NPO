@@ -165,14 +165,17 @@ export default async function DonorHomePage() {
       )}
 
       {/* ── 빠른 이동 ── */}
-      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <nav
+        className="grid grid-cols-2 gap-3 sm:grid-cols-5"
+        aria-label="빠른 이동"
+      >
         {[
-          { href: "/donor/impact", label: "✨ 임팩트", accent: true },
-          { href: "/donor/promises", label: "📋 약정", accent: false },
-          { href: "/donor/payments", label: "💳 납입", accent: false },
-          { href: "/donor/receipts", label: "🧾 영수증", accent: false },
-          { href: "/donor/cheer", label: "💬 응원", accent: false },
-        ].map(({ href, label, accent }) => (
+          { href: "/donor/impact", icon: "✨", label: "임팩트", accent: true },
+          { href: "/donor/promises", icon: "📋", label: "약정", accent: false },
+          { href: "/donor/payments", icon: "💳", label: "납입", accent: false },
+          { href: "/donor/receipts", icon: "🧾", label: "영수증", accent: false },
+          { href: "/donor/cheer", icon: "💬", label: "응원", accent: false },
+        ].map(({ href, icon, label, accent }) => (
           <a
             key={href}
             href={href}
@@ -184,7 +187,7 @@ export default async function DonorHomePage() {
               border: accent ? "none" : "1px solid var(--border)",
             }}
           >
-            {label}
+            <span aria-hidden="true">{icon}</span> {label}
           </a>
         ))}
       </nav>
