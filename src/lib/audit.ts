@@ -48,7 +48,8 @@ export type AuditAction =
   | "admin.password_change"
   | "admin.password_reset_request"
   | "admin.data_export"
-  | "admin.org_settings_change";
+  | "admin.org_settings_change"
+  | "admin.mfa_reset";
 
 /**
  * action별 metadata 필드 권장 스키마 (런타임 강제는 안 함, 조회 시 참조).

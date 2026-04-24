@@ -1,6 +1,7 @@
 import { getDonorSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { getT } from '@/lib/i18n/donor'
 import { getDonorImpact, getImpactUnitAmount } from '@/lib/donor/impact'
 import { getOrgSettingsCached } from '@/lib/org/settings'
 import { ImpactDonutChart } from '@/components/donor/impact/ImpactDonutChart'
@@ -39,6 +40,7 @@ export default async function DonorImpactPage() {
   const session = await getDonorSession()
   if (!session) redirect('/donor/login')
   const { member } = session
+  const t = await getT()
   const supabase = createSupabaseAdminClient()
 
   const impact = await getDonorImpact(supabase, member.org_id, member.id)
@@ -57,10 +59,10 @@ export default async function DonorImpactPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text)]">
-            {member.name}님의 임팩트
+            {t("donor.impact.title", { name: member.name })}
           </h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            지금까지의 후원이 만들어낸 변화를 확인하세요.
+            {t("donor.impact.subtitle")}
           </p>
         </div>
         {impact.byYear.length > 0 && (
@@ -78,9 +80,9 @@ export default async function DonorImpactPage() {
       {impact.paymentCount === 0 ? (
         <EmptyState
           icon="🌱"
-          title="아직 후원 내역이 없습니다."
-          description="첫 후원으로 변화를 시작해보세요."
-          cta={{ href: '/', label: '캠페인 둘러보기' }}
+          title={t("donor.impact.empty.title")}
+          description={t("donor.impact.empty.body")}
+          cta={{ href: '/', label: t("donor.impact.empty.cta") }}
         />
       ) : (
         <>
@@ -103,7 +105,7 @@ export default async function DonorImpactPage() {
             />
 
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
-              나의 임팩트
+              {t("donor.impact.hero.label")}
             </p>
             <p className="mt-3 text-4xl font-extrabold text-white sm:text-5xl">
               {formatKRW(impact.totalAmount)}
@@ -112,18 +114,11 @@ export default async function DonorImpactPage() {
               ({formatKRWFull(impact.totalAmount)})
             </p>
             <p className="mt-4 text-sm text-white/80">
-              {formatDate(impact.firstPayDate)}부터 총{' '}
-              <span className="font-semibold text-white">
-                {impact.paymentCount}회
-              </span>{' '}
-              후원
+              {t("donor.impact.hero.since", { date: formatDate(impact.firstPayDate), count: impact.paymentCount })}
               {impact.activeMonths > 0 && (
                 <>
                   {' '}
-                  · 함께한{' '}
-                  <span className="font-semibold text-white">
-                    {impact.activeMonths}개월
-                  </span>
+                  · {t("donor.impact.hero.months", { months: impact.activeMonths })}
                 </>
               )}
             </p>
@@ -133,27 +128,27 @@ export default async function DonorImpactPage() {
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MetricCard
               icon="💰"
-              label="누적 후원액"
+              label={t("donor.impact.metric.total_amount")}
               value={formatKRW(impact.totalAmount)}
               sub={formatKRWFull(impact.totalAmount)}
               color="var(--accent)"
             />
             <MetricCard
               icon="🔄"
-              label="후원 횟수"
-              value={`${impact.paymentCount}회`}
+              label={t("donor.impact.metric.payment_count")}
+              value={t("donor.impact.metric.count_unit", { count: impact.paymentCount })}
               color="var(--positive)"
             />
             <MetricCard
               icon="📅"
-              label="함께한 기간"
-              value={`${impact.activeMonths}개월`}
+              label={t("donor.impact.metric.active_months")}
+              value={t("donor.impact.metric.months_unit", { months: impact.activeMonths })}
               color="var(--info)"
             />
             <MetricCard
               icon="🌱"
-              label={`지원 추정 (${unitLabel}당)`}
-              value={`${estimatedBeneficiaries.toLocaleString('ko-KR')}건`}
+              label={t("donor.impact.metric.beneficiaries", { unit: unitLabel })}
+              value={t("donor.impact.metric.count_unit", { count: estimatedBeneficiaries.toLocaleString('ko-KR') })}
               color="var(--warning)"
             />
           </section>
@@ -161,7 +156,7 @@ export default async function DonorImpactPage() {
           {/* ── 캠페인별 분포 ── */}
           {impact.byCampaign.length > 0 && (
             <section>
-              <SectionTitle>참여하신 캠페인</SectionTitle>
+              <SectionTitle>{t("donor.impact.section.campaigns")}</SectionTitle>
               <div
                 className="overflow-hidden rounded-2xl border"
                 style={{
@@ -202,7 +197,7 @@ export default async function DonorImpactPage() {
                                 className="text-xs"
                                 style={{ color: 'var(--muted-foreground)' }}
                               >
-                                평균 {formatKRWFull(avg)} / 회
+                                {t("donor.impact.campaign.avg_per_payment", { amount: formatKRWFull(avg) })}
                               </p>
                             )}
                           </div>
@@ -217,7 +212,7 @@ export default async function DonorImpactPage() {
                               className="text-xs"
                               style={{ color: 'var(--muted-foreground)' }}
                             >
-                              {c.count}회 · {pct}%
+                              {t("donor.impact.campaign.count_pct", { count: c.count, pct })}
                             </p>
                           </div>
                         </li>
@@ -232,7 +227,7 @@ export default async function DonorImpactPage() {
           {/* ── 월별 히트맵 ── */}
           {impact.byMonth.length > 0 && (
             <section>
-              <SectionTitle>월별 후원 히트맵</SectionTitle>
+              <SectionTitle>{t("donor.impact.section.heatmap")}</SectionTitle>
               <div
                 className="overflow-hidden rounded-2xl border p-6"
                 style={{
@@ -248,7 +243,7 @@ export default async function DonorImpactPage() {
           {/* ── 연도별 추이 ── */}
           {impact.byYear.length >= 2 && (
             <section>
-              <SectionTitle>연도별 후원 추이</SectionTitle>
+              <SectionTitle>{t("donor.impact.section.yearly_trend")}</SectionTitle>
               <div
                 className="overflow-hidden rounded-2xl border p-6"
                 style={{
@@ -275,7 +270,7 @@ export default async function DonorImpactPage() {
           {/* ── 연도별 상세 표 ── */}
           {impact.byYear.length > 0 && (
             <section>
-              <SectionTitle>연도별 상세</SectionTitle>
+              <SectionTitle>{t("donor.impact.section.yearly_detail")}</SectionTitle>
               <div
                 className="overflow-hidden rounded-2xl border"
                 style={{
@@ -284,7 +279,7 @@ export default async function DonorImpactPage() {
                 }}
               >
                 <table className="w-full">
-                  <caption className="sr-only">연도별 후원 내역 상세</caption>
+                  <caption className="sr-only">{t("donor.impact.section.yearly_detail")}</caption>
                   <thead
                     style={{
                       background: 'var(--surface-2)',
@@ -292,7 +287,7 @@ export default async function DonorImpactPage() {
                     }}
                   >
                     <tr>
-                      {['연도', '금액', '건수'].map((h, i) => (
+                      {[t("donor.impact.table.year"), t("donor.impact.table.amount"), t("donor.impact.table.count")].map((h, i) => (
                         <th
                           key={h}
                           className="px-4 py-3 text-xs font-semibold uppercase tracking-wider"
@@ -317,7 +312,7 @@ export default async function DonorImpactPage() {
                           className="px-4 py-3 text-sm font-medium"
                           style={{ color: 'var(--text)' }}
                         >
-                          {y.year}년
+                          {t("donor.impact.table.year_value", { year: y.year })}
                         </td>
                         <td
                           className="px-4 py-3 text-right text-sm font-bold"
@@ -329,7 +324,7 @@ export default async function DonorImpactPage() {
                           className="px-4 py-3 text-right text-sm"
                           style={{ color: 'var(--muted-foreground)' }}
                         >
-                          {y.count}회
+                          {t("donor.impact.metric.count_unit", { count: y.count })}
                         </td>
                       </tr>
                     ))}
@@ -348,15 +343,15 @@ export default async function DonorImpactPage() {
               border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
             }}
           >
-            <p className="text-2xl mb-2">❤️</p>
+            <p className="text-2xl mb-2" aria-hidden="true">❤️</p>
             <p className="text-base font-semibold" style={{ color: 'var(--text)' }}>
-              당신의 후원이 세상을 바꾸고 있습니다
+              {t("donor.impact.cta.title")}
             </p>
             <p
               className="mt-1 text-sm"
               style={{ color: 'var(--muted-foreground)' }}
             >
-              주변에도 알려 더 많은 변화를 함께 만들어요.
+              {t("donor.impact.cta.body")}
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <a
@@ -364,7 +359,7 @@ export default async function DonorImpactPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: 'var(--accent)' }}
               >
-                <span aria-hidden="true">🎁</span> 친구 초대하기
+                <span aria-hidden="true">🎁</span> {t("donor.impact.invite")}
               </a>
               <a
                 href="/donor"
@@ -376,7 +371,7 @@ export default async function DonorImpactPage() {
                   textDecoration: 'none',
                 }}
               >
-                ← 마이페이지
+                {t("donor.impact.back")}
               </a>
             </div>
           </section>
@@ -417,7 +412,7 @@ function MetricCard({
       className="flex flex-col items-center rounded-2xl border p-5 text-center"
       style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
     >
-      <span className="text-2xl">{icon}</span>
+      <span className="text-2xl" aria-hidden="true">{icon}</span>
       <p
         className="mt-2 text-xs font-medium uppercase tracking-wider"
         style={{ color: 'var(--muted-foreground)' }}

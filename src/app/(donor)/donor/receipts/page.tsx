@@ -1,5 +1,6 @@
 import { requireDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getT } from "@/lib/i18n/donor";
 import { EmptyState } from "@/components/donor/ui/EmptyState";
 
 type ReceiptRow = {
@@ -27,6 +28,7 @@ function formatDate(value: string | null) {
 
 export default async function DonorReceiptsPage() {
   const { member } = await requireDonorSession();
+  const t = await getT();
   const supabase = createSupabaseAdminClient();
 
   const { data } = await supabase
@@ -61,14 +63,14 @@ export default async function DonorReceiptsPage() {
         role="note"
       >
         <span aria-hidden="true">ℹ️</span>{" "}
-        홈택스 연말정산 간소화 연계는 준비 중입니다. 현재는 기부금 영수증 PDF를 직접 다운로드하여 제출해 주세요.
+        {t("donor.receipts.hometax_note")}
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text)]">기부금 영수증</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">{t("donor.receipts.title")}</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            발급된 기부금 영수증을 확인하고 다운로드하세요.
+            {t("donor.receipts.subtitle")}
           </p>
         </div>
         {receipts.length > 0 && (
@@ -82,7 +84,7 @@ export default async function DonorReceiptsPage() {
               textDecoration: "none",
             }}
           >
-            📋 연말정산 요약
+            <span aria-hidden="true">📋</span> {t("donor.receipts.tax_summary")}
           </a>
         )}
       </div>
@@ -90,22 +92,22 @@ export default async function DonorReceiptsPage() {
       {receipts.length === 0 ? (
         <EmptyState
           icon="🧾"
-          title="발급된 영수증이 없습니다."
-          description="후원 내역에 기반해 연말 기준으로 발급됩니다."
+          title={t("donor.receipts.empty.title")}
+          description={t("donor.receipts.empty.body")}
         />
       ) : (
         <>
           {/* 연도별 일괄 다운로드 */}
           <section>
             <h2 className="mb-3 text-sm font-semibold text-[var(--text)]">
-              연도별 일괄 다운로드
+              {t("donor.receipts.section.bulk_download")}
             </h2>
             <div className="flex flex-wrap gap-2">
               {years.map(([year, g]) => {
                 const disabled = g.downloadable === 0;
                 const title = disabled
-                  ? `${year}년 영수증은 아직 PDF가 생성되지 않았습니다.`
-                  : `${g.downloadable}건의 PDF를 ZIP으로 다운로드`;
+                  ? t("donor.receipts.year_receipt_pdf_missing", { year })
+                  : t("donor.receipts.zip_download_title", { count: g.downloadable });
                 return disabled ? (
                   <span
                     key={year}
@@ -118,7 +120,7 @@ export default async function DonorReceiptsPage() {
                       color: "var(--muted-foreground)",
                     }}
                   >
-                    📦 {year}년 ZIP (PDF 준비 중 · {g.total}건)
+                    <span aria-hidden="true">📦</span> {t("donor.receipts.zip_pending", { year, total: g.total })}
                   </span>
                 ) : (
                   <a
@@ -133,7 +135,7 @@ export default async function DonorReceiptsPage() {
                       textDecoration: "none",
                     }}
                   >
-                    📦 {year}년 전체 ZIP ({g.downloadable}/{g.total}건)
+                    <span aria-hidden="true">📦</span> {t("donor.receipts.zip_ready", { year, downloadable: g.downloadable, total: g.total })}
                   </a>
                 );
               })}
@@ -142,15 +144,14 @@ export default async function DonorReceiptsPage() {
               className="mt-2 text-xs"
               style={{ color: "var(--muted-foreground)" }}
             >
-              PDF가 생성된 영수증만 포함되며, 제외 내역은 ZIP 내 README.txt
-              에서 확인할 수 있습니다.
+              {t("donor.receipts.export_note")}
             </p>
           </section>
 
           {/* 개별 영수증 목록 */}
           <section>
             <h2 className="mb-3 text-sm font-semibold text-[var(--text)]">
-              개별 영수증
+              {t("donor.receipts.section.individual")}
             </h2>
             <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
               <ul>
@@ -163,11 +164,11 @@ export default async function DonorReceiptsPage() {
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-[var(--text)]">
-                        {r.year}년 기부금 영수증
+                        {t("donor.receipts.item.title", { year: r.year })}
                       </p>
                       <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-[var(--muted-foreground)]">
                         <span className="font-mono">{r.receipt_code}</span>
-                        <span>발급: {formatDate(r.issued_at)}</span>
+                        <span>{t("donor.receipts.item.issued", { date: formatDate(r.issued_at) })}</span>
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
@@ -185,7 +186,7 @@ export default async function DonorReceiptsPage() {
                         </a>
                       ) : (
                         <span className="inline-flex min-h-11 items-center text-xs text-[var(--muted-foreground)]">
-                          준비 중
+                          {t("common.preparing")}
                         </span>
                       )}
                     </div>

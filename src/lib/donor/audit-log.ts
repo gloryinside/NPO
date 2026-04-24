@@ -7,7 +7,8 @@ export type MemberAuditAction =
   | "account_delete"
   | "email_change_attempt"
   | "2fa_enroll"
-  | "2fa_unenroll";
+  | "2fa_unenroll"
+  | "new_device_login";
 
 /**
  * G-D25: 후원자 본인 계정 변경 이벤트 기록.

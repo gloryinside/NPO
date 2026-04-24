@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useDonorT } from "@/lib/i18n/use-donor-t";
 
 interface MfaState {
   loading: boolean;
@@ -24,6 +25,7 @@ type EnrollStep =
  * - OTP 로그인 사용자에게는 미지원 안내
  */
 export function MfaCard() {
+  const t = useDonorT();
   const [state, setState] = useState<MfaState>({
     loading: true,
     isOtp: false,
@@ -57,6 +59,19 @@ export function MfaCard() {
     refresh();
   }, [refresh]);
 
+  // 백업 코드 평문이 화면에 떠 있는 동안 페이지 이탈 시 경고 (저장 유도)
+  useEffect(() => {
+    if (!newBackupCodes || newBackupCodes.length === 0) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // returnValue 설정은 레거시 브라우저 호환 — 최신 브라우저는 기본 문구만 표시
+      e.returnValue = t("donor.mfa.backup.leave_guard");
+      return t("donor.mfa.backup.leave_guard");
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [newBackupCodes, t]);
+
   async function startEnroll() {
     setWorking(true);
     setError(null);
@@ -68,7 +83,7 @@ export function MfaCard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "활성화를 시작할 수 없습니다.");
+        setError(data.error ?? t("donor.mfa.enroll.verify") + " — error");
         return;
       }
       setEnroll({
@@ -99,7 +114,7 @@ export function MfaCard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "인증에 실패했습니다.");
+        setError(data.error ?? t("donor.mfa.enroll.verify") + " — error");
         return;
       }
       setEnroll({ phase: "idle" });
@@ -116,7 +131,7 @@ export function MfaCard() {
   async function regenerateBackup() {
     if (
       !confirm(
-        "백업 코드를 새로 생성하시겠습니까? 기존 미사용 코드는 즉시 폐기됩니다.",
+        t("donor.mfa.backup.confirm_regen"),
       )
     ) {
       return;
@@ -131,7 +146,7 @@ export function MfaCard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "재생성에 실패했습니다.");
+        setError(data.error ?? t("donor.mfa.backup.regenerate") + " — error");
         return;
       }
       setNewBackupCodes(data.backup_codes as string[]);
@@ -166,7 +181,7 @@ export function MfaCard() {
   }
 
   async function handleUnenroll(factorId: string) {
-    if (!confirm("2단계 인증을 해제하시겠습니까?")) return;
+    if (!confirm(t("donor.mfa.confirm_disable"))) return;
     setWorking(true);
     setError(null);
     try {
@@ -177,7 +192,7 @@ export function MfaCard() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "해제에 실패했습니다.");
+        setError(data.error ?? t("donor.mfa.disable") + " — error");
         return;
       }
       await refresh();
@@ -204,12 +219,9 @@ export function MfaCard() {
           className="mb-2 text-base font-semibold"
           style={{ color: "var(--text)" }}
         >
-          <span aria-hidden="true">🔐</span> 2단계 인증
+          <span aria-hidden="true">🔐</span> {t("donor.mfa.title")}
         </h3>
-        <p>
-          2단계 인증은 이메일/비밀번호 로그인 사용자만 설정할 수 있습니다.
-          OTP 로그인은 단기 세션으로 자동 만료됩니다.
-        </p>
+        <p>{t("donor.mfa.desc.otp_unsupported")}</p>
       </div>
     );
   }
@@ -222,15 +234,15 @@ export function MfaCard() {
             className="text-base font-semibold"
             style={{ color: "var(--text)" }}
           >
-            <span aria-hidden="true">🔐</span> 2단계 인증
+            <span aria-hidden="true">🔐</span> {t("donor.mfa.title")}
           </h3>
           <p
             className="mt-1 text-xs"
             style={{ color: "var(--muted-foreground)" }}
           >
             {state.enabled
-              ? "TOTP 인증 앱이 연결되어 있습니다. 다음 로그인부터 6자리 코드가 필요합니다."
-              : "Google Authenticator 등 TOTP 앱으로 로그인 보안을 강화하세요."}
+              ? t("donor.mfa.desc.enabled")
+              : t("donor.mfa.desc.disabled")}
           </p>
         </div>
         {enroll.phase === "idle" &&
@@ -244,7 +256,7 @@ export function MfaCard() {
               className="rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
               style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
             >
-              해제
+              {t("donor.mfa.disable")}
             </button>
           ) : (
             <button
@@ -254,7 +266,7 @@ export function MfaCard() {
               className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
               style={{ background: "var(--accent)" }}
             >
-              활성화
+              {t("donor.mfa.enable")}
             </button>
           ))}
       </div>
@@ -262,14 +274,13 @@ export function MfaCard() {
       {enroll.phase === "qr" && (
         <div className="mt-5 space-y-4">
           <p className="text-sm" style={{ color: "var(--text)" }}>
-            인증 앱에서 다음 QR 코드를 스캔하거나, 시크릿을 직접 입력한 뒤
-            생성된 6자리 코드를 입력하세요.
+            {t("donor.mfa.enroll.instruction")}
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={enroll.qrCode}
-              alt="TOTP 등록 QR 코드"
+              alt={t("donor.mfa.enroll.qr_alt")}
               width={160}
               height={160}
               className="rounded-lg border"
@@ -277,7 +288,7 @@ export function MfaCard() {
             />
             <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
               <p className="font-medium" style={{ color: "var(--text)" }}>
-                시크릿 키
+                {t("donor.mfa.enroll.secret_label")}
               </p>
               <code
                 className="mt-1 inline-block break-all rounded px-2 py-1 text-xs"
@@ -293,13 +304,13 @@ export function MfaCard() {
 
           <form onSubmit={submitVerify} className="flex flex-wrap items-center gap-2">
             <label htmlFor="mfa-verify-code" className="sr-only">
-              6자리 인증 코드
+              {t("donor.mfa.enroll.code_placeholder")}
             </label>
             <input
               id="mfa-verify-code"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="6자리 코드"
+              placeholder={t("donor.mfa.enroll.code_placeholder")}
               inputMode="numeric"
               maxLength={6}
               autoComplete="one-time-code"
@@ -317,7 +328,7 @@ export function MfaCard() {
               className="rounded-lg px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
               style={{ background: "var(--accent)" }}
             >
-              {working ? "확인 중…" : "확인"}
+              {working ? t("donor.mfa.enroll.verifying") : t("donor.mfa.enroll.verify")}
             </button>
             <button
               type="button"
@@ -326,7 +337,7 @@ export function MfaCard() {
               className="rounded-lg border px-3 py-2 text-xs disabled:opacity-50"
               style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
             >
-              취소
+              {t("donor.mfa.enroll.cancel")}
             </button>
           </form>
         </div>
@@ -356,15 +367,14 @@ export function MfaCard() {
                 className="text-xs font-semibold"
                 style={{ color: "var(--text)" }}
               >
-                <span aria-hidden="true">🔑</span> 백업 코드
+                <span aria-hidden="true">🔑</span> {t("donor.mfa.backup.title")}
               </p>
               <p
                 className="mt-0.5 text-xs"
                 style={{ color: "var(--muted-foreground)" }}
               >
-                남은 코드: {state.backupCodesRemaining}개
-                {state.backupCodesRemaining <= 2 &&
-                  " — 부족합니다. 재생성을 권장합니다."}
+                {t("donor.mfa.backup.remaining", { count: state.backupCodesRemaining })}
+                {state.backupCodesRemaining <= 2 && t("donor.mfa.backup.low_warning")}
               </p>
             </div>
             <button
@@ -377,7 +387,7 @@ export function MfaCard() {
                 color: "var(--muted-foreground)",
               }}
             >
-              재생성
+              {t("donor.mfa.backup.regenerate")}
             </button>
           </div>
         </div>
@@ -396,14 +406,13 @@ export function MfaCard() {
             className="text-sm font-semibold"
             style={{ color: "var(--warning)" }}
           >
-            <span aria-hidden="true">⚠️</span> 백업 코드를 지금 저장하세요
+            <span aria-hidden="true">⚠️</span> {t("donor.mfa.backup.new_title")}
           </p>
           <p
             className="mt-1 text-xs"
             style={{ color: "var(--muted-foreground)" }}
           >
-            이 화면을 닫으면 다시 볼 수 없습니다. 안전한 곳에 보관하세요.
-            각 코드는 한 번만 사용할 수 있습니다.
+            {t("donor.mfa.backup.new_body")}
           </p>
           <ul className="mt-3 grid grid-cols-2 gap-2 text-center font-mono text-xs">
             {newBackupCodes.map((c) => (
@@ -434,7 +443,7 @@ export function MfaCard() {
                 color: "var(--muted-foreground)",
               }}
             >
-              복사
+              {t("donor.mfa.backup.copy")}
             </button>
             <button
               type="button"
@@ -442,7 +451,7 @@ export function MfaCard() {
               className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
               style={{ background: "var(--accent)" }}
             >
-              저장했어요
+              {t("donor.mfa.backup.saved")}
             </button>
           </div>
         </div>

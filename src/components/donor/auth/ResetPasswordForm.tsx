@@ -72,7 +72,7 @@ export function ResetPasswordForm() {
   if (!hasSession) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-4xl">⚠️</p>
+        <p className="text-4xl" aria-hidden="true">⚠️</p>
         <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
           링크가 유효하지 않거나 만료되었습니다
         </p>

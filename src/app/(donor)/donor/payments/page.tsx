@@ -1,5 +1,6 @@
 import { requireDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getT } from "@/lib/i18n/donor";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -17,16 +18,7 @@ import { getPgErrorMessage } from "@/lib/payments/pg-error-messages";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
 import { Suspense } from "react";
 
-const PAY_STATUS_LABEL: Record<PayStatus, string> = {
-  paid: "완료",
-  unpaid: "미납",
-  failed: "실패",
-  cancelled: "취소",
-  refunded: "환불",
-  pending: "대기",
-};
-
-function PayStatusBadge({ status }: { status: PayStatus }) {
+function PayStatusBadge({ status, label }: { status: PayStatus; label: string }) {
   const styles: Record<PayStatus, React.CSSProperties> = {
     paid: { background: "var(--positive-soft)", color: "var(--positive)" },
     pending: {
@@ -46,7 +38,7 @@ function PayStatusBadge({ status }: { status: PayStatus }) {
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">
-      {PAY_STATUS_LABEL[status]}
+      {label}
     </Badge>
   );
 }
@@ -73,6 +65,7 @@ export default async function DonorPaymentsPage({
   searchParams: SearchParams;
 }) {
   const { member } = await requireDonorSession();
+  const t = await getT();
   const supabase = createSupabaseAdminClient();
 
   const { year, month, status } = await searchParams;
@@ -134,14 +127,13 @@ export default async function DonorPaymentsPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-          납입 내역
+          {t("donor.payments.title")}
         </h1>
         <div
           className="text-sm"
           style={{ color: "var(--muted-foreground)" }}
         >
-          총 {total.toLocaleString("ko-KR")}건 · 완납{" "}
-          {formatAmount(totalPaid)}
+          {total.toLocaleString("ko-KR")} · {formatAmount(totalPaid)}
         </div>
       </div>
 
@@ -168,26 +160,15 @@ export default async function DonorPaymentsPage({
         style={{ borderColor: "var(--border)", background: "var(--surface)" }}
       >
         <Table>
+          <caption className="sr-only">{t("donor.payments.title")}</caption>
           <TableHeader>
             <TableRow style={{ borderColor: "var(--border)" }}>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                결제일
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                캠페인
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                금액
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                상태
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                영수증
-              </TableHead>
-              <TableHead style={{ color: "var(--muted-foreground)" }}>
-                관리
-              </TableHead>
+              <TableHead style={{ color: "var(--muted-foreground)" }}>{t("donor.payments.column.date")}</TableHead>
+              <TableHead style={{ color: "var(--muted-foreground)" }}>{t("donor.payments.column.campaign")}</TableHead>
+              <TableHead style={{ color: "var(--muted-foreground)" }}>{t("donor.payments.column.amount")}</TableHead>
+              <TableHead style={{ color: "var(--muted-foreground)" }}>{t("donor.payments.column.status")}</TableHead>
+              <TableHead style={{ color: "var(--muted-foreground)" }}>{t("donor.payments.column.receipt")}</TableHead>
+              <TableHead style={{ color: "var(--muted-foreground)" }}>{t("donor.payments.column.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -198,7 +179,7 @@ export default async function DonorPaymentsPage({
                   className="py-12 text-center"
                   style={{ color: "var(--muted-foreground)" }}
                 >
-                  납입 내역이 없습니다.
+                  {t("donor.payments.empty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -214,7 +195,7 @@ export default async function DonorPaymentsPage({
                     {formatDate(p.pay_date)}
                   </TableCell>
                   <TableCell style={{ color: "var(--text)" }}>
-                    <div>{p.campaigns?.title ?? "일반 후원"}</div>
+                    <div>{p.campaigns?.title ?? t("common.general_donation")}</div>
                     {p.pay_status === "failed" && p.fail_reason && (() => {
                       const { message, action } = getPgErrorMessage(p.fail_reason);
                       return (
@@ -234,7 +215,7 @@ export default async function DonorPaymentsPage({
                     {formatAmount(p.amount)}
                   </TableCell>
                   <TableCell>
-                    <PayStatusBadge status={p.pay_status} />
+                    <PayStatusBadge status={p.pay_status} label={t(`donor.payments.status.${p.pay_status}`)} />
                   </TableCell>
                   <TableCell>
                     {p.receipt_url ? (
@@ -245,7 +226,7 @@ export default async function DonorPaymentsPage({
                         className="text-sm hover:underline"
                         style={{ color: "var(--accent)" }}
                       >
-                        보기
+                        {t("donor.payments.receipt.view")}
                       </a>
                     ) : (
                       <span

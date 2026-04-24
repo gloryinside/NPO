@@ -1,7 +1,9 @@
 import { getDonorSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { checkAndAlertNewDevice } from "@/lib/donor/device-alert";
 import { getDashboardSnapshot } from "@/lib/donor/dashboard-snapshot";
 import { getT } from "@/lib/i18n/donor";
 import { HeroSection } from "@/components/donor/dashboard/hero-section";
@@ -56,6 +58,19 @@ export default async function DonorHomePage() {
   const { member } = session;
   const supabase = createSupabaseAdminClient();
   const t = await getT();
+
+  // 새 기기 로그인 감지 — best-effort, 로그인 차단하지 않음
+  const h = await headers();
+  const currentIp = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? null;
+  const userAgent = h.get("user-agent") ?? null;
+  checkAndAlertNewDevice(supabase, {
+    memberId: member.id,
+    orgId: member.org_id,
+    email: member.email ?? "",
+    name: member.name ?? "",
+    currentIp,
+    userAgent,
+  }).catch(() => {});
 
   // 단일 RPC — 기존 7개 쿼리를 통합 (RTT 6→1)
   const snapshot = await getDashboardSnapshot(

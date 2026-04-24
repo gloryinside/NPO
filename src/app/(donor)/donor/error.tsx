@@ -26,7 +26,7 @@ export default function DonorError({
         className="w-full max-w-md rounded-2xl border p-8 text-center"
         style={{ borderColor: "var(--border)", background: "var(--surface)" }}
       >
-        <p className="text-5xl mb-4">⚠️</p>
+        <p className="text-5xl mb-4" aria-hidden="true">⚠️</p>
         <h2
           className="text-lg font-semibold"
           style={{ color: "var(--text)" }}

@@ -7,6 +7,7 @@ import { UpdateBillingKeyDialog } from "@/components/donor/promises/UpdateBillin
 import { CancelConfirmModal } from "@/components/donor/cancel-confirm-modal";
 import { EmptyState } from "@/components/donor/ui/EmptyState";
 import { InlineLoading } from "@/components/donor/ui/PageLoading";
+import { useDonorT } from "@/lib/i18n/use-donor-t";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 
 type CampaignRef = { id: string; title: string } | null;
@@ -23,18 +24,6 @@ type DonorPromise = {
   campaigns: CampaignRef;
 };
 
-const STATUS_LABEL: Record<PromiseStatus, string> = {
-  active: "진행중",
-  suspended: "일시중지",
-  cancelled: "해지",
-  completed: "완료",
-  pending_billing: "결제수단 대기",
-};
-
-const TYPE_LABEL: Record<PromiseType, string> = {
-  regular: "정기",
-  onetime: "일시",
-};
 
 // 카드 상단 액센트 바 색상
 const STATUS_ACCENT: Record<PromiseStatus, string> = {
@@ -84,24 +73,8 @@ type ConfirmTarget = {
   title: string;
 } | null;
 
-const ACTION_COPY: Record<ActionKind, { label: string; message: string }> = {
-  cancel: {
-    label: "해지하기",
-    message:
-      "정기후원을 해지하시겠습니까? 다음 회차부터 자동결제가 중단됩니다.",
-  },
-  suspend: {
-    label: "일시중지",
-    message:
-      "정기후원을 일시중지하시겠습니까? 재개 전까지 결제가 실행되지 않습니다.",
-  },
-  resume: {
-    label: "재개하기",
-    message: "일시중지된 약정을 다시 시작하시겠습니까?",
-  },
-};
-
 export default function DonorPromisesPage() {
+  const t = useDonorT();
   const [promises, setPromises] = useState<DonorPromise[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState<string | null>(null);
@@ -137,7 +110,7 @@ export default function DonorPromisesPage() {
     setConfirmTarget({
       id: promise.id,
       action,
-      title: promise.campaigns?.title ?? "정기후원",
+      title: promise.campaigns?.title ?? t("common.default_campaign"),
     });
   }
 
@@ -152,11 +125,9 @@ export default function DonorPromisesPage() {
       if (!res.ok) {
         const data = await res.json();
         if (data.code === "BILLING_KEY_MISSING") {
-          alert(
-            "결제 수단이 등록되지 않아 재개할 수 없습니다.\n관리자에게 카드 재등록을 요청해주세요."
-          );
+          alert(t("donor.promises.error.billing_key_missing"));
         } else {
-          alert(data.error ?? "처리 중 오류가 발생했습니다.");
+          alert(data.error ?? t("donor.promises.error.generic"));
         }
         return;
       }
@@ -178,7 +149,7 @@ export default function DonorPromisesPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        alert((data && data.error) ?? "처리 중 오류가 발생했습니다.");
+        alert((data && data.error) ?? t("donor.promises.error.generic"));
         return;
       }
       setAmountDialog({ open: false });
@@ -204,7 +175,7 @@ export default function DonorPromisesPage() {
   const visible = showEnded ? promises : livePromises;
 
   if (loading) {
-    return <InlineLoading label="약정을 불러오는 중…" />;
+    return <InlineLoading label={t("donor.promises.loading")} />;
   }
 
   return (
@@ -233,9 +204,9 @@ export default function DonorPromisesPage() {
 
       {confirmTarget && (
         <CancelConfirmModal
-          title={`${confirmTarget.title} ${ACTION_COPY[confirmTarget.action].label}`}
-          message={ACTION_COPY[confirmTarget.action].message}
-          confirmLabel={ACTION_COPY[confirmTarget.action].label}
+          title={t(`donor.promises.confirm.${confirmTarget.action}.title`, { title: confirmTarget.title })}
+          message={t(`donor.promises.confirm.${confirmTarget.action}.message`)}
+          confirmLabel={t(`donor.promises.action.${confirmTarget.action === "cancel" ? "cancel" : confirmTarget.action}`)}
           onConfirm={async () => {
             const target = confirmTarget;
             setConfirmTarget(null);
@@ -249,17 +220,17 @@ export default function DonorPromisesPage() {
         {/* 헤더 + 요약 */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--text)]">내 약정</h1>
+            <h1 className="text-2xl font-bold text-[var(--text)]">{t("donor.promises.title")}</h1>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              후원 약정을 관리하세요.
+              {t("donor.promises.subtitle")}
             </p>
           </div>
           {promises.length > 0 && (
             <div className="flex gap-3">
-              <SummaryPill label="활성" value={`${activeCount}건`} color="var(--positive)" />
+              <SummaryPill label={t("donor.promises.summary.active")} value={`${activeCount}건`} color="var(--positive)" />
               {totalMonthly > 0 && (
                 <SummaryPill
-                  label="월 정기 합계"
+                  label={t("donor.promises.summary.monthly")}
                   value={`${new Intl.NumberFormat("ko-KR").format(totalMonthly)}원`}
                   color="var(--accent)"
                 />
@@ -271,16 +242,16 @@ export default function DonorPromisesPage() {
         {promises.length === 0 ? (
           <EmptyState
             icon="📋"
-            title="등록된 약정이 없습니다."
-            description="캠페인을 통해 첫 후원을 시작해보세요."
-            cta={{ href: "/", label: "캠페인 둘러보기" }}
+            title={t("donor.promises.empty.title")}
+            description={t("donor.promises.empty.description")}
+            cta={{ href: "/", label: t("donor.promises.empty.cta") }}
           />
         ) : livePromises.length === 0 && !showEnded ? (
           <EmptyState
             icon="📭"
-            title="진행 중인 약정이 없습니다."
-            description={`과거에 해지·완료된 약정이 ${endedPromises.length}건 있습니다.`}
-            cta={{ href: "/", label: "새 후원 시작하기" }}
+            title={t("donor.promises.no_live.title")}
+            description={t("donor.promises.no_live.description", { count: endedPromises.length })}
+            cta={{ href: "/", label: t("donor.promises.no_live.cta") }}
           />
         ) : (
           <div className="space-y-4">
@@ -312,15 +283,15 @@ export default function DonorPromisesPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-base font-semibold text-[var(--text)]">
-                            {p.campaigns?.title ?? "일반 후원"}
+                            {p.campaigns?.title ?? t("common.general_donation")}
                           </span>
                           <Badge
                             className={`border-0 text-xs font-medium ${STATUS_BADGE_CLS[p.status]}`}
                           >
-                            {STATUS_LABEL[p.status]}
+                            {t(`donor.promises.${p.status}`)}
                           </Badge>
                           <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--muted-foreground)]">
-                            {TYPE_LABEL[p.type]}
+                            {t(`donor.promises.type.${p.type}`)}
                           </span>
                         </div>
 
@@ -330,18 +301,19 @@ export default function DonorPromisesPage() {
 
                         {/* 핵심 지표 그리드 */}
                         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-                          <MetaField label="약정 금액" value={formatAmount(p.amount)} highlight />
+                          <MetaField label={t("donor.promises.field.amount")} value={formatAmount(p.amount)} highlight />
                           {p.type === "regular" && (
                             <PayDayField
                               promise={p}
                               busy={actioning === p.id}
                               editable={p.status === "active"}
                               onSaved={fetchPromises}
+                              t={t}
                             />
                           )}
-                          <MetaField label="시작일" value={formatDate(p.started_at)} />
+                          <MetaField label={t("donor.promises.field.started_at")} value={formatDate(p.started_at)} />
                           {p.ended_at && (
-                            <MetaField label="종료일" value={formatDate(p.ended_at)} />
+                            <MetaField label={t("donor.promises.field.ended_at")} value={formatDate(p.ended_at)} />
                           )}
                         </div>
                       </div>
@@ -352,19 +324,19 @@ export default function DonorPromisesPage() {
                           {isActive && (
                             <>
                               <ActionBtn
-                                label="금액 변경"
+                                label={t("donor.promises.action.amount_change")}
                                 busy={busy}
                                 onClick={() => setAmountDialog({ open: true, promise: p })}
                               />
                               {p.type === "regular" && (
                                 <ActionBtn
-                                  label="카드 변경"
+                                  label={t("donor.promises.action.card_change")}
                                   busy={busy}
                                   onClick={() => setBillingKeyTarget(p.id)}
                                 />
                               )}
                               <ActionBtn
-                                label="일시중지"
+                                label={t("donor.promises.action.suspend")}
                                 busy={busy}
                                 onClick={() => requestAction(p, "suspend")}
                               />
@@ -372,7 +344,7 @@ export default function DonorPromisesPage() {
                           )}
                           {isSuspended && (
                             <ActionBtn
-                              label="재개"
+                              label={t("donor.promises.action.resume")}
                               busy={busy}
                               onClick={() => requestAction(p, "resume")}
                               variant="positive"
@@ -380,14 +352,14 @@ export default function DonorPromisesPage() {
                           )}
                           {isPendingBilling && p.type === "regular" && (
                             <ActionBtn
-                              label="카드 등록"
+                              label={t("donor.promises.action.register_card")}
                               busy={busy}
                               onClick={() => setBillingKeyTarget(p.id)}
                               variant="warning"
                             />
                           )}
                           <ActionBtn
-                            label="해지"
+                            label={t("donor.promises.action.cancel")}
                             busy={busy}
                             onClick={() => requestAction(p, "cancel")}
                             variant="danger"
@@ -417,8 +389,8 @@ export default function DonorPromisesPage() {
               }}
             >
               {showEnded
-                ? `과거 약정 숨기기`
-                : `과거 약정 보기 (${endedPromises.length}건)`}
+                ? t("donor.promises.toggle.hide_ended")
+                : t("donor.promises.toggle.show_ended", { count: endedPromises.length })}
             </button>
           </div>
         )}
@@ -470,16 +442,18 @@ function PayDayField({
   busy,
   editable,
   onSaved,
+  t,
 }: {
   promise: DonorPromise;
   busy: boolean;
   editable: boolean;
   onSaved: () => void | Promise<void>;
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState<number>(promise.pay_day ?? 1);
   const [saving, setSaving] = useState(false);
-  const currentLabel = `매월 ${promise.pay_day ?? "-"}일`;
+  const currentLabel = t("donor.promises.pay_day_value", { day: promise.pay_day ?? "-" });
 
   async function save() {
     setSaving(true);
@@ -491,7 +465,7 @@ function PayDayField({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "결제일 변경에 실패했습니다.");
+        alert(data.error ?? t("donor.promises.pay_day_failed"));
         return;
       }
       setEditing(false);
@@ -504,7 +478,7 @@ function PayDayField({
   if (!editable || !editing) {
     return (
       <div>
-        <p className="text-xs text-[var(--muted-foreground)]">결제일</p>
+        <p className="text-xs text-[var(--muted-foreground)]">{t("donor.promises.field.pay_day")}</p>
         <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-[var(--text)]">
           {currentLabel}
           {editable && (
@@ -518,7 +492,7 @@ function PayDayField({
               className="text-xs font-medium disabled:opacity-50"
               style={{ color: "var(--accent)" }}
             >
-              변경
+              {t("donor.promises.pay_day_change")}
             </button>
           )}
         </p>
@@ -528,13 +502,13 @@ function PayDayField({
 
   return (
     <div>
-      <p className="text-xs text-[var(--muted-foreground)]">결제일</p>
+      <p className="text-xs text-[var(--muted-foreground)]">{t("donor.promises.field.pay_day")}</p>
       <div className="mt-0.5 flex items-center gap-1.5">
         <label
           htmlFor={`pay-day-${promise.id}`}
           className="sr-only"
         >
-          매월 결제일 (1~28일)
+          {t("donor.promises.pay_day_label")}
         </label>
         <select
           id={`pay-day-${promise.id}`}
@@ -550,7 +524,7 @@ function PayDayField({
         >
           {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
             <option key={d} value={d}>
-              매월 {d}일
+              {t("donor.promises.pay_day_value", { day: d })}
             </option>
           ))}
         </select>
@@ -561,7 +535,7 @@ function PayDayField({
           className="text-xs font-medium disabled:opacity-50"
           style={{ color: "var(--accent)" }}
         >
-          {saving ? "저장 중…" : "저장"}
+          {saving ? t("donor.promises.pay_day_saving") : t("donor.promises.pay_day_save")}
         </button>
         <button
           type="button"
@@ -570,7 +544,7 @@ function PayDayField({
           className="text-xs"
           style={{ color: "var(--muted-foreground)" }}
         >
-          취소
+          {t("donor.promises.pay_day_cancel")}
         </button>
       </div>
     </div>
