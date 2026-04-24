@@ -75,14 +75,18 @@ export async function reconcileBankBatch(
         .from("bank_statements")
         .update({ matched_payment_id: pick.id, matched_at: nowIso })
         .eq("id", s.id);
+      // 은행 입금 영수증으로 검증된 입금 → 수입상태도 즉시 confirmed.
+      // 수동 환불/조정으로 income_status 가 'excluded' 인 건은 보존(스코프).
       await supabase
         .from("payments")
         .update({
           pay_status: "paid",
           deposit_date: s.statement_date,
           approved_at: nowIso,
+          income_status: "confirmed",
         })
-        .eq("id", pick.id);
+        .eq("id", pick.id)
+        .neq("income_status", "excluded");
       matched++;
     } else if (narrowed.length === 0) {
       unmatched++;

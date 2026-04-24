@@ -1,6 +1,7 @@
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { EmailBounceResolveButton } from "@/components/admin/email-bounce-resolve-button";
 
 export const metadata = { title: "이메일 반송" };
 
@@ -24,20 +25,29 @@ type Row = {
   reason: string | null;
   provider: string;
   created_at: string;
+  resolved_at: string | null;
 };
 
-export default async function AdminEmailBouncesPage() {
+export default async function AdminEmailBouncesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
   await requireAdminUser();
   const tenant = await requireTenant();
   const supabase = createSupabaseAdminClient();
+  const sp = await searchParams;
+  const showResolved = sp.filter === "resolved";
 
-  const { data } = await supabase
+  let q = supabase
     .from("email_bounces")
-    .select("id, recipient_email, bounce_type, reason, provider, created_at")
+    .select("id, recipient_email, bounce_type, reason, provider, created_at, resolved_at")
     .eq("org_id", tenant.id)
     .order("created_at", { ascending: false })
     .limit(300);
+  q = showResolved ? q.not("resolved_at", "is", null) : q.is("resolved_at", null);
 
+  const { data } = await q;
   const rows = (data as unknown as Row[]) ?? [];
 
   // 최근 30일 통계
@@ -56,6 +66,32 @@ export default async function AdminEmailBouncesPage() {
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Resend 에서 수신된 bounce/complaint 이벤트. hard/complaint 는 자동으로 이메일 수신이 중단됩니다.
         </p>
+        <div className="mt-3 flex gap-2 text-sm">
+          <a
+            href="/admin/email-bounces"
+            className="rounded-md px-3 py-1.5 font-medium"
+            style={{
+              background: showResolved ? "var(--surface)" : "var(--accent)",
+              color: showResolved ? "var(--muted-foreground)" : "white",
+              border: "1px solid var(--border)",
+              textDecoration: "none",
+            }}
+          >
+            미처리
+          </a>
+          <a
+            href="/admin/email-bounces?filter=resolved"
+            className="rounded-md px-3 py-1.5 font-medium"
+            style={{
+              background: showResolved ? "var(--accent)" : "var(--surface)",
+              color: showResolved ? "white" : "var(--muted-foreground)",
+              border: "1px solid var(--border)",
+              textDecoration: "none",
+            }}
+          >
+            처리 완료
+          </a>
+        </div>
       </div>
 
       {/* 30일 요약 */}
@@ -112,7 +148,7 @@ export default async function AdminEmailBouncesPage() {
               }}
             >
               <tr>
-                {["일시", "이메일", "유형", "제공자", "사유"].map((h) => (
+                {["일시", "이메일", "유형", "제공자", "사유", showResolved ? "처리시각" : "처리"].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
@@ -160,6 +196,18 @@ export default async function AdminEmailBouncesPage() {
                     style={{ color: "var(--muted-foreground)" }}
                   >
                     {r.reason ?? "-"}
+                  </td>
+                  <td className="px-4 py-3 text-xs" style={{ color: "var(--muted-foreground)" }}>
+                    {showResolved
+                      ? r.resolved_at
+                        ? new Date(r.resolved_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
+                        : "-"
+                      : (
+                        <EmailBounceResolveButton
+                          bounceId={r.id}
+                          bounceType={r.bounce_type}
+                        />
+                      )}
                   </td>
                 </tr>
               ))}

@@ -3,6 +3,12 @@ import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit, type AuditAction } from "@/lib/audit";
+import {
+  renderPromiseStatusChangeEmail,
+  type PromiseStatusChangeKind,
+} from "@/lib/promises/status-change-email";
+import { sendEmail } from "@/lib/email/send-email";
+import { logNotification, type NotificationKind } from "@/lib/email/notification-log";
 
 /**
  * PATCH /api/admin/promises/[id]
@@ -44,6 +50,15 @@ export async function PATCH(
 
   const supabase = createSupabaseAdminClient();
   const nowIso = new Date().toISOString();
+
+  // 이전 상태 조회 — status가 실제로 바뀐 경우에만 후원자 알림을 발송하기 위함
+  const { data: prev } = await supabase
+    .from("promises")
+    .select("status")
+    .eq("id", id)
+    .eq("org_id", tenant.id)
+    .maybeSingle();
+  const previousStatus = (prev as { status?: string } | null)?.status ?? null;
 
   const update: Record<string, unknown> = { updated_at: nowIso };
 
@@ -136,5 +151,90 @@ export async function PATCH(
     }
   }
 
+  // 상태 전이 알림 — 실제로 status가 바뀐 경우에만 후원자에게 통보
+  if (status && status !== previousStatus) {
+    const kindMap: Partial<Record<string, PromiseStatusChangeKind>> = {
+      cancelled: "cancelled",
+      suspended: "suspended",
+      active: previousStatus === "suspended" ? "resumed" : undefined,
+    };
+    const notifKind = kindMap[status];
+    if (notifKind) {
+      void notifyDonorStatusChange({
+        supabase,
+        orgId: tenant.id,
+        promiseId: id,
+        kind: notifKind,
+        amount: Number(data.amount ?? 0),
+        reason: cancelReason ?? null,
+        suspendedUntil: suspendedUntil ?? null,
+      });
+    }
+  }
+
   return NextResponse.json({ promise: data });
+}
+
+const NOTIF_KIND_MAP: Record<PromiseStatusChangeKind, NotificationKind> = {
+  cancelled: "promise_cancelled",
+  suspended: "promise_suspended",
+  resumed: "promise_resumed",
+};
+
+async function notifyDonorStatusChange(params: {
+  supabase: ReturnType<typeof createSupabaseAdminClient>;
+  orgId: string;
+  promiseId: string;
+  kind: PromiseStatusChangeKind;
+  amount: number;
+  reason: string | null;
+  suspendedUntil: string | null;
+}): Promise<void> {
+  const { supabase, orgId, promiseId, kind, amount, reason, suspendedUntil } = params;
+  try {
+    const { data: promise } = await supabase
+      .from("promises")
+      .select("members(name, email, email_disabled), campaigns(title), orgs(name)")
+      .eq("id", promiseId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (!promise) return;
+
+    const memberRaw = (promise as { members?: unknown }).members;
+    const member = (Array.isArray(memberRaw) ? memberRaw[0] : memberRaw) as
+      | { name: string | null; email: string | null; email_disabled: boolean | null }
+      | null;
+    if (!member?.email || member.email_disabled) return;
+
+    const orgRaw = (promise as { orgs?: unknown }).orgs;
+    const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as
+      | { name: string | null }
+      | null;
+    const campaignRaw = (promise as { campaigns?: unknown }).campaigns;
+    const campaign = (Array.isArray(campaignRaw) ? campaignRaw[0] : campaignRaw) as
+      | { title: string | null }
+      | null;
+
+    const { subject, html } = renderPromiseStatusChangeEmail(kind, {
+      toEmail: member.email,
+      memberName: member.name ?? "후원자",
+      orgName: org?.name ?? "기관",
+      campaignTitle: campaign?.title ?? null,
+      amount,
+      reason,
+      suspendedUntil,
+    });
+
+    const sendResult = await sendEmail({ to: member.email, subject, html });
+    await logNotification(supabase, {
+      orgId,
+      kind: NOTIF_KIND_MAP[kind],
+      recipientEmail: member.email,
+      refId: promiseId,
+      status: sendResult.success ? "sent" : "failed",
+      error: sendResult.error ?? null,
+    });
+  } catch (err) {
+    console.error("[admin/promises] notify donor status change failed:", err);
+  }
 }

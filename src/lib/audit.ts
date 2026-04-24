@@ -49,7 +49,9 @@ export type AuditAction =
   | "admin.password_reset_request"
   | "admin.data_export"
   | "admin.org_settings_change"
-  | "admin.mfa_reset";
+  | "admin.mfa_reset"
+  // 이메일 반송 처리
+  | "email_bounce.resolve";
 
 /**
  * action별 metadata 필드 권장 스키마 (런타임 강제는 안 함, 조회 시 참조).

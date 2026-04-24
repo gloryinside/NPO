@@ -5,6 +5,9 @@ import { checkCsrf } from "@/lib/security/csrf";
 import { logAudit } from "@/lib/audit";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { refundPayment } from "@/lib/payments/refund";
+import { renderRefundEmail } from "@/lib/payments/refund-email";
+import { sendEmail } from "@/lib/email/send-email";
+import { logNotification } from "@/lib/email/notification-log";
 
 /**
  * G-D146: 환불 승인 — 요청자와 다른 admin 이 승인 가능.
@@ -110,5 +113,78 @@ export async function POST(
     metadata: { paymentId: row.payment_id, executed: true },
   }).catch(() => {});
 
+  void notifyDonorRefunded({
+    supabase,
+    orgId: tenant.id,
+    paymentId: row.payment_id,
+    refundAmount: row.amount,
+    reasonNote: row.reason ?? null,
+    refundApprovalId: id,
+  });
+
   return NextResponse.json({ ok: true, executed: true });
+}
+
+async function notifyDonorRefunded(params: {
+  supabase: ReturnType<typeof createSupabaseAdminClient>;
+  orgId: string;
+  paymentId: string;
+  refundAmount: number;
+  reasonNote: string | null;
+  refundApprovalId: string;
+}): Promise<void> {
+  const { supabase, orgId, paymentId, refundAmount, reasonNote, refundApprovalId } = params;
+  try {
+    const { data: payment } = await supabase
+      .from("payments")
+      .select(
+        "amount, payment_code, code, members(name, email, email_disabled), campaigns(title), orgs(name)",
+      )
+      .eq("id", paymentId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    if (!payment) return;
+    const memberRaw = payment.members as unknown;
+    const member = (Array.isArray(memberRaw) ? memberRaw[0] : memberRaw) as
+      | { name: string | null; email: string | null; email_disabled: boolean | null }
+      | null;
+    if (!member?.email || member.email_disabled) return;
+
+    const orgRaw = payment.orgs as unknown;
+    const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as
+      | { name: string | null }
+      | null;
+    const campaignRaw = payment.campaigns as unknown;
+    const campaign = (Array.isArray(campaignRaw) ? campaignRaw[0] : campaignRaw) as
+      | { title: string | null }
+      | null;
+    const paymentCode =
+      (payment as { payment_code?: string | null }).payment_code ??
+      (payment as { code?: string | null }).code ??
+      paymentId;
+
+    const { subject, html } = renderRefundEmail({
+      toEmail: member.email,
+      memberName: member.name ?? "후원자",
+      orgName: org?.name ?? "기관",
+      campaignTitle: campaign?.title ?? null,
+      paymentCode,
+      originalAmount: Number(payment.amount ?? 0),
+      refundAmount,
+      reasonNote,
+    });
+
+    const sendResult = await sendEmail({ to: member.email, subject, html });
+    await logNotification(supabase, {
+      orgId,
+      kind: "payment_refunded",
+      recipientEmail: member.email,
+      refId: refundApprovalId,
+      status: sendResult.success ? "sent" : "failed",
+      error: sendResult.error ?? null,
+    });
+  } catch (err) {
+    console.error("[refund-approve] notify donor failed:", err);
+  }
 }
