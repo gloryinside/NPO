@@ -14,7 +14,8 @@ type Tab = "otp" | "password";
 
 type PasswordPhase =
   | { kind: "credentials" }
-  | { kind: "mfa"; factorId: string };
+  | { kind: "mfa"; factorId: string }
+  | { kind: "backup"; factorId: string };
 
 /**
  * MFA 필요 여부 판단.
@@ -45,6 +46,7 @@ function EmailPasswordForm() {
   const [password, setPassword] = useState("");
   const [phase, setPhase] = useState<PasswordPhase>({ kind: "credentials" });
   const [mfaCode, setMfaCode] = useState("");
+  const [backupCode, setBackupCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -126,6 +128,30 @@ function EmailPasswordForm() {
     setError(null);
   }
 
+  async function handleBackup(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/donor/account/mfa/backup-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: backupCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "백업 코드 확인에 실패했습니다.");
+        return;
+      }
+      router.push("/donor");
+      router.refresh();
+    } catch {
+      setError("인증 처리 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (phase.kind === "mfa") {
     return (
       <form onSubmit={handleMfa} className="space-y-4">
@@ -178,6 +204,80 @@ function EmailPasswordForm() {
             className="flex-1 bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50"
           >
             {loading ? "확인 중..." : "인증"}
+          </Button>
+        </div>
+        <p className="text-center text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setPhase({ kind: "backup", factorId: phase.factorId });
+              setMfaCode("");
+              setError(null);
+            }}
+            className="text-[var(--muted-foreground)] hover:underline"
+          >
+            인증 앱을 사용할 수 없나요? 백업 코드로 로그인
+          </button>
+        </p>
+      </form>
+    );
+  }
+
+  if (phase.kind === "backup") {
+    return (
+      <form onSubmit={handleBackup} className="space-y-4">
+        <div>
+          <p className="text-sm text-[var(--text)]">
+            <span aria-hidden="true">🔑</span> 백업 코드 로그인
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            활성화 시 저장해 둔 1회용 백업 코드를 입력하세요. 사용한 코드는 다시
+            쓸 수 없습니다.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="backup-code"
+            className="text-sm text-[var(--muted-foreground)]"
+          >
+            백업 코드
+          </Label>
+          <Input
+            id="backup-code"
+            type="text"
+            autoComplete="one-time-code"
+            autoFocus
+            value={backupCode}
+            onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+            required
+            placeholder="XXXX-XXXX"
+            className="border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] tracking-widest placeholder:text-[var(--muted-foreground)]"
+          />
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-[var(--negative)]">
+            {error}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={() => {
+              setPhase({ kind: "mfa", factorId: phase.factorId });
+              setBackupCode("");
+              setError(null);
+            }}
+            variant="outline"
+            className="flex-1 border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]"
+          >
+            인증 앱으로
+          </Button>
+          <Button
+            type="submit"
+            disabled={loading || backupCode.replace(/[^A-Z0-9]/g, "").length < 8}
+            className="flex-1 bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? "확인 중..." : "로그인"}
           </Button>
         </div>
       </form>

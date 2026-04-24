@@ -7,6 +7,7 @@ interface MfaState {
   isOtp: boolean;
   enabled: boolean;
   factors: Array<{ id: string; friendly_name: string | null; created_at: string }>;
+  backupCodesRemaining: number;
 }
 
 type EnrollStep =
@@ -28,11 +29,13 @@ export function MfaCard() {
     isOtp: false,
     enabled: false,
     factors: [],
+    backupCodesRemaining: 0,
   });
   const [enroll, setEnroll] = useState<EnrollStep>({ phase: "idle" });
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [newBackupCodes, setNewBackupCodes] = useState<string[] | null>(null);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/donor/account/mfa");
@@ -46,6 +49,7 @@ export function MfaCard() {
       isOtp: !!data.isOtp,
       enabled: !!data.enabled,
       factors: data.factors ?? [],
+      backupCodesRemaining: Number(data.backup_codes_remaining ?? 0),
     });
   }, []);
 
@@ -100,6 +104,37 @@ export function MfaCard() {
       }
       setEnroll({ phase: "idle" });
       setCode("");
+      if (Array.isArray(data.backup_codes) && data.backup_codes.length > 0) {
+        setNewBackupCodes(data.backup_codes as string[]);
+      }
+      await refresh();
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function regenerateBackup() {
+    if (
+      !confirm(
+        "백업 코드를 새로 생성하시겠습니까? 기존 미사용 코드는 즉시 폐기됩니다.",
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setWorking(true);
+    try {
+      const res = await fetch("/api/donor/account/mfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "regenerate_backup" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "재생성에 실패했습니다.");
+        return;
+      }
+      setNewBackupCodes(data.backup_codes as string[]);
       await refresh();
     } finally {
       setWorking(false);
@@ -305,6 +340,112 @@ export function MfaCard() {
         >
           {error}
         </p>
+      )}
+
+      {state.enabled && enroll.phase === "idle" && (
+        <div
+          className="mt-5 rounded-lg border p-3"
+          style={{
+            borderColor: "var(--border)",
+            background: "var(--surface-2)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p
+                className="text-xs font-semibold"
+                style={{ color: "var(--text)" }}
+              >
+                <span aria-hidden="true">🔑</span> 백업 코드
+              </p>
+              <p
+                className="mt-0.5 text-xs"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                남은 코드: {state.backupCodesRemaining}개
+                {state.backupCodesRemaining <= 2 &&
+                  " — 부족합니다. 재생성을 권장합니다."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={regenerateBackup}
+              disabled={working}
+              className="rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+              style={{
+                borderColor: "var(--border)",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              재생성
+            </button>
+          </div>
+        </div>
+      )}
+
+      {newBackupCodes && newBackupCodes.length > 0 && (
+        <div
+          role="alert"
+          className="mt-4 rounded-lg border p-4"
+          style={{
+            borderColor: "var(--warning)",
+            background: "var(--warning-soft)",
+          }}
+        >
+          <p
+            className="text-sm font-semibold"
+            style={{ color: "var(--warning)" }}
+          >
+            <span aria-hidden="true">⚠️</span> 백업 코드를 지금 저장하세요
+          </p>
+          <p
+            className="mt-1 text-xs"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            이 화면을 닫으면 다시 볼 수 없습니다. 안전한 곳에 보관하세요.
+            각 코드는 한 번만 사용할 수 있습니다.
+          </p>
+          <ul className="mt-3 grid grid-cols-2 gap-2 text-center font-mono text-xs">
+            {newBackupCodes.map((c) => (
+              <li
+                key={c}
+                className="rounded border px-2 py-1.5"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface)",
+                  color: "var(--text)",
+                }}
+              >
+                {c}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard
+                  ?.writeText(newBackupCodes.join("\n"))
+                  .catch(() => {});
+              }}
+              className="rounded-lg border px-3 py-1.5 text-xs font-medium"
+              style={{
+                borderColor: "var(--border)",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              복사
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewBackupCodes(null)}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+              style={{ background: "var(--accent)" }}
+            >
+              저장했어요
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

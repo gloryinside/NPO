@@ -41,12 +41,11 @@ describe("backup codes", () => {
     expect(first.hash).not.toBe(second.hash);
   });
 
-  it("hash is deterministic with the same salt", () => {
+  it("verifyBackupCode is deterministic", () => {
     const code = "AAAA-BBBB";
-    const { salt } = hashBackupCode(code);
-    // 동일 salt 로 다시 계산 → verify 통과
-    const { hash } = { hash: hashBackupCode(code).hash, salt };
-    expect(typeof hash).toBe("string");
-    expect(hash.length).toBeGreaterThan(0);
+    const { hash, salt } = hashBackupCode(code);
+    // 동일 (hash, salt) 에 대해 verify 반복 호출 모두 true
+    expect(verifyBackupCode(code, hash, salt)).toBe(true);
+    expect(verifyBackupCode(code, hash, salt)).toBe(true);
   });
 });

@@ -1,10 +1,15 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { cookies } from "next/headers";
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getTenant } from "@/lib/tenant/context";
 import { getOtpSessionFromCookies } from "@/lib/auth/otp-session";
+import {
+  MFA_BYPASS_COOKIE,
+  verifyMfaBypassToken,
+} from "@/lib/auth/mfa-bypass";
 import type { Member } from "@/types/member";
 
 /**
@@ -63,13 +68,18 @@ export const getDonorSession = cache(async (): Promise<DonorSession | null> => {
       .maybeSingle();
 
     if (member) {
-      // MFA 가드: 활성 사용자는 aal2 세션이 아니면 로그인 미완료 상태로 처리
+      // MFA 가드: 활성 사용자는 aal2 세션이거나 유효한 백업 코드 bypass 쿠키가 있어야 함
       const typedMember = member as Member & { mfa_enabled?: boolean };
       if (typedMember.mfa_enabled) {
         const { data: aalData } =
           await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aalData?.currentLevel !== "aal2") {
-          return null;
+        const isAal2 = aalData?.currentLevel === "aal2";
+        if (!isAal2) {
+          const cookieStore = await cookies();
+          const bypass = cookieStore.get(MFA_BYPASS_COOKIE)?.value;
+          const bypassValid =
+            typeof bypass === "string" && verifyMfaBypassToken(bypass, user.id);
+          if (!bypassValid) return null;
         }
       }
       return { user, member: member as Member, authMethod: "supabase" };
