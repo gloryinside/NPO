@@ -70,3 +70,8 @@ public/fonts/*.otf
 
 # Worktrees
 .worktrees/
+
+# Playwright MCP scratch artifacts
+.playwright-mcp/
+/donor_*.png
+/login_page.png
