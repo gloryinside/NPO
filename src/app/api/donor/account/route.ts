@@ -104,9 +104,10 @@ export async function DELETE(req: NextRequest) {
           <p>${whenKST} 기준으로 <b>${orgName}</b> 후원자 계정 삭제 요청이 처리되었습니다.</p>
           <div style="background:#f9fafb; border-left:3px solid #ef4444; padding:12px 16px; margin:16px 0;">
             <p style="margin:0; font-size:14px;">
-              · 개인정보(이름·연락처·생년월일)는 마스킹 처리되었습니다.<br/>
+              · 개인정보(이름·연락처·생년월일)가 즉시 마스킹 처리되었습니다.<br/>
               · 진행 중이던 모든 약정(정기/일시)이 자동 해지되었습니다.<br/>
-              · 과거 후원 이력과 영수증은 회계·세무 목적으로 보존됩니다.
+              · 등록된 카드 결제 수단(빌링키)은 즉시 영구 삭제되었습니다.<br/>
+              · 기부금 영수증·납입 이력은 <b>소득세법·전자상거래법</b>에 따라 <b>최소 5년</b> 보존 후 익명화됩니다.
             </p>
           </div>
           <p style="font-size:13px; color:#6b7280;">
@@ -143,12 +144,27 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  // 2) 활성 약정 전체 해지
+  // 2) 활성 약정 전체 해지 + billing key 폐기
+  //    여신전문금융업법상 카드 자동결제 정보는 즉시 삭제 — toss_billing_key를 NULL로
+  //    (PG사 측 키 폐기는 향후 웹훅 연동 시 보완 가능하나, 현재 DB에서 제거하면
+  //     이후 어떤 코드도 이 키로 결제를 시도할 수 없음)
   await admin
     .from("promises")
-    .update({ status: "cancelled", ended_at: now, updated_at: now })
+    .update({
+      status: "cancelled",
+      ended_at: now,
+      updated_at: now,
+      toss_billing_key: null,
+    })
     .eq("member_id", session.member.id)
     .in("status", ["active", "suspended", "pending_billing"]);
+
+  // 2-1) 혹시 남아있는 다른 상태의 billing key도 정리 (e.g. completed지만 키가 남음)
+  await admin
+    .from("promises")
+    .update({ toss_billing_key: null, updated_at: now })
+    .eq("member_id", session.member.id)
+    .not("toss_billing_key", "is", null);
 
   // 3) Supabase Auth 사용자 삭제(있는 경우)
   if (session.user?.id) {

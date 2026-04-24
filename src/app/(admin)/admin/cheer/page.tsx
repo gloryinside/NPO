@@ -19,7 +19,7 @@ export default async function AdminCheerPage() {
   const { data } = await supabase
     .from('cheer_messages')
     .select(
-      'id, body, anonymous, hidden, published, created_at, members!cheer_messages_member_id_fkey(id, name), campaigns(id, title)'
+      'id, body, anonymous, hidden, published, created_at, featured_at, members!cheer_messages_member_id_fkey(id, name), campaigns(id, title)'
     )
     .eq('org_id', tenant.id)
     .order('created_at', { ascending: false })
@@ -33,6 +33,7 @@ export default async function AdminCheerPage() {
       hidden: boolean
       published: boolean
       created_at: string
+      featured_at: string | null
       members: { name: string | null } | null
       campaigns: { title: string | null } | null
     }
@@ -45,6 +46,7 @@ export default async function AdminCheerPage() {
       hidden: row.hidden,
       published: row.published,
       createdAt: row.created_at,
+      featuredAt: row.featured_at,
     }
   })
 

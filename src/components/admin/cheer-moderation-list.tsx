@@ -12,6 +12,8 @@ export interface AdminCheerRow {
   hidden: boolean
   published: boolean
   createdAt: string
+  /** G-D174: 대표 응원 선정 시각 (null이면 미지정) */
+  featuredAt: string | null
 }
 
 interface Props {
@@ -62,6 +64,15 @@ export function CheerModerationList({ rows }: Props) {
     await patch(row, { published: true })
   }
 
+  async function toggleFeatured(row: AdminCheerRow) {
+    const next = !row.featuredAt
+    if (next && (row.hidden || !row.published)) {
+      alert('공개된 응원만 대표 응원으로 선정할 수 있습니다.')
+      return
+    }
+    await patch(row, { featured: next })
+  }
+
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-[var(--muted-foreground)]">
@@ -94,6 +105,11 @@ export function CheerModerationList({ rows }: Props) {
                   승인 대기
                 </span>
               )}
+              {r.featuredAt && (
+                <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-medium text-[var(--accent)]">
+                  ⭐ 대표 응원
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
               <span>{r.campaignTitle ?? '일반 응원'}</span>
@@ -105,6 +121,29 @@ export function CheerModerationList({ rows }: Props) {
             {r.body}
           </p>
           <div className="mt-3 flex justify-end gap-2">
+            {!r.hidden && r.published && (
+              <button
+                type="button"
+                onClick={() => toggleFeatured(r)}
+                disabled={pending === r.id}
+                title={
+                  r.featuredAt
+                    ? '대표 응원에서 제외합니다'
+                    : '캠페인 공개 페이지 상단에 노출합니다 (최대 3건)'
+                }
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50 ${
+                  r.featuredAt
+                    ? 'border border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                    : 'border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]'
+                }`}
+              >
+                {pending === r.id
+                  ? '처리 중...'
+                  : r.featuredAt
+                    ? '⭐ 대표 해제'
+                    : '☆ 대표 응원 선정'}
+              </button>
+            )}
             {!r.published && !r.hidden && (
               <button
                 type="button"

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
-import { setCheerHidden, setCheerPublished } from '@/lib/cheer/messages'
+import {
+  setCheerHidden,
+  setCheerPublished,
+  toggleFeaturedCheer,
+} from '@/lib/cheer/messages'
 import { revalidateCheerCampaignPath } from '@/lib/cheer/revalidate'
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -29,9 +33,10 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   const hasHidden = typeof body.hidden === 'boolean'
   const hasPublished = typeof body.published === 'boolean'
-  if (!hasHidden && !hasPublished) {
+  const hasFeatured = typeof body.featured === 'boolean'
+  if (!hasHidden && !hasPublished && !hasFeatured) {
     return NextResponse.json(
-      { error: 'invalid_body', detail: 'hidden or published required' },
+      { error: 'invalid_body', detail: 'hidden, published, or featured required' },
       { status: 400 }
     )
   }
@@ -76,7 +81,23 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
   }
 
-  // G-116: 숨김/공개 상태 변경 시 ISR 즉시 무효화
+  // G-D174: 대표 응원 토글
+  let demoted: string | undefined
+  if (hasFeatured) {
+    const result = await toggleFeaturedCheer(
+      supabase,
+      id,
+      guard.ctx.tenant.id,
+      body.featured as boolean
+    )
+    if (!result.ok) {
+      const status = result.error === 'not_eligible' ? 400 : 500
+      return NextResponse.json({ error: result.error }, { status })
+    }
+    demoted = result.demoted
+  }
+
+  // G-116: 숨김/공개/featured 상태 변경 시 ISR 즉시 무효화
   await revalidateCheerCampaignPath(supabase, id)
 
   return NextResponse.json({
@@ -84,5 +105,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     id,
     hidden: hasHidden ? body.hidden : undefined,
     published: hasPublished ? body.published : undefined,
+    featured: hasFeatured ? body.featured : undefined,
+    demoted,
   })
 }

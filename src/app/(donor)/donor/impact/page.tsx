@@ -127,26 +127,22 @@ export default async function DonorImpactPage() {
           {/* ── 핵심 지표 4개 ── */}
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MetricCard
-              icon="💰"
               label={t("donor.impact.metric.total_amount")}
               value={formatKRW(impact.totalAmount)}
               sub={formatKRWFull(impact.totalAmount)}
               color="var(--accent)"
             />
             <MetricCard
-              icon="🔄"
               label={t("donor.impact.metric.payment_count")}
               value={t("donor.impact.metric.count_unit", { count: impact.paymentCount })}
               color="var(--positive)"
             />
             <MetricCard
-              icon="📅"
               label={t("donor.impact.metric.active_months")}
               value={t("donor.impact.metric.months_unit", { months: impact.activeMonths })}
               color="var(--info)"
             />
             <MetricCard
-              icon="🌱"
               label={t("donor.impact.metric.beneficiaries", { unit: unitLabel })}
               value={t("donor.impact.metric.count_unit", { count: estimatedBeneficiaries.toLocaleString('ko-KR') })}
               color="var(--warning)"
@@ -343,7 +339,6 @@ export default async function DonorImpactPage() {
               border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
             }}
           >
-            <p className="text-2xl mb-2" aria-hidden="true">❤️</p>
             <p className="text-base font-semibold" style={{ color: 'var(--text)' }}>
               {t("donor.impact.cta.title")}
             </p>
@@ -356,10 +351,10 @@ export default async function DonorImpactPage() {
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <a
                 href="/donor/invite"
-                className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                className="inline-flex items-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: 'var(--accent)' }}
               >
-                <span aria-hidden="true">🎁</span> {t("donor.impact.invite")}
+                {t("donor.impact.invite")}
               </a>
               <a
                 href="/donor"
@@ -395,13 +390,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 function MetricCard({
-  icon,
   label,
   value,
   sub,
   color,
 }: {
-  icon: string
   label: string
   value: string
   sub?: string
@@ -409,17 +402,16 @@ function MetricCard({
 }) {
   return (
     <div
-      className="flex flex-col items-center rounded-2xl border p-5 text-center"
+      className="flex flex-col rounded-2xl border p-5"
       style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
     >
-      <span className="text-2xl" aria-hidden="true">{icon}</span>
       <p
-        className="mt-2 text-xs font-medium uppercase tracking-wider"
+        className="text-xs font-medium uppercase tracking-wider"
         style={{ color: 'var(--muted-foreground)' }}
       >
         {label}
       </p>
-      <p className="mt-1 text-xl font-extrabold" style={{ color }}>
+      <p className="mt-2 text-xl font-extrabold" style={{ color }}>
         {value}
       </p>
       {sub && (

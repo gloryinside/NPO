@@ -12,6 +12,8 @@ export interface OwnCheerItem {
   hidden: boolean
   hiddenReason: string | null
   createdAt: string
+  /** G-D174: 관리자가 대표 응원으로 선정한 시각 */
+  featuredAt: string | null
 }
 
 function formatDate(iso: string): string {
@@ -90,14 +92,24 @@ export function OwnCheerList({ items }: { items: OwnCheerItem[] }) {
                   </>
                 )}
               </div>
-              {s && (
-                <span
-                  className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-xs font-medium"
-                  style={{ color: s.color }}
-                >
-                  {s.label}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {m.featuredAt && (
+                  <span
+                    className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--accent)]"
+                    title="관리자가 선정한 대표 응원입니다"
+                  >
+                    ⭐ 대표 응원
+                  </span>
+                )}
+                {s && (
+                  <span
+                    className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-xs font-medium"
+                    style={{ color: s.color }}
+                  >
+                    {s.label}
+                  </span>
+                )}
+              </div>
             </div>
             <p className="mt-2 whitespace-pre-wrap break-words text-sm text-[var(--text)]">
               {m.body}

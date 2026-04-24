@@ -40,6 +40,17 @@ type PromiseRow = {
   campaigns: { id: string; title: string } | null;
 };
 
+type CheerRow = {
+  id: string;
+  body: string;
+  anonymous: boolean;
+  hidden: boolean;
+  published: boolean;
+  created_at: string;
+  featured_at: string | null;
+  campaigns: { title: string | null } | null;
+};
+
 type PaymentRow = {
   id: string;
   payment_code: string;
@@ -162,6 +173,7 @@ export default async function MemberDetailPage({
   let member: Member | null = null;
   let promises: PromiseRow[] = [];
   let payments: PaymentRow[] = [];
+  let cheers: CheerRow[] = [];
   let stats = {
     totalAmount: 0,
     paymentCount: 0,
@@ -188,7 +200,7 @@ export default async function MemberDetailPage({
     if (!memberData) notFound();
     member = memberData as Member;
 
-    const [promisesRes, paymentsRes, stateMap] = await Promise.all([
+    const [promisesRes, paymentsRes, stateMap, cheerRes] = await Promise.all([
       supabase
         .from("promises")
         .select(
@@ -209,11 +221,19 @@ export default async function MemberDetailPage({
       resolveAccountStatesBatch(supabase, [
         { id: member.id, supabase_uid: member.supabase_uid },
       ]),
+      supabase
+        .from("cheer_messages")
+        .select("id, body, anonymous, hidden, published, created_at, featured_at, campaigns(title)")
+        .eq("org_id", tenant.id)
+        .eq("member_id", id)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
 
     promises = (promisesRes.data as unknown as PromiseRow[]) ?? [];
     payments = (paymentsRes.data as unknown as PaymentRow[]) ?? [];
     accountState = stateMap.get(member.id) ?? accountState;
+    cheers = (cheerRes.data as unknown as CheerRow[]) ?? [];
 
     const paidPayments = payments.filter((p) => p.pay_status === "paid");
     const unpaidPayments = payments.filter((p) =>
@@ -308,6 +328,7 @@ export default async function MemberDetailPage({
           <TabsTrigger value="payment-info">결제정보</TabsTrigger>
           <TabsTrigger value="payments">납입이력</TabsTrigger>
           <TabsTrigger value="consultations">상담이력</TabsTrigger>
+          <TabsTrigger value="cheers">응원메시지 {cheers.length > 0 ? `(${cheers.length})` : ""}</TabsTrigger>
         </TabsList>
 
         {/* 기본정보 탭 */}
@@ -474,6 +495,63 @@ export default async function MemberDetailPage({
         {/* 상담이력 탭 */}
         <TabsContent value="consultations">
           <MemberConsultations memberId={member.id} />
+        </TabsContent>
+
+        {/* 응원메시지 탭 */}
+        <TabsContent value="cheers">
+          {cheers.length === 0 ? (
+            <div className="rounded-lg border border-dashed py-12 text-center border-[var(--border)] text-[var(--muted-foreground)]">
+              등록한 응원 메시지가 없습니다.
+            </div>
+          ) : (
+            <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+              {cheers.map((c) => {
+                const statusLabel = c.hidden
+                  ? "숨김"
+                  : !c.published
+                    ? "승인대기"
+                    : "공개중";
+                const statusClass = c.hidden
+                  ? "text-[var(--negative)]"
+                  : !c.published
+                    ? "text-[var(--warning)]"
+                    : "text-[var(--positive)]";
+                return (
+                  <li key={c.id} className="p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                        <span>{c.campaigns?.title ?? "일반 응원"}</span>
+                        <span>·</span>
+                        <time>{new Date(c.created_at).toLocaleString("ko-KR")}</time>
+                        {c.anonymous && <><span>·</span><span>익명</span></>}
+                        {c.featured_at && (
+                          <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
+                            ⭐ 대표
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={`rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-xs font-medium ${statusClass}`}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-sm text-[var(--text)]">
+                      {c.body}
+                    </p>
+                    <div className="mt-2 flex justify-end">
+                      <a
+                        href={`/admin/cheer`}
+                        className="text-xs text-[var(--accent)] hover:underline"
+                      >
+                        검수 페이지에서 관리 →
+                      </a>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </TabsContent>
       </Tabs>
     </div>

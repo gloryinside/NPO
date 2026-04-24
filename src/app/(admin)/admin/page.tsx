@@ -68,6 +68,8 @@ export default async function AdminDashboardPage() {
     failedRes,
     monthlyRes,
     pendingIncomeRes,
+    pendingRefundRes,
+    emailBounceRes,
   ] = await Promise.all([
     supabase
       .from("members")
@@ -130,8 +132,22 @@ export default async function AdminDashboardPage() {
       .eq("org_id", tenantId)
       .eq("income_status", "pending")
       .eq("pay_status", "paid"),
+    // 환불 승인 대기 건수
+    supabase
+      .from("refund_approvals")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", tenantId)
+      .eq("status", "pending"),
+    // 이메일 반송 (최근 30일 미처리)
+    supabase
+      .from("email_bounces")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", tenantId)
+      .is("resolved_at", null),
   ]);
 
+  const pendingRefundCount = pendingRefundRes.count ?? 0;
+  const emailBounceCount = emailBounceRes.count ?? 0;
   const totalMembers = membersRes.count ?? 0;
   const monthAmount = (monthAmountRes.data ?? []).reduce(
     (acc: number, r: { amount: number | null }) => acc + Number(r.amount ?? 0),
@@ -229,9 +245,19 @@ export default async function AdminDashboardPage() {
               href="/admin/payments"
             />
             <TodoItem
-              label="미납/���패 확인"
+              label="미납/실패 확인"
               count={unpaidCount}
               href="/admin/payments?status=failed"
+            />
+            <TodoItem
+              label="환불 승인 대기"
+              count={pendingRefundCount}
+              href="/admin/refund-approvals"
+            />
+            <TodoItem
+              label="이메일 반송 미처리"
+              count={emailBounceCount}
+              href="/admin/email-bounces"
             />
             {failReasonMap.size > 0 && (
               <div className="mt-2">

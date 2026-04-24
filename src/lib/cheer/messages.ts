@@ -16,7 +16,12 @@ export interface CheerMessage {
   displayName: string // 마스킹된 노출용 이름
   body: string
   createdAt: string
+  /** G-D174: 관리자가 대표 응원으로 선정한 시각. 미지정이면 null */
+  featuredAt?: string | null
 }
+
+/** G-D174: 캠페인별 대표 응원 최대 개수 */
+export const CHEER_FEATURED_LIMIT = 3
 
 export interface CreateCheerParams {
   supabase: SupabaseClient
@@ -146,7 +151,7 @@ export async function listPublicCheerMessages(
   let query = supabase
     .from('cheer_messages')
     .select(
-      'id, campaign_id, body, anonymous, created_at, member:members(id, name)'
+      'id, campaign_id, body, anonymous, created_at, featured_at, member:members(id, name)'
     )
     .eq('org_id', params.orgId)
     .eq('published', true)
@@ -171,6 +176,7 @@ export async function listPublicCheerMessages(
     body: string
     anonymous: boolean
     created_at: string
+    featured_at: string | null
     member: { id: string; name: string | null } | null
   }>
 
@@ -182,7 +188,151 @@ export async function listPublicCheerMessages(
       : (r.member?.name ?? '후원자'),
     body: r.body,
     createdAt: r.created_at,
+    featuredAt: r.featured_at,
   }))
+}
+
+/**
+ * G-D174: 캠페인별 대표 응원 조회 — 최대 3건, featured_at 최신순.
+ *   - published=true AND hidden=false AND featured_at IS NOT NULL
+ *   - 상단 섹션 전용. 일반 목록과 중복 노출을 피하려면 호출부에서 featuredAt 기준 필터링.
+ */
+export async function listFeaturedCheerMessages(
+  supabase: SupabaseClient,
+  params: { orgId: string; campaignId: string | null }
+): Promise<CheerMessage[]> {
+  let query = supabase
+    .from('cheer_messages')
+    .select(
+      'id, campaign_id, body, anonymous, created_at, featured_at, member:members(id, name)'
+    )
+    .eq('org_id', params.orgId)
+    .eq('published', true)
+    .eq('hidden', false)
+    .not('featured_at', 'is', null)
+
+  if (params.campaignId === null) {
+    query = query.is('campaign_id', null)
+  } else {
+    query = query.eq('campaign_id', params.campaignId)
+  }
+
+  const { data } = await query
+    .order('featured_at', { ascending: false })
+    .limit(CHEER_FEATURED_LIMIT)
+
+  const rows = (data ?? []) as unknown as Array<{
+    id: string
+    campaign_id: string | null
+    body: string
+    anonymous: boolean
+    created_at: string
+    featured_at: string | null
+    member: { id: string; name: string | null } | null
+  }>
+
+  return rows.map((r) => ({
+    id: r.id,
+    campaignId: r.campaign_id,
+    displayName: r.anonymous
+      ? maskName(r.member?.name ?? '')
+      : (r.member?.name ?? '후원자'),
+    body: r.body,
+    createdAt: r.created_at,
+    featuredAt: r.featured_at,
+  }))
+}
+
+/**
+ * G-D174: 대표 응원 토글 — 관리자 전용.
+ *   - feature=true: featured_at=now(). 해당 캠페인에 이미 3건이 있으면 가장 오래된
+ *     것(featured_at 오름차순 첫 번째)의 featured_at을 null로 해제하고 신규 설정.
+ *   - feature=false: featured_at=null.
+ *   - 대상 cheer가 published=false 또는 hidden=true면 거부 (비공개를 대표로 뽑을 수 없음).
+ *   - tenant 격리는 호출부에서 검증 전제.
+ *
+ * 반환: { ok, demoted? } — demoted는 자동 해제된 cheer id (없으면 undefined).
+ */
+export async function toggleFeaturedCheer(
+  supabase: SupabaseClient,
+  id: string,
+  orgId: string,
+  feature: boolean
+): Promise<
+  | { ok: true; demoted?: string }
+  | { ok: false; error: 'not_found' | 'not_eligible' | 'update_failed' }
+> {
+  const { data: target } = await supabase
+    .from('cheer_messages')
+    .select('id, campaign_id, published, hidden')
+    .eq('id', id)
+    .eq('org_id', orgId)
+    .maybeSingle()
+
+  if (!target) return { ok: false, error: 'not_found' }
+
+  const row = target as {
+    id: string
+    campaign_id: string | null
+    published: boolean
+    hidden: boolean
+  }
+
+  if (!feature) {
+    const { error } = await supabase
+      .from('cheer_messages')
+      .update({ featured_at: null })
+      .eq('id', id)
+    if (error) return { ok: false, error: 'update_failed' }
+    return { ok: true }
+  }
+
+  if (!row.published || row.hidden) {
+    return { ok: false, error: 'not_eligible' }
+  }
+
+  // 동일 캠페인에서 현재 featured인 목록 조회 (대상 자신 제외)
+  let currentQuery = supabase
+    .from('cheer_messages')
+    .select('id, featured_at')
+    .eq('org_id', orgId)
+    .not('featured_at', 'is', null)
+    .neq('id', id)
+
+  if (row.campaign_id === null) {
+    currentQuery = currentQuery.is('campaign_id', null)
+  } else {
+    currentQuery = currentQuery.eq('campaign_id', row.campaign_id)
+  }
+
+  const { data: currentRaw } = await currentQuery.order('featured_at', {
+    ascending: true,
+  })
+  const current = (currentRaw ?? []) as Array<{
+    id: string
+    featured_at: string
+  }>
+
+  let demoted: string | undefined
+  if (current.length >= CHEER_FEATURED_LIMIT) {
+    // 가장 오래된 featured 해제 (limit - 1건만 남도록 — 여러 개 초과 상태 복구까지 대응)
+    const toDemote = current.slice(0, current.length - (CHEER_FEATURED_LIMIT - 1))
+    const demoteIds = toDemote.map((r) => r.id)
+    const { error: demoteErr } = await supabase
+      .from('cheer_messages')
+      .update({ featured_at: null })
+      .in('id', demoteIds)
+    if (demoteErr) return { ok: false, error: 'update_failed' }
+    demoted = demoteIds[0]
+  }
+
+  const { error } = await supabase
+    .from('cheer_messages')
+    .update({ featured_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) return { ok: false, error: 'update_failed' }
+
+  return { ok: true, demoted }
 }
 
 /**
@@ -228,6 +378,8 @@ export interface OwnCheerMessage {
   hidden: boolean
   hiddenReason: string | null
   createdAt: string
+  /** G-D174: 대표 응원 선정 시각 (null이면 미지정) */
+  featuredAt: string | null
 }
 
 /**
@@ -240,7 +392,7 @@ export async function listOwnCheerMessages(
   const { data } = await supabase
     .from('cheer_messages')
     .select(
-      'id, campaign_id, body, anonymous, published, hidden, hidden_reason, created_at, campaigns(title)'
+      'id, campaign_id, body, anonymous, published, hidden, hidden_reason, created_at, featured_at, campaigns(title)'
     )
     .eq('member_id', memberId)
     .order('created_at', { ascending: false })
@@ -255,6 +407,7 @@ export async function listOwnCheerMessages(
     hidden: boolean
     hidden_reason: string | null
     created_at: string
+    featured_at: string | null
     campaigns: { title: string | null } | null
   }>
 
@@ -268,6 +421,7 @@ export async function listOwnCheerMessages(
     hidden: r.hidden,
     hiddenReason: r.hidden_reason,
     createdAt: r.created_at,
+    featuredAt: r.featured_at,
   }))
 }
 

@@ -23,8 +23,11 @@ const NAV: NavGroup[] = [
     group: "보고서",
     items: [
       { label: "대시보드", href: "/admin" },
-      { label: "통계", href: "/admin/stats" },
+      { label: "통계 개요", href: "/admin/stats" },
+      { label: "후원자 라이프사이클", href: "/admin/stats/lifecycle" },
+      { label: "LTV / 코호트", href: "/admin/stats/ltv" },
       { label: "기부금영수증", href: "/admin/receipts" },
+      { label: "데이터 품질", href: "/admin/reports/data-health" },
     ],
   },
   {
@@ -43,6 +46,9 @@ const NAV: NavGroup[] = [
       { label: "이탈 위험 후원자", href: "/admin/at-risk" },
       { label: "정기 스케줄", href: "/admin/schedules" },
       { label: "CMS 출금 오류", href: "/admin/cms-errors" },
+      { label: "환불 승인", href: "/admin/refund-approvals" },
+      { label: "카드 분쟁(Chargeback)", href: "/admin/chargebacks" },
+      { label: "은행 입금 대사", href: "/admin/bank-reconciliation" },
     ],
   },
   {
@@ -54,12 +60,21 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    group: "고객지원",
+    items: [
+      { label: "문의 관리", href: "/admin/inquiries" },
+      { label: "게시판 (공지/FAQ)", href: "/admin/board" },
+    ],
+  },
+  {
     group: "설정",
     items: [
       { label: "기관 설정", href: "/admin/settings" },
       { label: "사용자 관리", href: "/admin/users" },
       { label: "감사 로그", href: "/admin/audit-logs" },
       { label: "이메일 템플릿", href: "/admin/email-templates" },
+      { label: "이메일 반송", href: "/admin/email-bounces" },
+      { label: "컴플라이언스", href: "/admin/compliance" },
     ],
   },
 ];
@@ -71,17 +86,8 @@ interface AdminSidebarProps {
 function NavGroupSection({ group, items }: NavGroup) {
   const pathname = usePathname();
   return (
-    <div style={{ marginTop: "0.75rem" }}>
-      <div
-        style={{
-          padding: "0.25rem 1rem",
-          fontSize: "0.7rem",
-          fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          color: "var(--muted-foreground)",
-        }}
-      >
+    <div className="mt-3">
+      <div className="px-4 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted-foreground)]">
         {group}
       </div>
       <div>
@@ -91,21 +97,13 @@ function NavGroupSection({ group, items }: NavGroup) {
             <Link
               key={item.href}
               href={item.href}
-              style={{
-                display: "block",
-                padding: "0.375rem 1rem",
-                fontSize: "0.875rem",
-                textDecoration: "none",
-                transition: "color 0.15s, background-color 0.15s",
-                color: isActive ? "var(--accent)" : "var(--text)",
-                background: isActive
-                  ? "color-mix(in srgb, var(--accent) 10%, transparent)"
-                  : "transparent",
-                fontWeight: isActive ? 500 : 400,
-                borderLeft: isActive
-                  ? "2px solid var(--accent)"
-                  : "2px solid transparent",
-              }}
+              className={[
+                "block px-4 py-1.5 text-sm no-underline transition-colors duration-150",
+                "border-l-2",
+                isActive
+                  ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] font-medium text-[var(--accent)]"
+                  : "border-transparent font-normal text-[var(--text)] hover:bg-[var(--surface)] hover:text-[var(--text)]",
+              ].join(" ")}
             >
               {item.label}
             </Link>
@@ -123,21 +121,12 @@ function NotificationLink() {
   return (
     <Link
       href="/admin/notifications"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "0.375rem 1rem",
-        borderRadius: "0.375rem",
-        fontSize: "0.875rem",
-        textDecoration: "none",
-        transition: "color 0.15s, background-color 0.15s",
-        color: isActive ? "var(--accent)" : "var(--muted-foreground)",
-        background: isActive
-          ? "color-mix(in srgb, var(--accent) 10%, transparent)"
-          : "transparent",
-        fontWeight: isActive ? 500 : 400,
-        marginBottom: "0.25rem",
-      }}
+      className={[
+        "mb-1 flex items-center rounded-md px-4 py-1.5 text-sm no-underline transition-colors duration-150",
+        isActive
+          ? "bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] font-medium text-[var(--accent)]"
+          : "font-normal text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--text)]",
+      ].join(" ")}
     >
       알림
       <NotificationBadge />
@@ -147,38 +136,15 @@ function NotificationLink() {
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
-    <aside
-      style={{
-        width: "240px",
-        flexShrink: 0,
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--surface-2)",
-        borderRight: "1px solid var(--border)",
-      }}
-    >
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface-2)]">
       {/* Brand area */}
-      <div
-        style={{
-          padding: "1rem",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
+      <div className="border-b border-[var(--border)] p-4">
         <LogoWithText variant="header" size="md" />
-        <div
-          style={{
-            color: "var(--muted-foreground)",
-            fontSize: "0.75rem",
-            marginTop: "0.25rem",
-          }}
-        >
-          관리자
-        </div>
+        <div className="mt-1 text-xs text-[var(--muted-foreground)]">관리자</div>
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, overflowY: "auto", paddingTop: "0.5rem", paddingBottom: "0.5rem" }}>
+      <nav className="flex-1 overflow-y-auto py-2">
         <NotificationLink />
         {NAV.map((group) => (
           <NavGroupSection key={group.group} {...group} />
@@ -186,53 +152,19 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       </nav>
 
       {/* Theme toggle */}
-      <div
-        style={{
-          padding: "0.75rem 1rem",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
+      <div className="border-t border-[var(--border)] px-4 py-3">
         <ThemeToggle persistToServer={false} />
       </div>
 
       {/* User area */}
-      <div
-        style={{
-          padding: "1rem",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
-        <div
-          style={{
-            color: "var(--muted-foreground)",
-            fontSize: "0.75rem",
-            marginBottom: "0.5rem",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
+      <div className="border-t border-[var(--border)] p-4">
+        <div className="mb-2 truncate text-xs text-[var(--muted-foreground)]">
           {user.email}
         </div>
         <form action={logout}>
           <button
             type="submit"
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "var(--muted-foreground)",
-              fontSize: "0.8125rem",
-              textDecoration: "none",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--text)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "var(--muted-foreground)";
-            }}
+            className="cursor-pointer bg-transparent p-0 text-[0.8125rem] text-[var(--muted-foreground)] hover:text-[var(--text)] transition-colors duration-150"
           >
             로그아웃
           </button>

@@ -182,6 +182,11 @@ export default function DonorPromisesPage() {
   const totalMonthly = promises
     .filter((p) => p.status === "active" && p.type === "regular")
     .reduce((s, p) => s + Number(p.amount ?? 0), 0);
+  // 전체 약정 누적 후원액 합계
+  const grandTotalPaid = promises.reduce(
+    (s, p) => s + (p.stats?.total_paid ?? 0),
+    0
+  );
 
   // G-D41: 현재/과거 약정 분리
   const livePromises = promises.filter(
@@ -236,23 +241,53 @@ export default function DonorPromisesPage() {
 
       <div className="space-y-6">
         {/* 헤더 + 요약 */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--text)]">{t("donor.promises.title")}</h1>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              {t("donor.promises.subtitle")}
-            </p>
+        <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[var(--text)]">{t("donor.promises.title")}</h1>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                {t("donor.promises.subtitle")}
+              </p>
+            </div>
+            {promises.length > 0 && (
+              <div className="flex gap-3">
+                <SummaryPill label={t("donor.promises.summary.active")} value={`${activeCount}건`} color="var(--positive)" />
+                {totalMonthly > 0 && (
+                  <SummaryPill
+                    label={t("donor.promises.summary.monthly")}
+                    value={`${new Intl.NumberFormat("ko-KR").format(totalMonthly)}원`}
+                    color="var(--accent)"
+                  />
+                )}
+              </div>
+            )}
           </div>
-          {promises.length > 0 && (
-            <div className="flex gap-3">
-              <SummaryPill label={t("donor.promises.summary.active")} value={`${activeCount}건`} color="var(--positive)" />
-              {totalMonthly > 0 && (
-                <SummaryPill
-                  label={t("donor.promises.summary.monthly")}
-                  value={`${new Intl.NumberFormat("ko-KR").format(totalMonthly)}원`}
-                  color="var(--accent)"
-                />
-              )}
+
+          {/* 전체 누적 후원액 배너 */}
+          {grandTotalPaid > 0 && (
+            <div
+              className="mt-4 flex items-center justify-between rounded-xl px-5 py-3"
+              style={{
+                background: "linear-gradient(90deg, var(--accent-soft) 0%, var(--surface-2) 100%)",
+                border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
+              }}
+            >
+              <div>
+                <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  내 모든 약정 누적 후원액
+                </p>
+                <p className="mt-0.5 text-xl font-extrabold" style={{ color: "var(--accent)" }}>
+                  {new Intl.NumberFormat("ko-KR").format(grandTotalPaid)}원
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  활성 약정
+                </p>
+                <p className="mt-0.5 text-base font-bold" style={{ color: "var(--text)" }}>
+                  {activeCount}건
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -652,11 +687,7 @@ function PromiseImpactBlock({ promise }: { promise: DonorPromise }) {
           <p className="mb-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
             최근 12개월 납입
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {stats.history_12m.map((m) => (
-              <HistorySticker key={m.month} month={m.month} status={m.status} />
-            ))}
-          </div>
+          <HistoryStickerRow entries={stats.history_12m} />
         </div>
       )}
     </div>
@@ -693,6 +724,35 @@ function StatBlock({
   );
 }
 
+// 연도 경계가 있는 스티커 행 — 1월이 나올 때마다 연도 라벨을 삽입
+function HistoryStickerRow({ entries }: { entries: HistoryEntry[] }) {
+  const items: Array<{ type: "year"; year: string } | { type: "sticker"; entry: HistoryEntry }> = [];
+  for (const entry of entries) {
+    const mm = entry.month.slice(5); // "MM"
+    if (mm === "01") {
+      items.push({ type: "year", year: entry.month.slice(0, 4) });
+    }
+    items.push({ type: "sticker", entry });
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-x-1 gap-y-2">
+      {items.map((item, i) =>
+        item.type === "year" ? (
+          <span
+            key={`yr-${item.year}-${i}`}
+            className="w-full text-[10px] font-semibold"
+            style={{ color: "var(--muted-foreground)", marginBottom: -4 }}
+          >
+            {item.year}
+          </span>
+        ) : (
+          <HistorySticker key={item.entry.month} month={item.entry.month} status={item.entry.status} />
+        )
+      )}
+    </div>
+  );
+}
+
 function HistorySticker({
   month,
   status,
@@ -700,8 +760,8 @@ function HistorySticker({
   month: string;
   status: "paid" | "failed" | "none";
 }) {
-  const monthLabel = month.slice(5); // MM
-  const monthNum = Number(monthLabel);
+  const mm = Number(month.slice(5)); // 1~12
+  const icon = status === "paid" ? "✓" : status === "failed" ? "✕" : "·";
 
   const bg =
     status === "paid"
@@ -721,28 +781,34 @@ function HistorySticker({
       : status === "failed"
         ? "1px solid var(--negative)"
         : "1px dashed var(--border)";
-  const title =
+
+  const label =
     status === "paid"
       ? `${month} 납입 성공`
       : status === "failed"
-        ? `${month} 납입 실패·미납`
+        ? `${month} 납입 실패`
         : `${month} 납입 없음`;
-  const icon =
-    status === "paid" ? "✓" : status === "failed" ? "✕" : `${monthNum}월`;
 
   return (
     <div
-      title={title}
-      aria-label={title}
-      className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold"
-      style={{
-        background: bg,
-        color: fg,
-        border,
-        fontSize: status === "none" ? 10 : 13,
-      }}
+      title={label}
+      aria-label={label}
+      className="flex flex-col items-center gap-0.5"
     >
-      {icon}
+      {/* 상태 아이콘 원 */}
+      <div
+        className="flex h-8 w-8 items-center justify-center rounded-full font-semibold"
+        style={{ background: bg, color: fg, border, fontSize: 12 }}
+      >
+        {icon}
+      </div>
+      {/* 월 라벨 */}
+      <span
+        className="text-[9px] font-medium leading-none"
+        style={{ color: status === "paid" ? "var(--accent)" : "var(--muted-foreground)" }}
+      >
+        {mm}월
+      </span>
     </div>
   );
 }

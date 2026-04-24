@@ -65,8 +65,8 @@ export function AccountDeleteCard({ authMethod }: { authMethod: "supabase" | "ot
           className="mt-1 text-xs"
           style={{ color: "var(--muted-foreground)" }}
         >
-          계정을 삭제하면 개인정보가 마스킹 처리되며, 진행 중인 모든 약정이
-          해지됩니다. 과거 후원 이력과 영수증은 회계·세무 목적으로 보존됩니다.
+          계정을 삭제하면 개인정보가 즉시 마스킹 처리되며, 진행 중인 모든
+          약정이 해지됩니다.
         </p>
 
         {/* G-D45: 결제 수단 영구 삭제 경고 */}
@@ -74,10 +74,42 @@ export function AccountDeleteCard({ authMethod }: { authMethod: "supabase" | "ot
           className="mt-3 space-y-1 text-xs"
           style={{ color: "var(--muted-foreground)" }}
         >
-          <li>• 등록된 <b style={{ color: "var(--text)" }}>카드 결제 수단(빌링키)</b>이 영구 삭제됩니다.</li>
+          <li>• 등록된 <b style={{ color: "var(--text)" }}>카드 결제 수단(빌링키)</b>이 즉시 영구 삭제됩니다.</li>
           <li>• 다시 후원하시려면 <b style={{ color: "var(--text)" }}>새로 가입</b>하고 결제 수단을 재등록해야 합니다.</li>
           <li>• 일시 중단을 원하면 삭제 대신 각 약정에서 <b style={{ color: "var(--text)" }}>일시중지</b>를 사용하세요.</li>
         </ul>
+
+        {/* 법적 보존 안내 — 개인정보보호법상 보유 기간 명시 의무 */}
+        <div
+          className="mt-3 rounded-lg border p-3 text-xs leading-relaxed"
+          style={{
+            borderColor: "var(--border)",
+            background: "var(--surface-2)",
+            color: "var(--muted-foreground)",
+          }}
+        >
+          <p className="font-semibold" style={{ color: "var(--text)" }}>
+            보존되는 정보 · 근거 법령
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            <li>
+              · <b>기부금 영수증 발급 내역</b>: 소득세법 시행령 제81조의7에 따라
+              <b> 최소 5년</b> 보존
+            </li>
+            <li>
+              · <b>결제(납입) 이력</b>: 전자상거래법 제6조에 따라
+              <b> 최소 5년</b> 보존
+            </li>
+            <li>
+              · 보존 기간 경과 후 <b>자동 익명화</b> 또는 영구 파기
+            </li>
+          </ul>
+          <p className="mt-2">
+            본인 데이터를 삭제 전 일괄 다운로드 받으시려면 위의{" "}
+            <b style={{ color: "var(--text)" }}>내 데이터 내보내기</b>를
+            이용하세요.
+          </p>
+        </div>
 
         {!expanded ? (
           <button
