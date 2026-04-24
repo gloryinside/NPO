@@ -7,6 +7,8 @@ import { sendEmail } from "@/lib/email/send-email";
 import { checkCsrf } from "@/lib/security/csrf";
 import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 import { cookies } from "next/headers";
+import { revokeOtpSession, OTP_SESSION_COOKIE_NAME } from "@/lib/auth/otp-session";
+import { decodeJwt } from "jose";
 
 /**
  * G-D02: 후원자 본인 계정 삭제
@@ -165,9 +167,22 @@ export async function DELETE(req: NextRequest) {
     diff: { method: session.authMethod },
   });
 
-  // 5) 세션 쿠키 정리
+  // 5) 세션 쿠키 정리 + SP-5 OTP blocklist 등록
   const cookieStore = await cookies();
-  cookieStore.delete("donor-otp-session");
+  if (session.authMethod === "otp") {
+    const otpToken = cookieStore.get(OTP_SESSION_COOKIE_NAME)?.value;
+    if (otpToken) {
+      try {
+        const { iat } = decodeJwt(otpToken);
+        if (typeof iat === "number") {
+          await revokeOtpSession(iat, session.member.id, "account_delete");
+        }
+      } catch {
+        // best-effort — 토큰 파싱 실패해도 쿠키 삭제는 진행
+      }
+    }
+  }
+  cookieStore.delete(OTP_SESSION_COOKIE_NAME);
   // Supabase 세션 쿠키는 signOut 로 정리
   if (session.authMethod === "supabase") {
     const server = await createSupabaseServerClient();

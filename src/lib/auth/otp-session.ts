@@ -1,5 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { createHash } from 'crypto';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 const COOKIE_NAME = 'donor-otp-session';
 
@@ -33,6 +35,43 @@ export async function signOtpToken(payload: OtpPayload): Promise<string> {
     .sign(getSecret());
 }
 
+/**
+ * SP-5: OTP JWT의 jti (= SHA256(iat || memberId)의 앞 16자리).
+ * blocklist 조회/삽입 모두 이 함수 결과와 일치해야 한다.
+ */
+export function makeOtpJti(iat: number, memberId: string): string {
+  return createHash('sha256')
+    .update(`${iat}:${memberId}`)
+    .digest('hex')
+    .slice(0, 16);
+}
+
+/**
+ * SP-5: OTP 세션을 서버 측에서 무효화. 로그아웃 시 호출.
+ * 저장된 jti는 getDonorSession(verifyOtpToken) 경로에서 차단된다.
+ */
+export async function revokeOtpSession(
+  iat: number,
+  memberId: string,
+  reason: string = 'logout',
+): Promise<void> {
+  const jti = makeOtpJti(iat, memberId);
+  const supabase = createSupabaseAdminClient();
+  await supabase
+    .from('otp_session_blocklist')
+    .upsert({ jti, reason }, { onConflict: 'jti' });
+}
+
+async function isOtpJtiRevoked(jti: string): Promise<boolean> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('otp_session_blocklist')
+    .select('jti')
+    .eq('jti', jti)
+    .maybeSingle();
+  return data !== null;
+}
+
 export async function verifyOtpToken(token: string): Promise<OtpPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
@@ -41,6 +80,12 @@ export async function verifyOtpToken(token: string): Promise<OtpPayload | null> 
     if (typeof p.lastSeen === 'number') {
       const idle = Date.now() - p.lastSeen;
       if (idle > INACTIVITY_MS) return null;
+    }
+    // SP-5: blocklist 조회 — revoked 세션은 차단
+    const iat = payload.iat as number | undefined;
+    if (typeof iat === 'number' && p.memberId) {
+      const jti = makeOtpJti(iat, p.memberId);
+      if (await isOtpJtiRevoked(jti)) return null;
     }
     return p;
   } catch {
