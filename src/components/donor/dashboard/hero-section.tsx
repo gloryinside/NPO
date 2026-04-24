@@ -1,4 +1,5 @@
 import type { DonorDashboardSnapshot } from "@/types/dashboard";
+import { getT } from "@/lib/i18n/donor";
 
 function formatAmount(value: number | null | undefined): string {
   if (value == null) return "-";
@@ -14,16 +15,16 @@ function calcDaysUntilNext(
   return diff > 0 ? diff : null;
 }
 
-function getGreeting(): string {
+function getGreetingKey(): string {
   const hStr = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Seoul",
     hour: "numeric",
     hour12: false,
   }).format(new Date());
   const h = Number(hStr);
-  if (h < 12) return "좋은 아침이에요";
-  if (h < 18) return "안녕하세요";
-  return "좋은 저녁이에요";
+  if (h < 12) return "donor.dashboard.greeting.morning";
+  if (h < 18) return "donor.dashboard.greeting.afternoon";
+  return "donor.dashboard.greeting.evening";
 }
 
 interface HeroSectionProps {
@@ -31,8 +32,9 @@ interface HeroSectionProps {
   snapshot: DonorDashboardSnapshot;
 }
 
-export function HeroSection({ memberName, snapshot }: HeroSectionProps) {
-  const greeting = getGreeting();
+export async function HeroSection({ memberName, snapshot }: HeroSectionProps) {
+  const t = await getT();
+  const greeting = t(getGreetingKey());
   const daysUntilNext = calcDaysUntilNext(snapshot.upcoming_payments);
   const upcomingTotal = snapshot.upcoming_payments.reduce(
     (sum, p) => sum + Number(p.amount),
@@ -52,40 +54,44 @@ export function HeroSection({ memberName, snapshot }: HeroSectionProps) {
         {greeting} <span aria-hidden="true">👋</span>
       </p>
       <h1 className="mt-1 text-2xl font-bold" style={{ color: "var(--text)" }}>
-        {memberName}님
+        {memberName}
+        {t("donor.dashboard.hero.honorific")}
       </h1>
       <p
         className="mt-1 text-sm"
         style={{ color: "var(--muted-foreground)" }}
       >
-        지금까지의 후원이 세상을 바꾸고 있습니다.
+        {t("donor.dashboard.hero.subtitle")}
       </p>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatPill
-          label="누적 후원액"
+          label={t("donor.dashboard.stats.total_donated")}
           value={formatAmount(snapshot.total_paid)}
           accent
         />
         <StatPill
-          label="활성 약정"
-          value={`${snapshot.active_promises.length}건`}
+          label={t("donor.dashboard.stats.active_pledges")}
+          value={`${snapshot.active_promises.length}${t("donor.dashboard.stats.active_unit")}`}
         />
         <StatPill
-          label="이번 달 예정"
+          label={t("donor.dashboard.stats.upcoming")}
           value={
             snapshot.upcoming_payments.length > 0
               ? formatAmount(upcomingTotal)
-              : "없음"
+              : t("donor.dashboard.stats.upcoming_none")
           }
         />
         {snapshot.streak >= 3 ? (
           <StatPill
-            label="연속 후원"
-            value={`🔥 ${snapshot.streak}개월`}
+            label={t("donor.dashboard.stats.streak")}
+            value={`🔥 ${snapshot.streak}${t("donor.dashboard.stats.streak_suffix")}`}
           />
         ) : daysUntilNext !== null ? (
-          <StatPill label="다음 결제" value={`D-${daysUntilNext}`} />
+          <StatPill
+            label={t("donor.dashboard.stats.next_payment")}
+            value={`D-${daysUntilNext}`}
+          />
         ) : (
           <StatPill label="" value="" />
         )}
@@ -104,7 +110,6 @@ function StatPill({
   accent?: boolean;
 }) {
   if (!label && !value) {
-    // placeholder - grid 정렬 유지용 빈 칸
     return <div aria-hidden="true" />;
   }
   return (
