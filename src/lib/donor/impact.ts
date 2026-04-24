@@ -40,14 +40,23 @@ export async function getDonorImpact(
   supabase: SupabaseClient,
   orgId: string,
   memberId: string,
+  year?: number,
 ): Promise<DonorImpact> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('payments')
     .select('amount, pay_date, campaign_id, campaigns(id, title)')
     .eq('org_id', orgId)
     .eq('member_id', memberId)
     .eq('pay_status', 'paid')
     .order('pay_date', { ascending: true })
+
+  if (year !== undefined) {
+    const yearStart = `${year}-01-01`
+    const yearEnd = `${year + 1}-01-01`
+    query = query.gte('pay_date', yearStart).lt('pay_date', yearEnd)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error('[donor/impact] DB error:', error.message)
