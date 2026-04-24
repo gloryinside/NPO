@@ -72,6 +72,8 @@ describe("CampaignFormDialog — 수정", () => {
       page_content: null,
       published_content: null,
       form_settings: null,
+      impact_unit_amount: null,
+      impact_unit_label: null,
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     };

@@ -20,6 +20,10 @@ export type Campaign = {
   page_content: Record<string, unknown> | null;
   published_content: Record<string, unknown> | null;
   form_settings: Record<string, unknown> | null;
+  /** G-D173 1건당 금액 (KRW). 예: 3000 = 한 끼 */
+  impact_unit_amount: number | null;
+  /** G-D173 단위 라벨. 예: "끼", "회 방문" */
+  impact_unit_label: string | null;
   created_at: string;
   updated_at: string;
 };

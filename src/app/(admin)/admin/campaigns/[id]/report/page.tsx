@@ -77,6 +77,39 @@ export default async function CampaignReportPage({
         <MetricCard label="고유 후원자" value={`${totals.uniqueDonors}명`} color="var(--warning)" />
       </section>
 
+      {/* G-D173 임팩트 합계 — impact_unit_amount 설정된 캠페인만 */}
+      {campaign.impact_unit_amount &&
+        campaign.impact_unit_amount > 0 &&
+        campaign.impact_unit_label && (
+          <section
+            className="rounded-2xl border p-5"
+            style={{
+              borderColor: 'var(--accent)',
+              background:
+                'linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%)',
+            }}
+          >
+            <p className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>
+              이 캠페인이 만든 변화
+            </p>
+            <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--text)' }}>
+              약{' '}
+              <span style={{ color: 'var(--accent)' }}>
+                {Math.floor(
+                  totals.raised / campaign.impact_unit_amount
+                ).toLocaleString('ko-KR')}
+                {campaign.impact_unit_label}
+              </span>
+              을 함께 만들었어요
+            </p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              단가 {formatKRW(campaign.impact_unit_amount)} / 1
+              {campaign.impact_unit_label} 기준 환산.{' '}
+              후원자 마이페이지에도 동일한 환산 문구가 표시됩니다.
+            </p>
+          </section>
+        )}
+
       {/* G-D83: 품질 지표 (실패·환불) */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard

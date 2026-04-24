@@ -8,6 +8,10 @@ export interface CampaignReport {
     status: string
     started_at: string | null
     ended_at: string | null
+    /** G-D173 1건당 금액 */
+    impact_unit_amount: number | null
+    /** G-D173 단위 라벨 */
+    impact_unit_label: string | null
   }
   totals: {
     raised: number
@@ -39,7 +43,9 @@ export async function getCampaignReport(
 ): Promise<CampaignReport | null> {
   const { data: campaign } = await supabase
     .from('campaigns')
-    .select('id, title, goal_amount, status, started_at, ended_at, org_id')
+    .select(
+      'id, title, goal_amount, status, started_at, ended_at, org_id, impact_unit_amount, impact_unit_label'
+    )
     .eq('id', campaignId)
     .maybeSingle()
 
@@ -146,6 +152,8 @@ export async function getCampaignReport(
       status: campaign.status as string,
       started_at: campaign.started_at as string | null,
       ended_at: campaign.ended_at as string | null,
+      impact_unit_amount: (campaign.impact_unit_amount as number | null) ?? null,
+      impact_unit_label: (campaign.impact_unit_label as string | null) ?? null,
     },
     totals: {
       raised,

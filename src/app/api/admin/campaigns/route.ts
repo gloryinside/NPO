@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
     seo_title,
     seo_description,
     og_image_url,
+    impact_unit_amount,
+    impact_unit_label,
   } = body as {
     title?: string;
     slug?: string;
@@ -94,6 +96,8 @@ export async function POST(req: NextRequest) {
     seo_title?: string | null;
     seo_description?: string | null;
     og_image_url?: string | null;
+    impact_unit_amount?: number | null;
+    impact_unit_label?: string | null;
   };
 
   if (!title || typeof title !== "string" || title.trim() === "") {
@@ -149,6 +153,11 @@ export async function POST(req: NextRequest) {
     seo_title: seo_title?.trim() || null,
     seo_description: seo_description?.trim() || null,
     og_image_url: og_image_url?.trim() || null,
+    impact_unit_amount:
+      impact_unit_amount != null && impact_unit_amount > 0
+        ? impact_unit_amount
+        : null,
+    impact_unit_label: impact_unit_label?.trim() || null,
   };
 
   const { data: campaign, error } = await supabase

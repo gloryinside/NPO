@@ -10,7 +10,24 @@ import { InlineLoading } from "@/components/donor/ui/PageLoading";
 import { useDonorT } from "@/lib/i18n/use-donor-t";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 
-type CampaignRef = { id: string; title: string } | null;
+type CampaignRef =
+  | {
+      id: string;
+      title: string;
+      impact_unit_amount: number | null;
+      impact_unit_label: string | null;
+    }
+  | null;
+
+type HistoryEntry = { month: string; status: "paid" | "failed" | "none" };
+
+type PromiseStats = {
+  promise_id: string;
+  total_paid: number;
+  paid_count: number;
+  failed_count: number;
+  history_12m: HistoryEntry[];
+};
 
 type DonorPromise = {
   id: string;
@@ -22,6 +39,7 @@ type DonorPromise = {
   started_at: string | null;
   ended_at: string | null;
   campaigns: CampaignRef;
+  stats: PromiseStats;
 };
 
 
@@ -271,11 +289,14 @@ export default function DonorPromisesPage() {
                   {/* 상단 상태 바 */}
                   <div
                     style={{
-                      height: 4,
+                      height: isEnded ? 4 : 6,
                       background: STATUS_ACCENT[p.status],
                       opacity: isEnded ? 0.35 : 1,
                     }}
                   />
+
+                  {/* 뿌듯함 블록 — 진행 중 약정에만 (G-D173) */}
+                  {!isEnded && <PromiseImpactBlock promise={p} />}
 
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-4">
@@ -547,6 +568,181 @@ function PayDayField({
           {t("donor.promises.pay_day_cancel")}
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 약정 카드 상단의 "뿌듯함" 블록.
+ *
+ * 구성:
+ *   1. 누적 지표 3종 (누적 후원액·납입 횟수·연속 개월)
+ *   2. 임팩트 환산 문구 (campaign.impact_unit_amount/label 있을 때만)
+ *   3. 최근 12개월 스티커 히스토리
+ */
+function PromiseImpactBlock({ promise }: { promise: DonorPromise }) {
+  const { stats, campaigns } = promise;
+  const totalPaid = stats.total_paid;
+  const paidCount = stats.paid_count;
+
+  // 연속 개월 — history_12m 끝에서부터 paid 연속 개수
+  const streak = (() => {
+    let n = 0;
+    for (let i = stats.history_12m.length - 1; i >= 0; i--) {
+      if (stats.history_12m[i].status === "paid") n++;
+      else break;
+    }
+    return n;
+  })();
+
+  const unitAmount = campaigns?.impact_unit_amount ?? null;
+  const unitLabel = campaigns?.impact_unit_label ?? null;
+  const impactCount =
+    unitAmount && unitAmount > 0 ? Math.floor(totalPaid / unitAmount) : null;
+  const showImpact =
+    impactCount !== null && impactCount > 0 && unitLabel && totalPaid > 0;
+
+  // 아직 납입 이력이 없으면 블록 자체 숨김 (pending_billing / 신규)
+  if (totalPaid === 0 && paidCount === 0) return null;
+
+  return (
+    <div
+      className="border-b px-5 pt-5 pb-4"
+      style={{
+        borderColor: "var(--border)",
+        background:
+          "linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 100%)",
+      }}
+    >
+      {/* 누적 지표 3종 */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatBlock
+          label="누적 후원액"
+          value={`${new Intl.NumberFormat("ko-KR").format(totalPaid)}원`}
+          accent
+        />
+        <StatBlock label="납입 횟수" value={`${paidCount}회`} />
+        <StatBlock
+          label="연속 후원"
+          value={streak > 0 ? `${streak}개월` : "-"}
+        />
+      </div>
+
+      {/* 임팩트 환산 문구 */}
+      {showImpact && (
+        <p
+          className="mt-4 rounded-lg px-3 py-2.5 text-sm"
+          style={{
+            background: "var(--accent-soft)",
+            color: "var(--text)",
+          }}
+        >
+          <span aria-hidden="true">💡</span> 지금까지 약{" "}
+          <b style={{ color: "var(--accent)" }}>
+            {new Intl.NumberFormat("ko-KR").format(impactCount)}
+            {unitLabel}
+          </b>
+          의 변화를 함께 만드셨어요.
+        </p>
+      )}
+
+      {/* 최근 12개월 스티커 히스토리 */}
+      {stats.history_12m.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
+            최근 12개월 납입
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {stats.history_12m.map((m) => (
+              <HistorySticker key={m.month} month={m.month} status={m.status} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatBlock({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className="rounded-lg px-3 py-2"
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+      }}
+    >
+      <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+        {label}
+      </p>
+      <p
+        className="mt-0.5 text-base font-bold"
+        style={{ color: accent ? "var(--accent)" : "var(--text)" }}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function HistorySticker({
+  month,
+  status,
+}: {
+  month: string;
+  status: "paid" | "failed" | "none";
+}) {
+  const monthLabel = month.slice(5); // MM
+  const monthNum = Number(monthLabel);
+
+  const bg =
+    status === "paid"
+      ? "var(--accent)"
+      : status === "failed"
+        ? "var(--negative-soft)"
+        : "var(--surface-2)";
+  const fg =
+    status === "paid"
+      ? "#fff"
+      : status === "failed"
+        ? "var(--negative)"
+        : "var(--muted-foreground)";
+  const border =
+    status === "paid"
+      ? "none"
+      : status === "failed"
+        ? "1px solid var(--negative)"
+        : "1px dashed var(--border)";
+  const title =
+    status === "paid"
+      ? `${month} 납입 성공`
+      : status === "failed"
+        ? `${month} 납입 실패·미납`
+        : `${month} 납입 없음`;
+  const icon =
+    status === "paid" ? "✓" : status === "failed" ? "✕" : `${monthNum}월`;
+
+  return (
+    <div
+      title={title}
+      aria-label={title}
+      className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold"
+      style={{
+        background: bg,
+        color: fg,
+        border,
+        fontSize: status === "none" ? 10 : 13,
+      }}
+    >
+      {icon}
     </div>
   );
 }

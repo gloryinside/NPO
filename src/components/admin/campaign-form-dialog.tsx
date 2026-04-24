@@ -59,6 +59,12 @@ export function CampaignFormDialog({
   const [presetAmountsText, setPresetAmountsText] = useState(
     (campaign?.preset_amounts ?? []).join(", ")
   );
+  const [impactUnitAmount, setImpactUnitAmount] = useState(
+    campaign?.impact_unit_amount != null ? String(campaign.impact_unit_amount) : ""
+  );
+  const [impactUnitLabel, setImpactUnitLabel] = useState(
+    campaign?.impact_unit_label ?? ""
+  );
   const [payMethods, setPayMethods] = useState<string[]>(
     campaign?.pay_methods ?? ["card"]
   );
@@ -98,6 +104,8 @@ export function CampaignFormDialog({
         thumbnail_url: thumbnailUrl || null,
         donation_type: donationType,
         preset_amounts: presetAmounts.length > 0 ? presetAmounts : null,
+        impact_unit_amount: impactUnitAmount ? Number(impactUnitAmount) : null,
+        impact_unit_label: impactUnitLabel.trim() || null,
         pay_methods: payMethods.length > 0 ? payMethods : ["card"],
         ga_tracking_id: gaTrackingId || null,
         meta_pixel_id: metaPixelId || null,
@@ -300,6 +308,43 @@ export function CampaignFormDialog({
             />
             <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
               공개 페이지에서 빠른 선택 버튼으로 보여줍니다.
+            </p>
+          </div>
+
+          {/* 임팩트 환산 (G-D173) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="impact_unit_amount" style={{ color: "var(--text)" }}>
+                임팩트 단가 (원)
+              </Label>
+              <Input
+                id="impact_unit_amount"
+                type="number"
+                min={1}
+                value={impactUnitAmount}
+                onChange={(e) => setImpactUnitAmount(e.target.value)}
+                placeholder="3000"
+                style={inputStyle}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="impact_unit_label" style={{ color: "var(--text)" }}>
+                임팩트 단위
+              </Label>
+              <Input
+                id="impact_unit_label"
+                value={impactUnitLabel}
+                onChange={(e) => setImpactUnitLabel(e.target.value)}
+                placeholder="끼, 회 방문, 권"
+                style={inputStyle}
+              />
+            </div>
+            <p
+              className="col-span-2 text-xs"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              후원자 마이페이지에서 누적 금액을 단위로 환산해 보여줍니다.
+              예: &quot;3,000원 = 1끼&quot;로 설정 시 30,000원 후원 → 10끼 제공.
             </p>
           </div>
 

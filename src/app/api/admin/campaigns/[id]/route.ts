@@ -91,6 +91,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     seo_title,
     seo_description,
     og_image_url,
+    impact_unit_amount,
+    impact_unit_label,
   } = body as {
     title?: string;
     slug?: string;
@@ -108,6 +110,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     seo_title?: string | null;
     seo_description?: string | null;
     og_image_url?: string | null;
+    impact_unit_amount?: number | null;
+    impact_unit_label?: string | null;
   };
 
   if (slug !== undefined && !SLUG_REGEX.test(slug)) {
@@ -169,6 +173,17 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     updateData.seo_description = seo_description?.trim() || null;
   if (og_image_url !== undefined)
     updateData.og_image_url = og_image_url?.trim() || null;
+  if (impact_unit_amount !== undefined) {
+    if (impact_unit_amount !== null && impact_unit_amount <= 0) {
+      return NextResponse.json(
+        { error: "임팩트 단가는 0보다 커야 합니다." },
+        { status: 400 }
+      );
+    }
+    updateData.impact_unit_amount = impact_unit_amount;
+  }
+  if (impact_unit_label !== undefined)
+    updateData.impact_unit_label = impact_unit_label?.trim() || null;
 
   const { data: campaign, error } = await supabase
     .from("campaigns")
