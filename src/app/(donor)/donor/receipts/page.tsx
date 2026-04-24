@@ -50,6 +50,20 @@ export default async function DonorReceiptsPage() {
 
   return (
     <div className="space-y-6">
+      {/* SP-4: 홈택스 연말정산 간소화 연계 준비 안내 */}
+      <div
+        className="rounded-lg border p-3 text-xs"
+        style={{
+          borderColor: "var(--border)",
+          background: "var(--surface-2)",
+          color: "var(--muted-foreground)",
+        }}
+        role="note"
+      >
+        <span aria-hidden="true">ℹ️</span>{" "}
+        홈택스 연말정산 간소화 연계는 준비 중입니다. 현재는 기부금 영수증 PDF를 직접 다운로드하여 제출해 주세요.
+      </div>
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text)]">기부금 영수증</h1>
