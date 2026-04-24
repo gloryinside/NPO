@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getNotificationPrefs } from '@/lib/donor/notification-prefs'
 import { NotificationPrefsForm } from '@/components/donor/settings/NotificationPrefsForm'
 import { PasswordChangeCard } from '@/components/donor/settings/PasswordChangeCard'
+import { MfaCard } from '@/components/donor/settings/MfaCard'
 import { AccountDeleteCard } from '@/components/donor/settings/AccountDeleteCard'
 import { LocaleToggle } from '@/components/donor/ui/LocaleToggle'
 import { ConsentCard } from '@/components/donor/settings/ConsentCard'
@@ -66,7 +67,10 @@ export default async function DonorSettingsPage() {
         <h2 className="mb-4 text-base font-semibold text-[var(--text)]">
           보안
         </h2>
-        <PasswordChangeCard enabled={isSupabaseAuth} />
+        <div className="space-y-3">
+          <PasswordChangeCard enabled={isSupabaseAuth} />
+          <MfaCard />
+        </div>
       </section>
 
       {/* 언어 설정 (G-D44) */}
