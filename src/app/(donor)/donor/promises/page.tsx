@@ -332,9 +332,11 @@ export default function DonorPromisesPage() {
                         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
                           <MetaField label="약정 금액" value={formatAmount(p.amount)} highlight />
                           {p.type === "regular" && (
-                            <MetaField
-                              label="결제일"
-                              value={`매월 ${p.pay_day ?? "-"}일`}
+                            <PayDayField
+                              promise={p}
+                              busy={actioning === p.id}
+                              editable={p.status === "active"}
+                              onSaved={fetchPromises}
                             />
                           )}
                           <MetaField label="시작일" value={formatDate(p.started_at)} />
@@ -456,6 +458,121 @@ function MetaField({
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+/**
+ * SP-3: 결제일 인라인 편집 필드. active 약정만 편집 가능.
+ */
+function PayDayField({
+  promise,
+  busy,
+  editable,
+  onSaved,
+}: {
+  promise: DonorPromise;
+  busy: boolean;
+  editable: boolean;
+  onSaved: () => void | Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState<number>(promise.pay_day ?? 1);
+  const [saving, setSaving] = useState(false);
+  const currentLabel = `매월 ${promise.pay_day ?? "-"}일`;
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/donor/promises/${promise.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "changePayDay", pay_day: value }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "결제일 변경에 실패했습니다.");
+        return;
+      }
+      setEditing(false);
+      await onSaved();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editable || !editing) {
+    return (
+      <div>
+        <p className="text-xs text-[var(--muted-foreground)]">결제일</p>
+        <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-[var(--text)]">
+          {currentLabel}
+          {editable && (
+            <button
+              type="button"
+              onClick={() => {
+                setValue(promise.pay_day ?? 1);
+                setEditing(true);
+              }}
+              disabled={busy}
+              className="text-xs font-medium disabled:opacity-50"
+              style={{ color: "var(--accent)" }}
+            >
+              변경
+            </button>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-[var(--muted-foreground)]">결제일</p>
+      <div className="mt-0.5 flex items-center gap-1.5">
+        <label
+          htmlFor={`pay-day-${promise.id}`}
+          className="sr-only"
+        >
+          매월 결제일 (1~28일)
+        </label>
+        <select
+          id={`pay-day-${promise.id}`}
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          disabled={saving}
+          className="rounded border px-2 py-1 text-sm"
+          style={{
+            background: "var(--surface)",
+            color: "var(--text)",
+            borderColor: "var(--border)",
+          }}
+        >
+          {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+            <option key={d} value={d}>
+              매월 {d}일
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || value === promise.pay_day}
+          className="text-xs font-medium disabled:opacity-50"
+          style={{ color: "var(--accent)" }}
+        >
+          {saving ? "저장 중…" : "저장"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          disabled={saving}
+          className="text-xs"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          취소
+        </button>
+      </div>
     </div>
   );
 }
