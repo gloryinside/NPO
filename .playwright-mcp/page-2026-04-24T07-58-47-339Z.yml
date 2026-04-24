@@ -1,0 +1,150 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - link "에버후원금관리 에버후원금관리" [ref=e4] [cursor=pointer]:
+        - /url: /donor
+        - generic [ref=e5]:
+          - img "에버후원금관리" [ref=e6]
+          - generic [ref=e15]: 에버후원금관리
+      - navigation [ref=e17]:
+        - link "홈" [ref=e18] [cursor=pointer]:
+          - /url: /donor
+        - button "후원" [ref=e20] [cursor=pointer]:
+          - text: 후원
+          - img [ref=e21]
+        - button "참여" [ref=e24] [cursor=pointer]:
+          - text: 참여
+          - img [ref=e25]
+        - link "설정" [ref=e27] [cursor=pointer]:
+          - /url: /donor/settings
+      - generic [ref=e28]:
+        - radiogroup "테마 선택" [ref=e29]:
+          - radio "라이트 테마" [ref=e30] [cursor=pointer]:
+            - img [ref=e31]
+          - radio "OS 설정 따르기" [checked] [ref=e37] [cursor=pointer]:
+            - img [ref=e38]
+          - radio "다크 테마" [ref=e40] [cursor=pointer]:
+            - img [ref=e41]
+        - generic [ref=e43]: 김후원님
+        - button "로그아웃" [ref=e45] [cursor=pointer]
+    - link "본 내용으로 건너뛰기" [ref=e46] [cursor=pointer]:
+      - /url: "#content"
+    - main [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - heading "설정" [level=1] [ref=e50]
+          - paragraph [ref=e51]: 알림, 보안, 계정 환경을 관리하세요.
+        - generic [ref=e52]:
+          - heading "이메일 알림" [level=2] [ref=e53]
+          - generic [ref=e55]:
+            - generic [ref=e56] [cursor=pointer]:
+              - generic [ref=e57]:
+                - generic [ref=e58]: 💰
+                - generic [ref=e59]:
+                  - paragraph [ref=e60]: 정기후원 금액 변경 알림
+                  - paragraph [ref=e61]: 후원 금액이 변경될 때 이메일로 알려드립니다.
+              - checkbox "정기후원 금액 변경 알림" [checked] [ref=e63]
+            - generic [ref=e66] [cursor=pointer]:
+              - generic [ref=e67]:
+                - generic [ref=e68]: ✅
+                - generic [ref=e69]:
+                  - paragraph [ref=e70]: 결제 완료 알림
+                  - paragraph [ref=e71]: 후원금 결제가 완료되면 확인 이메일을 보내드립니다.
+              - checkbox "결제 완료 알림" [checked] [ref=e73]
+            - generic [ref=e76] [cursor=pointer]:
+              - generic [ref=e77]:
+                - generic [ref=e78]: 🧾
+                - generic [ref=e79]:
+                  - paragraph [ref=e80]: 영수증 발급 알림
+                  - paragraph [ref=e81]: 기부금 영수증 PDF가 생성되면 알려드립니다.
+              - checkbox "영수증 발급 알림" [checked] [ref=e83]
+            - generic [ref=e86] [cursor=pointer]:
+              - generic [ref=e87]:
+                - generic [ref=e88]: 📋
+                - generic [ref=e89]:
+                  - paragraph [ref=e90]: 약정 상태 변경 알림
+                  - paragraph [ref=e91]: 약정이 일시중지·재개·해지되면 이메일로 알려드립니다.
+              - checkbox "약정 상태 변경 알림" [checked] [ref=e93]
+            - generic [ref=e96] [cursor=pointer]:
+              - generic [ref=e97]:
+                - generic [ref=e98]: 📣
+                - generic [ref=e99]:
+                  - paragraph [ref=e100]: 캠페인 소식
+                  - paragraph [ref=e101]: 후원하신 캠페인의 진행 소식과 후기를 받습니다.
+              - checkbox "캠페인 소식" [checked] [ref=e103]
+        - generic [ref=e106]:
+          - heading "수신 동의" [level=2] [ref=e107]
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - paragraph [ref=e111]: 마케팅 · 뉴스레터 수신 동의
+              - paragraph [ref=e112]: 캠페인 진행 소식, 행사 안내, 후원 캠페인 초대 이메일을 받습니다. 언제든 철회할 수 있으며, 결제·영수증 등 필수 알림에는 영향이 없습니다.
+              - paragraph [ref=e113]: "최근 변경: 2024. 1. 10. 오전 9:00:00"
+            - checkbox "마케팅 수신 동의" [checked] [ref=e115]
+        - generic [ref=e118]:
+          - heading "보안" [level=2] [ref=e119]
+          - generic [ref=e121]: 휴대폰 인증으로 로그인한 계정은 비밀번호가 없습니다.
+        - generic [ref=e122]:
+          - heading "언어 / Language" [level=2] [ref=e123]
+          - generic [ref=e124]:
+            - paragraph [ref=e125]: 표시 언어를 선택하세요.
+            - generic [ref=e126]:
+              - generic [ref=e127]: 언어 / Language
+              - combobox "Language" [ref=e128]:
+                - option "한국어" [selected]
+                - option "English"
+        - generic [ref=e129]:
+          - heading "바로가기" [level=2] [ref=e130]
+          - generic [ref=e131]:
+            - link "홈으로" [ref=e132] [cursor=pointer]:
+              - /url: /donor
+              - generic [ref=e133]: 🏠
+              - text: 홈으로
+            - link "약정 관리" [ref=e134] [cursor=pointer]:
+              - /url: /donor/promises
+              - generic [ref=e135]: 📋
+              - text: 약정 관리
+            - link "납입 내역" [ref=e136] [cursor=pointer]:
+              - /url: /donor/payments
+              - generic [ref=e137]: 💳
+              - text: 납입 내역
+            - link "영수증" [ref=e138] [cursor=pointer]:
+              - /url: /donor/receipts
+              - generic [ref=e139]: 🧾
+              - text: 영수증
+            - link "나의 임팩트" [ref=e140] [cursor=pointer]:
+              - /url: /donor/impact
+              - generic [ref=e141]: ✨
+              - text: 나의 임팩트
+            - link "친구 초대" [ref=e142] [cursor=pointer]:
+              - /url: /donor/invite
+              - generic [ref=e143]: 🎁
+              - text: 친구 초대
+        - generic [ref=e144]:
+          - heading "내 데이터" [level=2] [ref=e145]
+          - generic [ref=e146]:
+            - paragraph [ref=e147]: 본인 데이터 일괄 내보내기
+            - paragraph [ref=e148]: 프로필, 약정, 납입, 영수증 메타, 응원 메시지, 계정 활동 이력을 JSON 으로 다운로드합니다. (개인정보 보호법·GDPR 제15조 본인확인)
+            - link "JSON 내보내기" [ref=e149] [cursor=pointer]:
+              - /url: /api/donor/account/export
+              - generic [ref=e150]: 📥
+              - text: JSON 내보내기
+        - generic [ref=e151]:
+          - heading "위험 영역" [level=2] [ref=e152]
+          - generic [ref=e154]:
+            - heading "⚠️ 계정 삭제" [level=3] [ref=e155]
+            - paragraph [ref=e156]: 계정을 삭제하면 개인정보가 마스킹 처리되며, 진행 중인 모든 약정이 해지됩니다. 과거 후원 이력과 영수증은 회계·세무 목적으로 보존됩니다.
+            - list [ref=e157]:
+              - listitem [ref=e158]: • 등록된 카드 결제 수단(빌링키)이 영구 삭제됩니다.
+              - listitem [ref=e159]: • 다시 후원하시려면 새로 가입하고 결제 수단을 재등록해야 합니다.
+              - listitem [ref=e160]: • 일시 중단을 원하면 삭제 대신 각 약정에서 일시중지를 사용하세요.
+            - button "계정 삭제 진행" [ref=e161]
+    - contentinfo [ref=e162]:
+      - navigation "정책" [ref=e163]:
+        - link "개인정보처리방침" [ref=e164] [cursor=pointer]:
+          - /url: /privacy
+        - link "이용약관" [ref=e165] [cursor=pointer]:
+          - /url: /terms
+        - link "문의하기" [ref=e166] [cursor=pointer]:
+          - /url: /contact
+  - button "Open Next.js Dev Tools" [ref=e172] [cursor=pointer]:
+    - img [ref=e173]

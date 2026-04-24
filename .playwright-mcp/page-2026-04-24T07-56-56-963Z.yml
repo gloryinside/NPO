@@ -1,0 +1,56 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - link "에버후원금관리 에버후원금관리" [ref=e4] [cursor=pointer]:
+        - /url: /donor
+        - generic [ref=e5]:
+          - img "에버후원금관리" [ref=e6]
+          - generic [ref=e15]: 에버후원금관리
+      - generic [ref=e16]:
+        - radiogroup "테마 선택" [ref=e17]:
+          - radio "라이트 테마" [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+          - radio "OS 설정 따르기" [checked] [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+          - radio "다크 테마" [ref=e28] [cursor=pointer]:
+            - img [ref=e29]
+        - link "로그인" [ref=e31] [cursor=pointer]:
+          - /url: /donor/login
+    - link "본 내용으로 건너뛰기" [ref=e32] [cursor=pointer]:
+      - /url: "#content"
+    - main [ref=e33]:
+      - generic [ref=e35]:
+        - heading "후원자 로그인" [level=1] [ref=e36]
+        - paragraph [ref=e37]: 기부 내역이 있는 계정으로 로그인하세요.
+        - generic [ref=e38]:
+          - note [ref=e39]: 🧪 개발용 로그인 모드 — 아무 이메일/연락처 입력 시 코드 000000로 로그인
+          - paragraph [ref=e68]: "donor@demo.test에 전송된 코드:"
+          - generic [ref=e69]: "000000"
+          - button "로그인" [ref=e70]
+          - button "다시 입력" [ref=e71]
+        - paragraph [ref=e42]:
+          - text: 아직 계정이 없으신가요?
+          - link "회원가입" [ref=e43] [cursor=pointer]:
+            - /url: /donor/signup
+    - contentinfo [ref=e44]:
+      - navigation "정책" [ref=e45]:
+        - link "개인정보처리방침" [ref=e46] [cursor=pointer]:
+          - /url: /privacy
+        - link "이용약관" [ref=e47] [cursor=pointer]:
+          - /url: /terms
+        - link "문의하기" [ref=e48] [cursor=pointer]:
+          - /url: /contact
+  - generic [ref=e53] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e54]:
+      - img [ref=e55]
+    - generic [ref=e58]:
+      - button "Open issues overlay" [ref=e59]:
+        - generic [ref=e72]:
+          - generic [ref=e73]: "1"
+          - generic [ref=e74]: "2"
+        - generic [ref=e63]:
+          - text: Issue
+          - generic [ref=e75]: s
+      - button "Collapse issues badge" [ref=e64]:
+        - img [ref=e65]
+  - alert [ref=e67]

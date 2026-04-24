@@ -35,7 +35,7 @@ export default async function RootLayout({
   const initialTheme = pref === "light" || pref === "dark" ? pref : undefined;
 
   return (
-    <html lang="ko" data-theme={initialTheme}>
+    <html lang="ko" data-theme={initialTheme} suppressHydrationWarning>
       <head>
         <Script id="theme-init" strategy="beforeInteractive">
           {THEME_INIT_JS}
