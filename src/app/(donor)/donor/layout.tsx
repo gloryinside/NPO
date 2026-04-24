@@ -38,12 +38,12 @@ export default async function DonorLayout({
           height: 56,
           borderBottom: "1px solid var(--border)",
           background: "var(--surface)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 1rem",
-          gap: "0.75rem",
         }}
       >
+       <div
+         className="mx-auto flex h-full items-center gap-3 px-4 sm:px-6 lg:px-8"
+         style={{ maxWidth: 1200 }}
+       >
         {/* 로고 */}
         <a
           href="/donor"
@@ -105,6 +105,7 @@ export default async function DonorLayout({
             </a>
           )}
         </div>
+       </div>
       </header>
 
       {/* 모바일 FAB — 새 후원 CTA (G-D09/D37) */}
@@ -156,8 +157,8 @@ export default async function DonorLayout({
       <main
         id="content"
         role="main"
-        className="mx-auto px-4 pt-6 pb-24 sm:pb-8"
-        style={{ maxWidth: 800 }}
+        className="mx-auto px-4 pt-6 pb-24 sm:pb-8 sm:px-6 lg:px-8"
+        style={{ maxWidth: 1200 }}
       >
         {/* G-D55: Supabase 이메일 계정 미인증 안내 */}
         {session?.authMethod === "supabase" &&
@@ -170,8 +171,8 @@ export default async function DonorLayout({
 
       {/* G-D61: Legal 풋터 */}
       <footer
-        className="mx-auto mt-8 px-4 py-6 text-center text-xs"
-        style={{ maxWidth: 800, color: "var(--muted-foreground)" }}
+        className="mx-auto mt-8 px-4 py-6 text-center text-xs sm:px-6 lg:px-8"
+        style={{ maxWidth: 1200, color: "var(--muted-foreground)" }}
         data-print-hide="true"
       >
         <nav aria-label="정책" className="flex flex-wrap justify-center gap-4">
