@@ -97,9 +97,15 @@ export function OtpLoginForm() {
     <div className="space-y-3">
       {phase === 'phone' ? (
         <>
+          <label htmlFor="donor-otp-phone" className="sr-only">
+            전화번호
+          </label>
           <input
+            id="donor-otp-phone"
             type="tel"
             placeholder="010-1234-5678"
+            aria-label="전화번호"
+            autoComplete="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
@@ -120,17 +126,27 @@ export function OtpLoginForm() {
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
             <span className="font-medium" style={{ color: 'var(--text)' }}>{phone}</span>으로 발송된 인증번호를 입력하세요.
           </p>
+          <label htmlFor="donor-otp-code" className="sr-only">
+            인증번호 6자리
+          </label>
           <input
+            id="donor-otp-code"
             type="text"
             inputMode="numeric"
             maxLength={6}
             placeholder="인증번호 6자리"
+            aria-label="인증번호 6자리"
+            aria-describedby="donor-otp-code-hint"
+            autoComplete="one-time-code"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             autoFocus
             className="w-full rounded-lg border px-3 py-2 text-sm text-center tracking-widest outline-none"
             style={{ background: 'var(--surface-2)', borderColor: 'var(--border)', color: 'var(--text)' }}
           />
+          <span id="donor-otp-code-hint" className="sr-only">
+            6자리 숫자를 입력하세요
+          </span>
           <button
             type="button"
             onClick={handleVerify}
