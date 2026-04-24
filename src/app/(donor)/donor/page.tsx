@@ -1,24 +1,28 @@
 import { getDonorSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { PaymentWithRelations } from "@/types/payment";
-import type { PromiseWithRelations } from "@/types/promise";
+import { getDashboardSnapshot } from "@/lib/donor/dashboard-snapshot";
+import { HeroSection } from "@/components/donor/dashboard/hero-section";
+import {
+  ActionBannerSkeleton,
+  DashboardBodySkeleton,
+} from "@/components/donor/dashboard/dashboard-skeleton";
+import { ActionRequiredBanner } from "@/components/donor/dashboard/action-required-banner";
+import { UpcomingPaymentsCard } from "@/components/donor/dashboard/upcoming-payments-card";
 import { DonorProfileSection } from "@/components/donor/donor-profile-section";
 import { PledgeCancelButton } from "@/components/donor/pledge-cancel-button";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
-import { getDashboardActions } from "@/lib/donor/dashboard-actions";
-import { getUpcomingPaymentsThisMonth } from "@/lib/donor/upcoming-payments";
-import { getExpiringCards } from "@/lib/donor/card-expiry";
-import { ActionRequiredBanner } from "@/components/donor/dashboard/action-required-banner";
-import { UpcomingPaymentsCard } from "@/components/donor/dashboard/upcoming-payments-card";
+import type { DonorDashboardSnapshot } from "@/types/dashboard";
+import type { Member } from "@/types/member";
 
-function formatAmount(value: number | null | undefined) {
+function formatAmount(value: number | null | undefined): string {
   if (value == null) return "-";
   return `${new Intl.NumberFormat("ko-KR").format(Number(value))}원`;
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null): string {
   if (!value) return "-";
   try {
     return new Date(value).toLocaleDateString("ko-KR");
@@ -26,22 +30,6 @@ function formatDate(value: string | null) {
     return value;
   }
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  active: "진행중",
-  suspended: "일시중지",
-  cancelled: "해지",
-  completed: "완료",
-  pending_billing: "결제수단 대기",
-};
-
-const STATUS_DOT: Record<string, string> = {
-  active: "var(--positive)",
-  suspended: "var(--warning)",
-  cancelled: "var(--negative)",
-  completed: "var(--muted-foreground)",
-  pending_billing: "var(--warning)",
-};
 
 const PAY_STATUS_LABEL: Record<string, string> = {
   paid: "완료",
@@ -67,132 +55,42 @@ export default async function DonorHomePage() {
   const { member } = session;
   const supabase = createSupabaseAdminClient();
 
-  const { data: activePromisesData } = await supabase
-    .from("promises")
-    .select("*, campaigns(id, title)")
-    .eq("org_id", member.org_id)
-    .eq("member_id", member.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
-
-  const activePromises =
-    (activePromisesData as unknown as PromiseWithRelations[]) ?? [];
-
-  const { data: recentPaymentsData } = await supabase
-    .from("payments")
-    .select("*, campaigns(id, title)")
-    .eq("org_id", member.org_id)
-    .eq("member_id", member.id)
-    .order("pay_date", { ascending: false, nullsFirst: false })
-    .range(0, 4);
-
-  const recentPayments =
-    (recentPaymentsData as unknown as PaymentWithRelations[]) ?? [];
-
-  const { data: latestReceiptData } = await supabase
-    .from("receipts")
-    .select("id, year, total_amount, pdf_url")
-    .eq("org_id", member.org_id)
-    .eq("member_id", member.id)
-    .order("year", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const latestReceipt = latestReceiptData as {
-    id: string;
-    year: number;
-    total_amount: number;
-    pdf_url: string | null;
-  } | null;
-
-  const { data: paidSumData } = await supabase
-    .from("payments")
-    .select("amount")
-    .eq("org_id", member.org_id)
-    .eq("member_id", member.id)
-    .eq("pay_status", "paid");
-
-  const totalAmount = (paidSumData ?? []).reduce(
-    (sum: number, row: { amount: number | null }) =>
-      sum + Number(row.amount ?? 0),
-    0
+  // 단일 RPC — 기존 7개 쿼리를 통합 (RTT 6→1)
+  const snapshot = await getDashboardSnapshot(
+    supabase,
+    member.org_id,
+    member.id,
   );
 
-  const [actions, upcomingPayments, expiringCards] = await Promise.all([
-    getDashboardActions(supabase, member.org_id, member.id),
-    getUpcomingPaymentsThisMonth(supabase, member.org_id, member.id),
-    getExpiringCards(supabase, member.org_id, member.id, 60),
-  ]);
-
-  const greeting = (() => {
-    // KST 기준 시간대별 인사 (G-D42)
-    const hStr = new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Seoul",
-      hour: "numeric",
-      hour12: false,
-    }).format(new Date());
-    const h = Number(hStr);
-    if (h < 12) return "좋은 아침이에요";
-    if (h < 18) return "안녕하세요";
-    return "좋은 저녁이에요";
-  })();
+  if (!snapshot) {
+    return (
+      <div
+        className="p-8 text-center text-sm"
+        style={{ color: "var(--muted-foreground)" }}
+      >
+        대시보드를 불러오는 중 오류가 발생했습니다. 잠시 후 새로고침해 주세요.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
-      {/* ── 히어로 헤더 ── */}
-      <section
-        className="rounded-2xl p-6 sm:p-8"
-        style={{
-          background:
-            "linear-gradient(135deg, var(--accent-soft) 0%, var(--surface) 100%)",
-          border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
-        }}
-      >
-        <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-          {greeting} 👋
-        </p>
-        <h1
-          className="mt-1 text-2xl font-bold"
-          style={{ color: "var(--text)" }}
-        >
-          {member.name}님
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--muted-foreground)" }}>
-          지금까지의 후원이 세상을 바꾸고 있습니다.
-        </p>
+      {/* ── 히어로 — 즉시 렌더 ── */}
+      <HeroSection memberName={member.name} snapshot={snapshot} />
 
-        {/* 핵심 지표 */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatPill
-            label="누적 후원액"
-            value={formatAmount(totalAmount)}
-            accent
-          />
-          <StatPill
-            label="활성 약정"
-            value={`${activePromises.length}건`}
-          />
-          <StatPill
-            label="이번 달 예정"
-            value={
-              upcomingPayments.length > 0
-                ? formatAmount(
-                    upcomingPayments.reduce(
-                      (s, p) => s + Number(p.amount ?? 0),
-                      0
-                    )
-                  )
-                : "없음"
-            }
-          />
-        </div>
-      </section>
-
-      {/* ── 액션 배너 ── */}
-      <ActionRequiredBanner actions={actions} />
+      {/* ── 액션 배너 (스트리밍) ── */}
+      <Suspense fallback={<ActionBannerSkeleton />}>
+        <ActionRequiredBanner
+          actions={{
+            failedPayments: snapshot.action_failed_count,
+            missingRrnReceipts: snapshot.action_rrn_count,
+            recentAdminChanges: snapshot.action_changes_count,
+          }}
+        />
+      </Suspense>
 
       {/* ── 카드 만료 임박 (G-D50) ── */}
-      {expiringCards.length > 0 && (
+      {snapshot.expiring_cards.length > 0 && (
         <section
           role="alert"
           className="rounded-2xl border p-4"
@@ -201,20 +99,23 @@ export default async function DonorHomePage() {
             background: "var(--warning-soft)",
           }}
         >
-          <p className="text-sm font-semibold" style={{ color: "var(--warning)" }}>
-            💳 결제 카드 만료 임박
+          <p
+            className="text-sm font-semibold"
+            style={{ color: "var(--warning)" }}
+          >
+            <span aria-hidden="true">💳</span> 결제 카드 만료 임박
           </p>
           <ul
             className="mt-2 space-y-1 text-xs"
             style={{ color: "var(--text)" }}
           >
-            {expiringCards.map((c) => (
-              <li key={c.promiseId}>
-                <b>{c.campaignTitle ?? "정기후원"}</b> —{" "}
-                {c.expiryYear}/{String(c.expiryMonth).padStart(2, "0")} 만료
-                {c.daysUntilExpiry < 0
+            {snapshot.expiring_cards.map((c) => (
+              <li key={c.promise_id}>
+                <b>{c.campaign_title ?? "정기후원"}</b> — {c.expiry_year}/
+                {String(c.expiry_month).padStart(2, "0")} 만료
+                {c.days_until_expiry < 0
                   ? " (이미 만료)"
-                  : ` (D-${c.daysUntilExpiry})`}
+                  : ` (D-${c.days_until_expiry})`}
               </li>
             ))}
           </ul>
@@ -228,8 +129,8 @@ export default async function DonorHomePage() {
         </section>
       )}
 
-      {/* ── 첫 후원 온보딩 (활성 약정 0 && 누적 0) — G-D57 ── */}
-      {activePromises.length === 0 && totalAmount === 0 && (
+      {/* ── 첫 후원 온보딩 (G-D57) ── */}
+      {snapshot.active_promises.length === 0 && snapshot.total_paid === 0 && (
         <section
           className="rounded-2xl p-6 text-center"
           style={{
@@ -238,8 +139,13 @@ export default async function DonorHomePage() {
             border: "1px solid var(--accent)",
           }}
         >
-          <p className="text-4xl mb-3">🎁</p>
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
+          <p className="text-4xl mb-3" aria-hidden="true">
+            🎁
+          </p>
+          <p
+            className="text-base font-semibold"
+            style={{ color: "var(--text)" }}
+          >
             첫 후원을 시작해보세요
           </p>
           <p
@@ -265,7 +171,7 @@ export default async function DonorHomePage() {
           { href: "/donor/promises", label: "📋 약정", accent: false },
           { href: "/donor/payments", label: "💳 납입", accent: false },
           { href: "/donor/receipts", label: "🧾 영수증", accent: false },
-          { href: "/donor/cheer", label: "💬 응원", accent: false }, // G-D56
+          { href: "/donor/cheer", label: "💬 응원", accent: false },
         ].map(({ href, label, accent }) => (
           <a
             key={href}
@@ -273,13 +179,9 @@ export default async function DonorHomePage() {
             className="rounded-xl px-4 py-3 text-sm font-medium transition-opacity hover:opacity-80"
             style={{
               textDecoration: "none",
-              background: accent
-                ? "var(--accent)"
-                : "var(--surface-2)",
+              background: accent ? "var(--accent)" : "var(--surface-2)",
               color: accent ? "#fff" : "var(--text)",
-              border: accent
-                ? "none"
-                : "1px solid var(--border)",
+              border: accent ? "none" : "1px solid var(--border)",
             }}
           >
             {label}
@@ -287,17 +189,34 @@ export default async function DonorHomePage() {
         ))}
       </nav>
 
-      {/* ── 활성 약정 ── */}
-      {activePromises.length > 0 && (
+      {/* ── 약정·납입·영수증·프로필 (스트리밍) ── */}
+      <Suspense fallback={<DashboardBodySkeleton />}>
+        <DashboardBody snapshot={snapshot} member={member} />
+      </Suspense>
+    </div>
+  );
+}
+
+function DashboardBody({
+  snapshot,
+  member,
+}: {
+  snapshot: DonorDashboardSnapshot;
+  member: Member;
+}) {
+  return (
+    <div className="space-y-8">
+      {/* 활성 약정 */}
+      {snapshot.active_promises.length > 0 && (
         <section>
           <SectionHeader
             title="활성 약정"
-            count={activePromises.length}
+            count={snapshot.active_promises.length}
             href="/donor/promises"
             linkLabel="전체 보기"
           />
           <div className="space-y-2">
-            {activePromises.map((p) => (
+            {snapshot.active_promises.map((p) => (
               <div
                 key={p.id}
                 className="flex items-center justify-between rounded-xl px-4 py-3"
@@ -309,7 +228,8 @@ export default async function DonorHomePage() {
                 <div className="flex items-center gap-3 min-w-0">
                   <span
                     className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: STATUS_DOT["active"] }}
+                    style={{ background: "var(--positive)" }}
+                    aria-hidden="true"
                   />
                   <div className="min-w-0">
                     <p
@@ -322,8 +242,7 @@ export default async function DonorHomePage() {
                       className="text-xs"
                       style={{ color: "var(--muted-foreground)" }}
                     >
-                      {formatAmount(p.amount)} · 매월{" "}
-                      {(p as unknown as { pay_day?: number }).pay_day ?? "-"}일
+                      {formatAmount(p.amount)} · 매월 {p.pay_day ?? "-"}일
                     </p>
                   </div>
                 </div>
@@ -334,10 +253,18 @@ export default async function DonorHomePage() {
         </section>
       )}
 
-      {/* ── 이번 달 예정 납입 ── */}
-      <UpcomingPaymentsCard payments={upcomingPayments} />
+      {/* 이번 달 예정 납입 */}
+      <UpcomingPaymentsCard
+        payments={snapshot.upcoming_payments.map((u) => ({
+          promiseId: u.promise_id,
+          campaignId: null,
+          campaignTitle: u.campaign_title,
+          amount: u.amount,
+          scheduledDate: u.scheduled_date,
+        }))}
+      />
 
-      {/* ── 최근 납입 내역 ── */}
+      {/* 최근 납입 내역 */}
       <section>
         <SectionHeader
           title="최근 납입 내역"
@@ -351,7 +278,7 @@ export default async function DonorHomePage() {
             background: "var(--surface)",
           }}
         >
-          {recentPayments.length === 0 ? (
+          {snapshot.recent_payments.length === 0 ? (
             <div
               className="p-10 text-center text-sm"
               style={{ color: "var(--muted-foreground)" }}
@@ -360,18 +287,18 @@ export default async function DonorHomePage() {
             </div>
           ) : (
             <ul>
-              {recentPayments.map((p, idx) => {
-                const status = (p as unknown as { pay_status: string }).pay_status ?? "paid";
+              {snapshot.recent_payments.map((p, idx) => {
+                const status = p.pay_status ?? "paid";
                 const daysSince = p.pay_date
-                  ? (Date.now() - new Date(p.pay_date as string).getTime()) /
-                    86400000
+                  ? (Date.now() - new Date(p.pay_date).getTime()) / 86400000
                   : Infinity;
                 return (
                   <li
                     key={p.id}
                     className="flex items-center justify-between px-4 py-3"
                     style={{
-                      borderTop: idx === 0 ? "none" : "1px solid var(--border)",
+                      borderTop:
+                        idx === 0 ? "none" : "1px solid var(--border)",
                     }}
                   >
                     <div className="min-w-0 flex-1">
@@ -385,13 +312,17 @@ export default async function DonorHomePage() {
                         className="text-xs"
                         style={{ color: "var(--muted-foreground)" }}
                       >
-                        {formatDate(p.pay_date as string | null)}
+                        {formatDate(p.pay_date)}
                       </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span
                         className="text-xs font-medium"
-                        style={{ color: PAY_STATUS_COLOR[status] ?? "var(--muted-foreground)" }}
+                        style={{
+                          color:
+                            PAY_STATUS_COLOR[status] ??
+                            "var(--muted-foreground)",
+                        }}
                       >
                         {PAY_STATUS_LABEL[status] ?? status}
                       </span>
@@ -416,8 +347,8 @@ export default async function DonorHomePage() {
         </div>
       </section>
 
-      {/* ── 영수증 ── */}
-      {latestReceipt && (
+      {/* 영수증 */}
+      {snapshot.latest_receipt && (
         <section>
           <SectionHeader
             title="기부금 영수증"
@@ -432,19 +363,22 @@ export default async function DonorHomePage() {
             }}
           >
             <div>
-              <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
-                {latestReceipt.year}년 기부금 영수증
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--text)" }}
+              >
+                {snapshot.latest_receipt.year}년 기부금 영수증
               </p>
               <p
                 className="mt-0.5 text-xs"
                 style={{ color: "var(--muted-foreground)" }}
               >
-                {formatAmount(latestReceipt.total_amount)}
+                {formatAmount(snapshot.latest_receipt.total_amount)}
               </p>
             </div>
-            {latestReceipt.pdf_url ? (
+            {snapshot.latest_receipt.pdf_url ? (
               <a
-                href={`/api/donor/receipts/${latestReceipt.id}/download`}
+                href={`/api/donor/receipts/${snapshot.latest_receipt.id}/download`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80"
@@ -468,7 +402,7 @@ export default async function DonorHomePage() {
         </section>
       )}
 
-      {/* ── 프로필 ── */}
+      {/* 프로필 */}
       <section>
         <SectionHeader title="내 정보" />
         <DonorProfileSection
@@ -481,45 +415,6 @@ export default async function DonorHomePage() {
           }}
         />
       </section>
-    </div>
-  );
-}
-
-/* ── 서브 컴포넌트 ── */
-
-function StatPill({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      className="rounded-xl px-4 py-3"
-      style={{
-        background: accent
-          ? "var(--accent)"
-          : "color-mix(in srgb, var(--surface) 70%, transparent)",
-        border: accent
-          ? "none"
-          : "1px solid color-mix(in srgb, var(--border) 60%, transparent)",
-      }}
-    >
-      <p
-        className="text-xs"
-        style={{ color: accent ? "rgba(255,255,255,0.75)" : "var(--muted-foreground)" }}
-      >
-        {label}
-      </p>
-      <p
-        className="mt-1 text-lg font-bold"
-        style={{ color: accent ? "#fff" : "var(--text)" }}
-      >
-        {value}
-      </p>
     </div>
   );
 }

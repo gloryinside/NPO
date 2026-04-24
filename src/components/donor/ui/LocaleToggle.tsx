@@ -6,7 +6,7 @@ import {
   DONOR_LOCALES,
   readDonorLocaleFromDocument,
   type DonorLocale,
-} from "@/lib/i18n/donor";
+} from "@/lib/i18n/donor-client";
 
 const LOCALE_LABEL: Record<DonorLocale, string> = {
   ko: "한국어",

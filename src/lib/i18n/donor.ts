@@ -1,7 +1,15 @@
 import { cookies } from "next/headers";
+import {
+  DONOR_LOCALES,
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE_NAME,
+  isValidLocale,
+  readDonorLocaleFromDocument,
+  type DonorLocale,
+} from "./donor-client";
 
 /**
- * G-D44: 후원자 포털 경량 i18n 계층.
+ * G-D44: 후원자 포털 경량 i18n 계층 (서버 전용 함수).
  *
  * 전면 라우팅 국제화(e.g. /en/donor) 대신, locale 쿠키 + 작은 메시지 사전을
  * 쓰는 방식. 한국어가 기본이고 ko/en 두 언어만 현재 지원.
@@ -11,12 +19,18 @@ import { cookies } from "next/headers";
  *   t("donor.login.title")
  *
  * 키가 없으면 원본 키 반환 (fallback 안전).
+ *
+ * 클라이언트에서 쓰는 상수/헬퍼는 `donor-client.ts`에서 직접 import.
  */
 
-export const DONOR_LOCALES = ["ko", "en"] as const;
-export type DonorLocale = (typeof DONOR_LOCALES)[number];
-export const DEFAULT_LOCALE: DonorLocale = "ko";
-export const LOCALE_COOKIE_NAME = "donor-locale";
+export {
+  DONOR_LOCALES,
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE_NAME,
+  isValidLocale,
+  readDonorLocaleFromDocument,
+};
+export type { DonorLocale };
 
 const MESSAGES: Record<DonorLocale, Record<string, string>> = {
   ko: {
@@ -68,10 +82,6 @@ const MESSAGES: Record<DonorLocale, Record<string, string>> = {
   },
 };
 
-export function isValidLocale(s: string | undefined | null): s is DonorLocale {
-  return !!s && (DONOR_LOCALES as readonly string[]).includes(s);
-}
-
 export async function getDonorLocale(): Promise<DonorLocale> {
   const cookieStore = await cookies();
   const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
@@ -84,14 +94,4 @@ export async function getT(): Promise<(key: string) => string> {
   const table = MESSAGES[locale] ?? MESSAGES[DEFAULT_LOCALE];
   return (key: string) =>
     table[key] ?? MESSAGES[DEFAULT_LOCALE][key] ?? key;
-}
-
-/** 클라이언트 측에서 쿠키 직접 읽기 (locale toggle 컴포넌트용) */
-export function readDonorLocaleFromDocument(): DonorLocale {
-  if (typeof document === "undefined") return DEFAULT_LOCALE;
-  const match = document.cookie.match(
-    new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE_NAME}=([^;]+)`)
-  );
-  const v = match ? decodeURIComponent(match[1]) : null;
-  return isValidLocale(v) ? v : DEFAULT_LOCALE;
 }
