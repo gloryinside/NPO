@@ -63,6 +63,15 @@ export const getDonorSession = cache(async (): Promise<DonorSession | null> => {
       .maybeSingle();
 
     if (member) {
+      // MFA 가드: 활성 사용자는 aal2 세션이 아니면 로그인 미완료 상태로 처리
+      const typedMember = member as Member & { mfa_enabled?: boolean };
+      if (typedMember.mfa_enabled) {
+        const { data: aalData } =
+          await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData?.currentLevel !== "aal2") {
+          return null;
+        }
+      }
       return { user, member: member as Member, authMethod: "supabase" };
     }
   }
