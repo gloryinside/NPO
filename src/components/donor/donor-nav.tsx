@@ -24,6 +24,7 @@ const ITEMS: NavItem[] = [
       { href: "/donor/volunteer", label: "봉사 활동" },
       { href: "/donor/events", label: "행사" },
       { href: "/donor/gifts", label: "기념품" },
+      { href: "/donor/p2p", label: "P2P 모금" },
     ],
   },
   {

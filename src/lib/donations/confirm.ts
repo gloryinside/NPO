@@ -4,6 +4,7 @@ import { confirmTossPayment } from "@/lib/toss/client";
 import { getOrgTossKeys } from "@/lib/toss/keys";
 import { notifyDonationThanks } from '@/lib/notifications/send';
 import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
+import { dispatchTrigger } from "@/lib/automation/dispatcher";
 
 export type ConfirmDonationInput = {
   paymentKey: string;
@@ -149,6 +150,7 @@ export async function confirmDonation(
 
   void sendDonationConfirmedEmail(supabase, confirmedPayment);
   void pushErpWebhookForPayment(supabase, confirmedPayment);
+  void dispatchPaymentPaidAutomation(supabase, confirmedPayment);
 
   // 캠페인 progress ISR 캐시 즉시 무효화
   if (confirmedPayment.campaign_slug) {
@@ -267,6 +269,37 @@ async function pushErpWebhookForPayment(
     });
   } catch (err) {
     console.error("[erp-webhook] pushErpWebhookForPayment failed:", err);
+  }
+}
+
+async function dispatchPaymentPaidAutomation(
+  supabase: SupabaseClient,
+  payment: ConfirmedPayment,
+): Promise<void> {
+  try {
+    // member 정보 보강
+    const { data: member } = await supabase
+      .from("members")
+      .select("id, name, email, tier")
+      .eq("id", payment.member_id)
+      .maybeSingle();
+    await dispatchTrigger(
+      supabase,
+      payment.org_id,
+      "payment_paid",
+      {
+        paymentId: payment.id,
+        amount: Number(payment.amount ?? 0),
+        memberId: payment.member_id,
+        member: member ?? null,
+        email: (member as { email?: string } | null)?.email ?? null,
+        campaignSlug: payment.campaign_slug,
+      },
+      "payment",
+      payment.id,
+    );
+  } catch (err) {
+    console.error("[automation] payment_paid dispatch failed:", err);
   }
 }
 

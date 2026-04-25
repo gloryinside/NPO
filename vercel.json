@@ -95,6 +95,14 @@
     {
       "path": "/api/cron/build-gift-queue",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/erp-outbound-process",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/recompute-churn-scores",
+      "schedule": "0 3 * * 1"
     }
   ]
 }

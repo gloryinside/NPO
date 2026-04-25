@@ -86,6 +86,13 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    group: "자동화·조직",
+    items: [
+      { label: "자동화 룰", href: "/admin/automation-rules" },
+      { label: "조직 단위(지부)", href: "/admin/org-units" },
+    ],
+  },
+  {
     group: "결제관리",
     items: [
       { label: "미납 관리", href: "/admin/unpaid" },
