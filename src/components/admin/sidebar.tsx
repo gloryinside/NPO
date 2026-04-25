@@ -73,7 +73,12 @@ const NAV: NavGroup[] = [
   {
     group: "ERP",
     items: [
-      { label: "수입결의", href: "/admin/erp/reconcile" },
+      { label: "수입결의(은행 대사)", href: "/admin/erp/reconcile" },
+      { label: "수입결의 전표", href: "/admin/revenue-journals" },
+      { label: "계정과목", href: "/admin/chart-of-accounts" },
+      { label: "은행계좌", href: "/admin/bank-accounts" },
+      { label: "가상계좌 매핑", href: "/admin/virtual-account-mappings" },
+      { label: "회계 마감", href: "/admin/closed-periods" },
       { label: "세금계산서 큐", href: "/admin/tax-invoices" },
     ],
   },

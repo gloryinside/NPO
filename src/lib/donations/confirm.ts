@@ -5,6 +5,9 @@ import { getOrgTossKeys } from "@/lib/toss/keys";
 import { notifyDonationThanks } from '@/lib/notifications/send';
 import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
 import { dispatchTrigger } from "@/lib/automation/dispatcher";
+import { autoAllocateToPrograms } from "@/lib/erp/journal-builder";
+import { enqueueErpEvent } from "@/lib/erp/outbound-queue";
+import { buildErpPaymentPayload } from "@/lib/erp/payload-builder";
 
 export type ConfirmDonationInput = {
   paymentKey: string;
@@ -151,6 +154,7 @@ export async function confirmDonation(
   void sendDonationConfirmedEmail(supabase, confirmedPayment);
   void pushErpWebhookForPayment(supabase, confirmedPayment);
   void dispatchPaymentPaidAutomation(supabase, confirmedPayment);
+  void autoAllocateAndEnrichErp(supabase, confirmedPayment);
 
   // 캠페인 progress ISR 캐시 즉시 무효화
   if (confirmedPayment.campaign_slug) {
@@ -300,6 +304,27 @@ async function dispatchPaymentPaidAutomation(
     );
   } catch (err) {
     console.error("[automation] payment_paid dispatch failed:", err);
+  }
+}
+
+/**
+ * 결제 확정 후:
+ *   1. program_funding 룰을 적용해 payment_program_allocations 자동 생성
+ *   2. 풍부한 payload로 erp_outbound_webhooks queue에 이벤트 적재
+ *      (기존 webhook.ts의 단순 payload와 별개로, 회계 전표용 상세 정보)
+ */
+async function autoAllocateAndEnrichErp(
+  supabase: SupabaseClient,
+  payment: ConfirmedPayment,
+): Promise<void> {
+  try {
+    await autoAllocateToPrograms(supabase, payment.org_id, payment.id);
+    const payload = await buildErpPaymentPayload(supabase, payment.org_id, payment.id, "payment.paid");
+    if (payload) {
+      await enqueueErpEvent(supabase, payment.org_id, "payment.paid", payload as unknown as Record<string, unknown>);
+    }
+  } catch (err) {
+    console.error("[erp] autoAllocateAndEnrichErp failed:", err);
   }
 }
 
