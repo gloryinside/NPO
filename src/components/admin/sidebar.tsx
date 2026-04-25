@@ -78,6 +78,14 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    group: "기업·설문",
+    items: [
+      { label: "기업 매칭 프로그램", href: "/admin/matching-programs" },
+      { label: "매칭 신청 관리", href: "/admin/matching-requests" },
+      { label: "설문/NPS", href: "/admin/surveys" },
+    ],
+  },
+  {
     group: "결제관리",
     items: [
       { label: "미납 관리", href: "/admin/unpaid" },

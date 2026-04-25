@@ -17,6 +17,16 @@ const ITEMS: NavItem[] = [
   { href: "/donor/impact", label: "임팩트" },
   { href: "/donor/cheer", label: "응원" },
   {
+    href: "/donor/sponsorships",
+    label: "커뮤니티",
+    children: [
+      { href: "/donor/sponsorships", label: "내 결연" },
+      { href: "/donor/volunteer", label: "봉사 활동" },
+      { href: "/donor/events", label: "행사" },
+      { href: "/donor/gifts", label: "기념품" },
+    ],
+  },
+  {
     href: "/donor/support",
     label: "고객지원",
     children: [
