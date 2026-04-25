@@ -80,6 +80,11 @@ const NAV: NavGroup[] = [
       { label: "가상계좌 매핑", href: "/admin/virtual-account-mappings" },
       { label: "회계 마감", href: "/admin/closed-periods" },
       { label: "세금계산서 큐", href: "/admin/tax-invoices" },
+      { label: "지출 결의(품의)", href: "/admin/expense-vouchers" },
+      { label: "결산 보고서", href: "/admin/fiscal-reports" },
+      { label: "정산 차이 감지", href: "/admin/settlement-discrepancies" },
+      { label: "CMS EFT 청구", href: "/admin/cms-claim-files" },
+      { label: "UTM 분석", href: "/admin/utm-stats" },
     ],
   },
   {

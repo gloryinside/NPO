@@ -6,6 +6,7 @@ import { notifyDonationThanks } from '@/lib/notifications/send';
 import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
 import { dispatchTrigger } from "@/lib/automation/dispatcher";
 import { autoAllocateToPrograms } from "@/lib/erp/journal-builder";
+import { dispatchExternalWebhooks } from "@/lib/notifications/external-webhook";
 import { enqueueErpEvent } from "@/lib/erp/outbound-queue";
 import { buildErpPaymentPayload } from "@/lib/erp/payload-builder";
 
@@ -155,6 +156,7 @@ export async function confirmDonation(
   void pushErpWebhookForPayment(supabase, confirmedPayment);
   void dispatchPaymentPaidAutomation(supabase, confirmedPayment);
   void autoAllocateAndEnrichErp(supabase, confirmedPayment);
+  void notifyExternalChannels(supabase, confirmedPayment);
 
   // 캠페인 progress ISR 캐시 즉시 무효화
   if (confirmedPayment.campaign_slug) {
@@ -325,6 +327,24 @@ async function autoAllocateAndEnrichErp(
     }
   } catch (err) {
     console.error("[erp] autoAllocateAndEnrichErp failed:", err);
+  }
+}
+
+async function notifyExternalChannels(
+  supabase: SupabaseClient,
+  payment: ConfirmedPayment,
+): Promise<void> {
+  try {
+    const { data: member } = await supabase
+      .from("members").select("name").eq("id", payment.member_id).maybeSingle();
+    await dispatchExternalWebhooks(supabase, payment.org_id, "payment.paid", {
+      amount: Number(payment.amount ?? 0),
+      donorName: (member as { name?: string } | null)?.name ?? null,
+      campaignSlug: payment.campaign_slug,
+      paymentId: payment.id,
+    });
+  } catch (err) {
+    console.error("[external-webhook] notify failed:", err);
   }
 }
 

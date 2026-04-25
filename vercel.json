@@ -103,6 +103,14 @@
     {
       "path": "/api/cron/recompute-churn-scores",
       "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/cron/detect-discrepancies",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/notify-card-expiring",
+      "schedule": "30 6 * * *"
     }
   ]
 }

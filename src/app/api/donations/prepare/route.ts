@@ -340,6 +340,13 @@ export async function POST(req: NextRequest) {
       ...(payMethod ? { pay_method: payMethod } : {}),
       ...(customFields ? { custom_fields: customFields } : {}),
       ...(designation ? { designation } : {}),
+      ...(typeof body.utmSource === "string" ? { utm_source: body.utmSource } : {}),
+      ...(typeof body.utmMedium === "string" ? { utm_medium: body.utmMedium } : {}),
+      ...(typeof body.utmCampaign === "string" ? { utm_campaign: body.utmCampaign } : {}),
+      ...(typeof body.utmContent === "string" ? { utm_content: body.utmContent } : {}),
+      ...(typeof body.utmTerm === "string" ? { utm_term: body.utmTerm } : {}),
+      ...(typeof body.referrer === "string" ? { referrer: String(body.referrer).slice(0, 500) } : {}),
+      ...(typeof body.landingUrl === "string" ? { landing_url: String(body.landingUrl).slice(0, 500) } : {}),
     })
     .select("id, payment_code, amount, idempotency_key")
     .single();
