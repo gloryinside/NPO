@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminClaims } from "@/lib/auth/tenant-binding";
 import { createRequestClient } from "@/lib/supabase/request-client";
 
 /**
@@ -6,8 +7,8 @@ import { createRequestClient } from "@/lib/supabase/request-client";
  *
  * 검사:
  *   1. 로그인 여부
- *   2. user_metadata.role === 'admin'
- *   3. user_metadata.org_id 존재
+ *   2. app_metadata.role === 'admin'  (user_metadata는 사용자가 바꿀 수 있어 쓰지 않는다)
+ *   3. app_metadata.org_id 존재
  *   4. (선택) campaignId가 주어지면 해당 캠페인의 org_id 일치
  *
  * 성공 시 { orgId, userId, userEmail } 반환.
@@ -32,14 +33,15 @@ export async function requireAdminOrgForBuilder(
     };
   }
 
-  if (user.user_metadata?.role !== "admin") {
+  const claims = adminClaims(user);
+  if (!claims) {
     return {
       ok: false,
       response: NextResponse.json({ error: "forbidden" }, { status: 403 }),
     };
   }
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId: string | undefined = claims.orgId;
   if (!orgId) {
     return {
       ok: false,

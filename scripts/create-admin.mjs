@@ -149,9 +149,10 @@ async function main() {
 
   if (existingUser) {
     console.log(`ℹ️  이미 존재하는 계정입니다 (${existingUser.id}). metadata 만 갱신합니다.`);
+    // [보안] 권한은 app_metadata에 — user_metadata는 사용자가 직접 바꿀 수 있다
     const { error } = await supabase.auth.admin.updateUserById(existingUser.id, {
-      user_metadata: {
-        ...existingUser.user_metadata,
+      app_metadata: {
+        ...existingUser.app_metadata,
         ...metadata,
       },
       // 비밀번호도 갱신하고 싶다면 아래 주석 해제
@@ -167,7 +168,7 @@ async function main() {
       email,
       password,
       email_confirm: true, // 개발 환경 편의 — 이메일 검증 생략
-      user_metadata: metadata,
+      app_metadata: metadata,
     });
     if (error) {
       console.error(`❌ 계정 생성 실패: ${error.message}`);

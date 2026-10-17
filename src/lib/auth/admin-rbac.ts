@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  * G-D150: Admin 세부 역할 조회 + 허용 여부 체크.
  *
  * 기본 원칙:
- *   - auth.users.user_metadata.role === 'admin' 은 "관리자 로그인 가능" 수준
+ *   - auth.users.app_metadata.role === 'admin' 은 "관리자 로그인 가능" 수준
  *   - 세부 권한은 admin_roles 테이블의 role 값으로 판단
  *   - admin_roles 에 row 가 하나도 없는 admin 은 'super' 로 간주 (단일 운영자 초기 편의)
  *

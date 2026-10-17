@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminClaims } from "@/lib/auth/tenant-binding";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
     const match = (usersPage?.users ?? []).find(
       (u) => (u.email ?? "").toLowerCase() === email
     );
-    if (!match || match.user_metadata?.role !== "admin") {
+    if (!match || !adminClaims(match)) {
       // enumeration 방지: 동일한 ok 응답
       return NextResponse.json({ ok: true });
     }

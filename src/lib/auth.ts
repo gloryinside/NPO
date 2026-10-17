@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getTenant } from "@/lib/tenant/context";
 import { getOtpSessionFromCookies } from "@/lib/auth/otp-session";
+import { adminClaims, isAdminOfTenant } from "@/lib/auth/tenant-binding";
 import {
   MFA_BYPASS_COOKIE,
   verifyMfaBypassToken,
@@ -29,10 +30,15 @@ export async function getAdminUser(): Promise<User | null> {
  */
 export async function requireAdminUser(): Promise<User> {
   const user = await getAdminUser();
-  if (!user || user.user_metadata?.role !== "admin") {
+  if (!adminClaims(user)) {
     redirect("/admin/login");
   }
-  return user;
+  // [보안] 이 도메인 기관의 관리자여야 한다(다른 기관 관리자 계정 차단)
+  const tenant = await getTenant();
+  if (!isAdminOfTenant(user, tenant?.id)) {
+    redirect("/admin/login?reason=wrong_org");
+  }
+  return user!;
 }
 
 export type DonorSession = {
