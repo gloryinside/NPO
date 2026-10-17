@@ -10,7 +10,7 @@ import { nextCode } from "@/lib/codes-seq";
 import { getOrgTossKeys } from "@/lib/toss/keys";
 import { sendOfflineDonationReceived, sendBillingKeyFailedEmail } from "@/lib/email";
 import { deleteBillingKey, issueBillingKey } from "@/lib/billing/toss-billing";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { getClientIp, normalizeIpForKey, rateLimit, rateLimitAsync } from "@/lib/rate-limit";
 import { readJsonObject } from "@/lib/http/body";
 import { needsBillingRegistration, resolveRegularFlow } from "@/lib/billing/regular-flow";
 import { parseDonorProfile, profileColumns } from "@/lib/donations/donor-profile";
@@ -270,8 +270,10 @@ export async function POST(req: NextRequest) {
     if (!child || !isPickable(child) || (fs.sponsorshipProgramId && child.program_id !== fs.sponsorshipProgramId)) {
       return NextResponse.json({ error: CHILD_TAKEN }, { status: 409 });
     }
-    // 돈이 오가기 전부터 아이를 잡아 두므로 한 곳에서 여러 아이를 묶지 못하게 한다
-    const holdLimit = rateLimit(`donations:child-hold:${ip}`, 3, 60 * 60_000);
+    // 돈이 오가기 전부터 아이를 잡아 두므로 한 곳에서 여러 아이를 묶지 못하게 한다.
+    // 서버가 여러 대여도 같이 세도록 공유 저장소(Redis)를 쓰고, IPv6는 /64 대역으로 묶는다.
+    // (근본적으로는 휴대폰 인증 뒤에 잡아 두는 것 — 문자 연동 때 붙인다)
+    const holdLimit = await rateLimitAsync(`donations:child-hold:${normalizeIpForKey(ip)}`, 3, 60 * 60_000);
     if (!holdLimit.allowed) {
       return NextResponse.json({ error: "잠시 후 다시 신청해 주세요." }, { status: 429 });
     }
