@@ -10,7 +10,7 @@
  * - dnd-kit 드래그앤드롭 정렬
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useId } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -36,14 +36,25 @@ import { LandingSectionSettingsSheet } from './LandingSectionSettingsSheet'
 import { VariantGalleryModal } from './VariantGalleryModal'
 import { VariantChangeConfirmDialog } from './VariantChangeConfirmDialog'
 import { LivePreviewPanel } from './LivePreviewPanel'
+import { parseSchedule, scheduleLabel } from '@/lib/landing/display'
+import { kstToday } from '@/lib/billing/kst'
 import { getVariants, findVariant } from '@/lib/landing-variants'
 import '@/lib/landing-variants/register-all'
 import { checkMissingAssets } from '@/lib/landing-variants/asset-check'
+import { nanoid } from 'nanoid'
+import { auditLanding, type AuditFinding } from '@/lib/landing/audit'
+import { LANDING_SCHEMA_VERSION } from '@/lib/landing/history'
+import { PAGE_BUNDLES, sectionFromTemplate, sectionTemplates, sectionsFromBundle } from '@/lib/landing/templates'
+import { PublishCheckDialog } from './PublishCheckDialog'
+import { LandingHistoryPanel } from './LandingHistoryPanel'
+import { LandingAiPanel } from './LandingAiPanel'
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   initialPageContent: LandingPageContent
+  /** 한 번이라도 게시했는지 — "초안 변경 버리기"는 게시본이 있어야 가능 */
+  initialHasPublished?: boolean
 }
 
 // ─── 유틸 ─────────────────────────────────────────────────────────────────────
@@ -61,13 +72,17 @@ async function savePageContent(pageContent: LandingPageContent) {
 
 function SortableRow({
   section,
+  selected,
   onEdit,
   onToggleVisible,
+  onDuplicate,
   onDelete,
 }: {
   section: LandingSection
+  selected: boolean
   onEdit: (id: string) => void
   onToggleVisible: (id: string) => void
+  onDuplicate: (id: string) => void
   onDelete: (id: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -87,7 +102,9 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+      className={`flex items-center gap-3 rounded-xl border bg-[var(--surface)] px-4 py-3 shadow-card transition-colors ${
+        selected ? 'border-[var(--text)]' : 'border-[var(--border)]'
+      } ${section.isVisible ? '' : 'opacity-60'}`}
     >
       {/* 드래그 핸들 */}
       <button
@@ -105,6 +122,14 @@ function SortableRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-[var(--text)] truncate">{catalog?.label ?? section.type}</p>
+          {(() => {
+            const label = scheduleLabel(parseSchedule((section.data as Record<string, unknown>)?.schedule), kstToday())
+            return label ? (
+              <span className="whitespace-nowrap rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {label}
+              </span>
+            ) : null
+          })()}
           {assetCheck.missing && (
             <span
               className="text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/30"
@@ -140,6 +165,14 @@ function SortableRow({
         </button>
         <button
           type="button"
+          onClick={() => onDuplicate(section.id)}
+          className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-xs text-[var(--text)] hover:opacity-80 transition-opacity"
+          title="바로 아래에 복제"
+        >
+          복제
+        </button>
+        <button
+          type="button"
           onClick={() => onDelete(section.id)}
           className="rounded-md border border-[rgba(239,68,68,0.4)] bg-[rgba(239,68,68,0.08)] px-2.5 py-1 text-xs text-[var(--negative)] hover:opacity-80 transition-opacity"
         >
@@ -152,7 +185,7 @@ function SortableRow({
 
 // ─── 메인 에디터 ──────────────────────────────────────────────────────────────
 
-export function LandingSectionEditor({ initialPageContent }: Props) {
+export function LandingSectionEditor({ initialPageContent, initialHasPublished = false }: Props) {
   const [sections, setSections] = useState<LandingSection[]>(
     initialPageContent.sections ?? []
   )
@@ -164,11 +197,19 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
   const [variantChangeFor, setVariantChangeFor] = useState<string | null>(null)
   // G-52: confirm() → 커스텀 다이얼로그로
   const [pendingVariantChange, setPendingVariantChange] = useState<{ sectionId: string; newVariantId: string } | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   // G-75: Live preview iframe
   const [showPreview, setShowPreview] = useState(false)
+  const [hasPublished, setHasPublished] = useState(initialHasPublished)
+  // 게시 전 점검 결과(경고가 있을 때만 확인 창)
+  const [auditFindings, setAuditFindings] = useState<AuditFinding[] | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showAi, setShowAi] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusRef = useRef<'saved' | 'unsaved' | 'saving'>('saved')
 
+  // dnd-kit 자동 id는 서버·클라이언트 카운터가 달라 hydration 불일치 → 고정 id
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -183,7 +224,7 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
       saveStatusRef.current = 'saving'
       setSaveStatus('saving')
       try {
-        await savePageContent({ schemaVersion: 1, sections: updated })
+        await savePageContent({ schemaVersion: LANDING_SCHEMA_VERSION, sections: updated })
         saveStatusRef.current = 'saved'
         setSaveStatus('saved')
       } catch {
@@ -261,10 +302,32 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
   }
 
   // ── 섹션 삭제 ────────────────────────────────────────────────────────────
+  // 확인은 커스텀 다이얼로그(pendingDeleteId)에서 — 브라우저 confirm()은 쓰지 않는다(G-52)
   function handleDelete(id: string) {
-    if (!confirm('이 섹션을 삭제할까요?')) return
     const updated = sections.filter(s => s.id !== id).map((s, i) => ({ ...s, sortOrder: i }))
     setSections(updated)
+    scheduleSave(updated)
+  }
+
+  // ── 섹션 복제 (바로 아래에 삽입) ─────────────────────────────────────────
+  function handleDuplicate(id: string) {
+    const idx = sections.findIndex((s) => s.id === id)
+    if (idx === -1) return
+    if (sections.length >= 20) {
+      toast.error('섹션은 최대 20개까지 추가할 수 있습니다.')
+      return
+    }
+    const copy: LandingSection = {
+      ...sections[idx],
+      id: nanoid(),
+      data: structuredClone(sections[idx].data),
+    }
+    const updated = [...sections.slice(0, idx + 1), copy, ...sections.slice(idx + 1)].map((s, i) => ({
+      ...s,
+      sortOrder: i,
+    }))
+    setSections(updated)
+    setEditingId(copy.id)
     scheduleSave(updated)
   }
 
@@ -295,7 +358,15 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
   }
 
   // ── 게시 ─────────────────────────────────────────────────────────────────
+  // 게시 전 점검 — 경고가 있으면 확인 창, 없으면 바로 게시
+  function requestPublish() {
+    const findings = auditLanding(sections)
+    if (findings.length > 0) setAuditFindings(findings)
+    else void handlePublish()
+  }
+
   async function handlePublish() {
+    setAuditFindings(null)
     // G-43: debounce 취소 후 sections를 body에 포함해 단일 요청으로 저장+게시
     if (debounceRef.current) clearTimeout(debounceRef.current)
     saveStatusRef.current = 'saving'
@@ -308,9 +379,14 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
         body: JSON.stringify({ sections }),
       })
       if (!res.ok) throw new Error()
+      const json = (await res.json()) as { historyRecorded?: boolean }
       saveStatusRef.current = 'saved'
       setSaveStatus('saved')
+      setHasPublished(true)
       toast.success('랜딩페이지가 게시되었습니다.')
+      if (json.historyRecorded === false) {
+        toast.warning('게시는 되었지만 이력을 남기지 못했습니다. (게시 이력 DB 적용 필요)')
+      }
     } catch {
       saveStatusRef.current = 'unsaved'
       setSaveStatus('unsaved')
@@ -318,6 +394,15 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
     } finally {
       setPublishing(false)
     }
+  }
+
+  // ── 이력 복원·초안 폐기 → 서버가 이미 초안을 바꿨으므로 목록만 교체 ──────
+  function handleRestored(content: LandingPageContent) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setSections(content.sections ?? [])
+    setEditingId(null)
+    saveStatusRef.current = 'saved'
+    setSaveStatus('saved')
   }
 
   const editingSection = sections.find(s => s.id === editingId) ?? null
@@ -364,7 +449,23 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
           </a>
           <button
             type="button"
-            onClick={handlePublish}
+            onClick={() => setShowAi(true)}
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:opacity-80 transition-opacity"
+            title="기관 소개로 섹션 문구 초안 만들기"
+          >
+            AI 초안
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowHistory(true)}
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:opacity-80 transition-opacity"
+            title="게시 이력·되돌리기"
+          >
+            이력
+          </button>
+          <button
+            type="button"
+            onClick={requestPublish}
             disabled={publishing}
             className="rounded-md px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ background: 'var(--accent)' }}
@@ -379,46 +480,40 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
         <div className="rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--surface)] py-12 text-center space-y-4 px-4">
           <p className="text-3xl">📄</p>
           <p className="text-sm text-[var(--text)]">아직 섹션이 없습니다.</p>
-          <p className="text-xs text-[var(--muted-foreground)]">추천 템플릿으로 빠르게 시작하거나, 아래 버튼으로 직접 섹션을 추가해보세요.</p>
-          {/* G-44: 추천 템플릿 (히어로 → 캠페인 → CTA) */}
-          <button
-            type="button"
-            onClick={() => {
-              const template: Array<{ type: LandingSectionType; variant?: string }> = [
-                { type: 'hero', variant: 'hero-fullscreen-image' },
-                { type: 'campaigns' },
-                { type: 'cta', variant: 'cta-gradient' },
-              ]
-              const added = template.map(({ type, variant }, i) => {
-                const s = createSection(type, i)
-                if (variant) {
-                  s.variant = variant
-                  const descriptor = getVariants(type).find((v) => v.id === variant)
-                  if (descriptor) s.data = descriptor.defaultData() as typeof s.data
-                }
-                return s
-              })
-              setSections(added)
-              scheduleSave(added)
-              setEditingId(added[0].id)
-            }}
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-            style={{ background: 'var(--accent)' }}
-          >
-            🚀 추천 템플릿으로 시작하기
-          </button>
+          <p className="text-xs text-[var(--muted-foreground)]">페이지 묶음으로 빠르게 시작하거나, 아래 버튼으로 직접 섹션을 추가해보세요.</p>
+          {/* 페이지 묶음 — 후원 페이지용 문구가 채워진 섹션 세트(lib/landing/templates) */}
+          <div className="mx-auto grid max-w-2xl gap-2 sm:grid-cols-3">
+            {PAGE_BUNDLES.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => {
+                  const added = sectionsFromBundle(b.id, kstToday())
+                  setSections(added)
+                  scheduleSave(added)
+                  setEditingId(added[0]?.id ?? null)
+                }}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-left shadow-card transition-colors hover:border-[var(--accent)]"
+              >
+                <p className="text-sm font-semibold text-[var(--text)]">{b.name}</p>
+                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{b.description}</p>
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
               {sections.map(section => (
                 <SortableRow
                   key={section.id}
                   section={section}
+                  selected={section.id === editingId}
                   onEdit={setEditingId}
                   onToggleVisible={handleToggleVisible}
-                  onDelete={handleDelete}
+                  onDuplicate={handleDuplicate}
+                  onDelete={setPendingDeleteId}
                 />
               ))}
             </div>
@@ -439,6 +534,35 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
               닫기 ✕
             </button>
           </div>
+          <p className="text-xs font-semibold text-[var(--muted-foreground)]">템플릿에서 시작 — 문구가 채워진 섹션</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {sectionTemplates(kstToday()).map((t) => (
+              <button
+                type="button"
+                key={t.id}
+                onClick={() => {
+                  if (sections.length >= 20) {
+                    toast.error('섹션은 최대 20개까지 추가할 수 있습니다.')
+                    return
+                  }
+                  const added = sectionFromTemplate(t, sections.length)
+                  const updated = [...sections, added]
+                  setSections(updated)
+                  setShowCatalog(false)
+                  setEditingId(added.id)
+                  scheduleSave(updated)
+                }}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-left hover:border-[var(--accent)]"
+              >
+                <p className="text-sm font-medium text-[var(--text)]">
+                  <span className="mr-1.5 rounded-full bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)]">{t.category}</span>
+                  {t.name}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{t.description}</p>
+              </button>
+            ))}
+          </div>
+          <p className="pt-2 text-xs font-semibold text-[var(--muted-foreground)]">빈 섹션 — 형태를 골라 직접 작성</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {SECTION_CATALOG.map(item => (
               <button
@@ -469,6 +593,8 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
       {/* ── 설정 시트 ── */}
       {editingSection && (
         <LandingSectionSettingsSheet
+          // 섹션이 바뀌면 시트를 새로 마운트 — 안 그러면 이전 섹션의 편집값이 남아 다른 섹션에 저장된다
+          key={editingSection.id}
           section={editingSection}
           open={!!editingId}
           onClose={() => setEditingId(null)}
@@ -527,11 +653,102 @@ export function LandingSectionEditor({ initialPageContent }: Props) {
         )
       })()}
 
+      {/* ── 섹션 삭제 확인 ── */}
+      {pendingDeleteId && (() => {
+        const target = sections.find((s) => s.id === pendingDeleteId)
+        if (!target) return null
+        const label = SECTION_CATALOG.find((c) => c.type === target.type)?.label ?? target.type
+        return (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setPendingDeleteId(null)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setPendingDeleteId(null) }}
+          >
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="section-delete-title"
+              className="animate-rise w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-hero)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="section-delete-title" className="text-base font-semibold text-[var(--text)]">
+                '{label}' 섹션을 삭제할까요?
+              </h3>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                초안에서만 지워져요. 다시 게시하기 전까지 공개 페이지에는 그대로 보입니다.
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={() => setPendingDeleteId(null)}
+                  className="rounded-xl border border-[var(--input)] px-4 py-2 text-sm font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleDelete(target.id); setPendingDeleteId(null) }}
+                  className="rounded-xl bg-[var(--negative)] px-4 py-2 text-sm font-semibold text-white"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── G-75: Live preview iframe 패널 ── */}
       {showPreview && (
         <LivePreviewPanel
-          saveStatus={saveStatus}
+          sections={sections}
+          selectedId={editingId}
+          onSelect={setEditingId}
           onClose={() => setShowPreview(false)}
+        />
+      )}
+
+      {/* ── 게시 전 점검 ── */}
+      {auditFindings && (
+        <PublishCheckDialog
+          findings={auditFindings}
+          onPublish={() => void handlePublish()}
+          onOpenSection={(id) => {
+            setAuditFindings(null)
+            setEditingId(id)
+          }}
+          onCancel={() => setAuditFindings(null)}
+        />
+      )}
+
+      {/* ── AI 초안 ── */}
+      {showAi && (
+        <LandingAiPanel
+          onClose={() => setShowAi(false)}
+          onApply={(added, mode) => {
+            const base = mode === 'replace' ? [] : sections
+            const room = 20 - base.length
+            if (room <= 0) {
+              toast.error('섹션은 최대 20개까지 추가할 수 있습니다.')
+              return
+            }
+            const updated = [...base, ...added.slice(0, room)].map((s, i) => ({ ...s, sortOrder: i }))
+            setSections(updated)
+            scheduleSave(updated)
+            setShowAi(false)
+            setEditingId(null)
+            toast.success(mode === 'replace' ? 'AI 초안으로 교체했습니다. 확인 후 게시하세요.' : 'AI 초안 섹션을 추가했습니다.')
+          }}
+        />
+      )}
+
+      {/* ── 게시 이력 ── */}
+      {showHistory && (
+        <LandingHistoryPanel
+          hasPublished={hasPublished}
+          onRestored={handleRestored}
+          onClose={() => setShowHistory(false)}
         />
       )}
     </div>

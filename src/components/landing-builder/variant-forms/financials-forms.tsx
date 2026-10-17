@@ -119,7 +119,7 @@ export function FinancialsBreakdownForm({ data, onChange }: {
         </div>
         <Field label="라벨 (예: 사업비)"><input className={inputCls} value={b.label} onChange={(e) => update(i, { label: e.target.value })} /></Field>
         <Field label="금액 (원)"><input type="number" className={inputCls} min={0} value={b.amount} onChange={(e) => update(i, { amount: Number(e.target.value) })} /></Field>
-        <Field label="색상 (hex, 선택)"><input className={inputCls} value={b.color ?? ''} onChange={(e) => update(i, { color: e.target.value || undefined })} placeholder="#7c3aed" /></Field>
+        <Field label="색상 (hex, 선택)"><input className={inputCls} value={b.color ?? ''} onChange={(e) => update(i, { color: e.target.value || undefined })} placeholder="#009944" /></Field>
       </div>
     ))}
     <button type="button" onClick={add} className={addBtnCls}>+ 항목 추가</button>

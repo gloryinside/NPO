@@ -4,7 +4,7 @@ import type {
 } from './hero-schemas'
 
 export const heroMinimalDefault = (): HeroMinimalData => ({
-  bgColor: '#1a3a5c',
+  bgColor: '#20313a',
   headline: '함께 만드는 따뜻한 세상',
   subheadline: '여러분의 후원이 변화를 만듭니다.',
   ctaText: '지금 후원하기',
@@ -24,8 +24,8 @@ export const heroSplitImageDefault = (): HeroSplitImageData => ({
 })
 
 export const heroFullscreenImageDefault = (): HeroFullscreenImageData => ({
-  bgImageUrl: 'https://picsum.photos/seed/hero-fs/1920/1080',
-  overlayOpacity: 50,
+  bgImageUrl: '/img/landing/hero-default.webp',
+  overlayOpacity: 60,
   kenBurns: true,
   headline: '함께 만드는 따뜻한 세상',
   subheadline: '여러분의 후원이 변화를 만듭니다.',
@@ -36,7 +36,7 @@ export const heroFullscreenImageDefault = (): HeroFullscreenImageData => ({
 
 export const heroFullscreenVideoDefault = (): HeroFullscreenVideoData => ({
   videoUrl: 'https://cdn.coverr.co/videos/coverr-community-volunteering-5670/1080p.mp4',
-  posterUrl: 'https://picsum.photos/seed/hero-video/1920/1080',
+  posterUrl: '/img/landing/hero-default.webp',
   overlayOpacity: 50,
   showMuteToggle: true,
   headline: '함께 만드는 따뜻한 세상',
@@ -62,8 +62,8 @@ export const heroGalleryDefault = (): HeroGalleryData => ({
 })
 
 export const heroStatsOverlayDefault = (): HeroStatsOverlayData => ({
-  bgImageUrl: 'https://picsum.photos/seed/hero-so/1920/1080',
-  overlayOpacity: 55,
+  bgImageUrl: '/img/landing/hero-default.webp',
+  overlayOpacity: 60,
   kenBurns: true,
   headline: '함께 만드는 따뜻한 세상',
   subheadline: '여러분의 후원이 변화를 만듭니다.',

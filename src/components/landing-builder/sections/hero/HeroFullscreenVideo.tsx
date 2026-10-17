@@ -54,7 +54,7 @@ export function HeroFullscreenVideo({ data }: { data: HeroFullscreenVideoData })
         />
       )}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: `linear-gradient(to bottom, rgba(10,10,15,${op}), rgba(10,10,15,${Math.min(op + 0.3, 1)}))` }} />
+        style={{ background: `linear-gradient(to bottom, rgba(14,32,42,${op}), rgba(14,32,42,${Math.min(op + 0.3, 1)}))` }} />
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-32 min-h-[80vh] flex flex-col justify-center">
         <div className={`flex flex-col ${align}`}>
           <MotionFadeUp>
@@ -68,7 +68,7 @@ export function HeroFullscreenVideo({ data }: { data: HeroFullscreenVideoData })
           {ctaText && (
             <MotionFadeUp delay={0.2}>
               <a href={ctaUrl || '#'}
-                className="inline-flex items-center justify-center rounded-lg px-10 py-4 text-base font-bold text-white bg-[var(--accent)] hover:opacity-90 transition-all hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center rounded-xl px-10 py-4 text-base font-bold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-all hover:-translate-y-0.5"
                 style={{ boxShadow: 'var(--shadow-hero)' }}>
                 {ctaText} →
               </a>

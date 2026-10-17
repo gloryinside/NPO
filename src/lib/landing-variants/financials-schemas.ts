@@ -71,7 +71,7 @@ export const financialsBreakdownDefault = (): FinancialsBreakdownData => ({
   year: lastYear,
   totalUsed: 280_000_000,
   breakdown: [
-    { label: '사업비', amount: 224_000_000, color: '#7c3aed' },
+    { label: '사업비', amount: 224_000_000, color: '#009944' },
     { label: '관리비', amount: 33_600_000, color: '#38bdf8' },
     { label: '모금비', amount: 22_400_000, color: '#f59e0b' },
   ],

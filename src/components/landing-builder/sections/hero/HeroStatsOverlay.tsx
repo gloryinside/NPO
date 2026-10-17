@@ -21,7 +21,7 @@ export function HeroStatsOverlay({ data }: { data: HeroStatsOverlayData }) {
         {ctaText && (
           <MotionFadeUp delay={0.2}>
             <a href={ctaUrl || '#'}
-              className="inline-flex items-center justify-center rounded-lg px-10 py-4 text-base font-bold text-white bg-[var(--accent)] hover:opacity-90 transition-all hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center rounded-xl px-10 py-4 text-base font-bold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-all hover:-translate-y-0.5"
               style={{ boxShadow: 'var(--shadow-hero)' }}>
               {ctaText} →
             </a>

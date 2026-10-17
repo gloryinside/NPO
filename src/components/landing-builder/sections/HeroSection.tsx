@@ -18,7 +18,7 @@ export function HeroSection({ data }: Props) {
 
   const background =
     bgType === 'image'
-      ? `linear-gradient(to bottom, rgba(10,10,15,${overlayOpacity / 100}), rgba(10,10,15,${Math.min(overlayOpacity / 100 + 0.3, 1)})), url(${JSON.stringify(bgValue)}) center/cover no-repeat`
+      ? `linear-gradient(to bottom, rgba(14,32,42,${overlayOpacity / 100}), rgba(14,32,42,${Math.min(overlayOpacity / 100 + 0.3, 1)})), url(${JSON.stringify(bgValue)}) center/cover no-repeat`
       : bgValue || 'var(--surface)'
 
   const alignClass =
@@ -42,7 +42,7 @@ export function HeroSection({ data }: Props) {
         {ctaText && (
           <a
             href={ctaUrl || '#'}
-            className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold text-white bg-[var(--accent)] hover:opacity-90 transition-opacity"
+            className="inline-flex items-center justify-center rounded-xl px-8 py-3 text-base font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-colors"
           >
             {ctaText}
           </a>

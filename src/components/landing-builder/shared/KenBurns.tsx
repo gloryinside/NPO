@@ -15,7 +15,7 @@ export function KenBurns({ imageUrl, overlayOpacity, enabled = true }: Props) {
   const reduce = useReducedMotion()
   const animate = enabled && !reduce
   const op = Math.max(0, Math.min(1, overlayOpacity / 100))
-  const bg = `linear-gradient(to bottom, rgba(10,10,15,${op}), rgba(10,10,15,${Math.min(op + 0.3, 1)})), url(${JSON.stringify(imageUrl)})`
+  const bg = `linear-gradient(to bottom, rgba(14,32,42,${op}), rgba(14,32,42,${Math.min(op + 0.3, 1)})), url(${JSON.stringify(imageUrl)})`
   return (
     <div className="absolute inset-0 overflow-hidden" aria-hidden>
       <div

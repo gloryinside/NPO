@@ -91,8 +91,8 @@ export function FinancialsTransparency({ data }: { data: FinancialsTransparencyD
           <MotionFadeUp delay={0.2}>
             <div className="text-center mt-8">
               <a href={reportUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold text-white bg-[var(--accent)] hover:opacity-90 transition-opacity"
-                style={{ boxShadow: 'var(--shadow-card)' }}>
+                className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-colors"
+                >
                 📊 감사보고서 전체 보기 →
               </a>
             </div>

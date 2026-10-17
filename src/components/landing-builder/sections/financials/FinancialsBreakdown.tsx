@@ -9,7 +9,7 @@ function formatKRW(n: number): string {
   return n.toLocaleString('ko-KR')
 }
 
-const FALLBACK_COLORS = ['#7c3aed', '#38bdf8', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#14b8a6']
+const FALLBACK_COLORS = ['#009944', '#334155', '#0284c7', '#d97706', '#94a3b8', '#0d9488', '#dc2626']
 
 export function FinancialsBreakdown({ data }: { data: FinancialsBreakdownData }) {
   const { title = '사용 내역 분포', year, totalUsed, breakdown } = data

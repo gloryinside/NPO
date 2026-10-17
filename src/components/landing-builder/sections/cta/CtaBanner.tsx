@@ -16,8 +16,8 @@ export function CtaBanner({ data }: { data: CtaBannerData }) {
         )}
         <MotionFadeUp delay={0.2}>
           <a href={buttonUrl || '#campaigns'}
-            className="inline-flex items-center rounded-lg px-10 py-3.5 text-base font-semibold text-white bg-[var(--accent)] hover:opacity-90 transition-all hover:-translate-y-0.5"
-            style={{ boxShadow: 'var(--shadow-card)' }}>
+            className="inline-flex items-center rounded-xl px-10 py-3.5 text-base font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-all hover:-translate-y-0.5"
+            >
             {buttonText}
           </a>
         </MotionFadeUp>

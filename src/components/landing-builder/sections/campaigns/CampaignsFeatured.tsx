@@ -3,6 +3,7 @@ import type { CampaignsBaseData } from '@/lib/landing-variants/campaigns-schemas
 import { CampaignCard, type CampaignRow } from './CampaignCard'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
 import { Badge } from '@/components/ui/badge'
+import { DEFAULT_CAMPAIGN_THUMB } from '@/lib/brand-images'
 
 function formatKRW(n: number) { return new Intl.NumberFormat('ko-KR').format(n) + '원' }
 
@@ -32,7 +33,7 @@ export function CampaignsFeatured({ data, campaigns }: { data: CampaignsBaseData
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={featured.thumbnail_url} alt={featured.title} className="w-full h-80 object-cover" />
                   ) : (
-                    <div className="w-full h-80 bg-gradient-to-br from-[var(--accent-soft)] to-[var(--surface-2)]" />
+                    <img src={DEFAULT_CAMPAIGN_THUMB} alt="" className="w-full h-80 object-cover art-adapt" />
                   )}
                   <div className="absolute top-4 left-4">
                     <Badge className="border-0 bg-[var(--accent)] text-white">⭐ 추천 캠페인</Badge>

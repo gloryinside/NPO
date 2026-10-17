@@ -1,95 +1,122 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { LandingSection } from '@/types/landing'
+import { parseFromFrame, type ToFrame } from '@/lib/landing/preview-protocol'
 
 interface Props {
-  saveStatus: 'saved' | 'unsaved' | 'saving'
+  sections: LandingSection[]
+  selectedId: string | null
+  /** 미리보기에서 섹션을 눌렀을 때 — 편집기가 그 섹션을 연다 */
+  onSelect: (id: string) => void
   onClose: () => void
 }
 
 /**
- * G-75: Live preview iframe 패널.
- * 에디터 우측에 `/?draft=1`을 iframe으로 로드하고,
- * saveStatus가 'saved'로 전환될 때마다 자동 reload → 최신 DB 콘텐츠 반영.
+ * 실시간 미리보기 패널 — JobYLW 포털 빌더 방식.
+ * 편집 중인 섹션을 같은 출처 postMessage로 프레임(/admin/landing-frame)에 보내 즉시 그린다
+ * (예전: 2초 자동저장 후 /?draft=1 새로고침). 미리보기 클릭 → 편집기에서 그 섹션 선택.
  *
- * 뷰포트 토글: desktop(1280) / tablet(768) / mobile(375)
+ * 기기 폭은 실제 폭으로 그린 뒤 패널에 맞춰 축소해 레이아웃이 실제와 같게 보인다.
  */
-const VIEWPORTS = {
-  desktop: 1280,
-  tablet: 768,
-  mobile: 375,
-} as const
+const VIEWPORTS = { desktop: 1280, tablet: 768, mobile: 390 } as const
 type Viewport = keyof typeof VIEWPORTS
 
-export function LivePreviewPanel({ saveStatus, onClose }: Props) {
+export function LivePreviewPanel({ sections, selectedId, onSelect, onClose }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const prevStatus = useRef<'saved' | 'unsaved' | 'saving'>(saveStatus)
+  const boxRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState<Viewport>('desktop')
-  const [loadCount, setLoadCount] = useState(0)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [ready, setReady] = useState(false)
+  const [boxWidth, setBoxWidth] = useState(0)
 
-  // saved로 전환 시 iframe reload
+  const post = useCallback(() => {
+    const win = iframeRef.current?.contentWindow
+    if (!win) return
+    const msg: ToFrame = { kind: 'npo-landing-preview-state', state: { sections, selectedId, theme } }
+    win.postMessage(msg, window.location.origin)
+  }, [sections, selectedId, theme])
+
+  // 프레임 → 편집기: 준비 완료·섹션 선택. 같은 출처·우리 프레임이 보낸 것만
   useEffect(() => {
-    if (prevStatus.current !== 'saved' && saveStatus === 'saved') {
-      const el = iframeRef.current
-      if (el) {
-        el.src = el.src
-        setLoadCount((n) => n + 1)
-      }
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin || e.source !== iframeRef.current?.contentWindow) return
+      const msg = parseFromFrame(e.data)
+      if (!msg) return
+      if (msg.kind === 'npo-landing-preview-ready') setReady(true)
+      else onSelect(msg.id)
     }
-    prevStatus.current = saveStatus
-  }, [saveStatus])
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [onSelect])
+
+  // 편집 상태가 바뀔 때마다(그리고 프레임이 준비되면) 즉시 보낸다
+  useEffect(() => {
+    if (ready) post()
+  }, [ready, post])
+
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => setBoxWidth(entry.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const width = VIEWPORTS[viewport]
+  const scale = boxWidth > 0 ? Math.min(1, boxWidth / width) : 1
+
+  const seg = (active: boolean) =>
+    `px-2.5 py-1 text-xs transition-colors ${active ? 'bg-[var(--surface-2)] font-semibold text-[var(--text)]' : 'text-[var(--muted-foreground)] hover:text-[var(--text)]'}`
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[640px] lg:w-[800px] flex flex-col border-l"
-      style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: '-8px 0 32px -8px rgb(0 0 0 / 0.3)' }}>
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+    <div className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-[-8px_0_32px_-8px_rgb(0_0_0/0.3)] sm:w-[640px] lg:w-[820px]">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-5 py-3">
         <div>
-          <p className="text-xs text-[var(--muted-foreground)]">Live Preview</p>
+          <p className="eyebrow">Live Preview</p>
           <h3 className="text-sm font-semibold text-[var(--text)]">
-            {saveStatus === 'saved' ? '✓ 최신 상태' : saveStatus === 'saving' ? '⏳ 저장 중…' : '○ 변경사항 있음'}
-            <span className="ml-2 text-xs text-[var(--muted-foreground)]">새로고침 {loadCount}회</span>
+            {ready ? '편집 내용이 바로 반영됩니다' : '미리보기 준비 중…'}
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-md border border-[var(--border)] overflow-hidden">
+          <div className="flex overflow-hidden rounded-lg border border-[var(--border)]" role="group" aria-label="기기 폭">
             {(['desktop', 'tablet', 'mobile'] as const).map((v) => (
-              <button key={v} type="button"
-                onClick={() => setViewport(v)}
-                className="px-2 py-1 text-xs transition-colors"
-                style={{
-                  background: viewport === v ? 'var(--accent)' : 'var(--surface-2)',
-                  color: viewport === v ? '#fff' : 'var(--muted-foreground)',
-                }}>
-                {v === 'desktop' ? '🖥' : v === 'tablet' ? '📱' : '📱'}
-                <span className="ml-1">{v}</span>
+              <button key={v} type="button" aria-pressed={viewport === v} onClick={() => setViewport(v)} className={seg(viewport === v)}>
+                {v === 'desktop' ? '데스크톱' : v === 'tablet' ? '태블릿' : '모바일'}
               </button>
             ))}
           </div>
-          <button type="button"
-            onClick={() => {
-              const el = iframeRef.current
-              if (el) { el.src = el.src; setLoadCount((n) => n + 1) }
-            }}
-            className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs text-[var(--text)] hover:border-[var(--accent)]"
-            aria-label="새로고침"
-            title="새로고침">
-            ↻
+          <div className="flex overflow-hidden rounded-lg border border-[var(--border)]" role="group" aria-label="밝기">
+            {(['light', 'dark'] as const).map((t) => (
+              <button key={t} type="button" aria-pressed={theme === t} onClick={() => setTheme(t)} className={seg(theme === t)}>
+                {t === 'light' ? '라이트' : '다크'}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="미리보기 닫기"
+            className="rounded-lg px-2 py-1 text-sm text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+          >
+            ✕
           </button>
-          <button type="button" onClick={onClose}
-            aria-label="닫기"
-            className="text-[var(--muted-foreground)] hover:text-[var(--text)] text-lg px-2">✕</button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto bg-[var(--bg)] flex justify-center">
-        <iframe
-          ref={iframeRef}
-          src="/?draft=1"
-          title="Live preview"
-          className="h-full border-0 bg-white"
-          style={{ width, maxWidth: '100%' }}
-        />
+
+      <div ref={boxRef} className="app-canvas relative flex-1 overflow-auto">
+        <div style={{ width: width * scale, margin: '0 auto' }}>
+          <iframe
+            ref={iframeRef}
+            src="/admin/landing-frame"
+            title="랜딩페이지 미리보기"
+            className="origin-top-left border-0 bg-[var(--bg)]"
+            style={{ width, height: `calc((100vh - 64px) / ${scale})`, transform: `scale(${scale})` }}
+          />
+        </div>
       </div>
+      <p className="border-t border-[var(--border)] px-5 py-2 text-[11px] text-[var(--muted-foreground)]">
+        미리보기에서 섹션을 누르면 편집 창이 열립니다.
+      </p>
     </div>
   )
 }

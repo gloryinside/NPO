@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { CampaignsSectionData } from '@/types/landing'
+import { DEFAULT_CAMPAIGN_THUMB } from '@/lib/brand-images'
 
 interface CampaignRow {
   id: string
@@ -53,7 +54,7 @@ export function CampaignsSection({ data, campaigns }: Props) {
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={campaign.thumbnail_url} alt={campaign.title} className="w-full h-40 object-cover" />
                     ) : (
-                      <div className="w-full h-40 bg-gradient-to-br from-[var(--accent-soft)] to-[var(--surface-2)]" />
+                      <img src={DEFAULT_CAMPAIGN_THUMB} alt="" className="w-full h-40 object-cover art-adapt" />
                     )}
                     <div className="p-5 flex-1 flex flex-col">
                       <div className="flex items-start justify-between gap-2 mb-2">

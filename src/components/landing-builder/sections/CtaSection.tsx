@@ -26,7 +26,7 @@ export function CtaSection({ data }: Props) {
         )}
         <a
           href={buttonUrl || '#campaigns'}
-          className="inline-flex items-center justify-center rounded-lg px-10 py-3.5 text-base font-semibold text-white bg-[var(--accent)] hover:opacity-90 transition-opacity"
+          className="inline-flex items-center justify-center rounded-xl px-10 py-3.5 text-base font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-colors"
         >
           {buttonText}
         </a>

@@ -20,8 +20,8 @@ export function HeroSplitImage({ data }: { data: HeroSplitImageData }) {
           {ctaText && (
             <MotionFadeUp delay={0.2}>
               <a href={ctaUrl || '#'}
-                className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold text-white bg-[var(--accent)] hover:opacity-90 transition-opacity"
-                style={{ boxShadow: 'var(--shadow-card)' }}>
+                className="inline-flex items-center justify-center rounded-xl px-8 py-3 text-base font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-colors"
+                >
                 {ctaText}
               </a>
             </MotionFadeUp>

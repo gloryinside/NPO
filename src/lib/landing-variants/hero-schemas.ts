@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+// 이미지 URL — 외부 절대 URL 또는 앱이 제공하는 내장 일러스트(/img/… 정적 파일)만 허용
+const ImageUrl = z.union([
+  z.string().url(),
+  z.string().regex(/^\/img\/[a-z0-9\-/]+\.(webp|png|jpe?g)$/),
+])
+
 export const HeroBase = z.object({
   headline: z.string().min(1).max(100),
   subheadline: z.string().max(300).optional(),
@@ -9,7 +15,7 @@ export const HeroBase = z.object({
 })
 
 export const HeroMinimal = HeroBase.extend({
-  bgColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#1a3a5c'),
+  bgColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#20313a'),
 })
 
 export const HeroSplitImage = HeroBase.extend({
@@ -19,14 +25,14 @@ export const HeroSplitImage = HeroBase.extend({
 })
 
 export const HeroFullscreenImage = HeroBase.extend({
-  bgImageUrl: z.string().url(),
+  bgImageUrl: ImageUrl,
   overlayOpacity: z.number().min(30).max(100).default(40),
   kenBurns: z.boolean().default(true),
 })
 
 export const HeroFullscreenVideo = HeroBase.extend({
   videoUrl: z.string().url(),
-  posterUrl: z.string().url(),
+  posterUrl: ImageUrl,
   overlayOpacity: z.number().min(30).max(100).default(50),
   showMuteToggle: z.boolean().default(true),
 })

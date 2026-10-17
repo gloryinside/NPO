@@ -13,7 +13,7 @@ export default async function LandingBuilderPage() {
 
   const { data } = await supabase
     .from("orgs")
-    .select("page_content")
+    .select("page_content, published_at")
     .eq("id", tenant.id)
     .single();
 
@@ -31,7 +31,7 @@ export default async function LandingBuilderPage() {
       <p className="text-sm text-[var(--muted-foreground)] mb-8">
         기관 홈페이지에 노출될 섹션을 구성하고 게시하세요.
       </p>
-      <LandingSectionEditor initialPageContent={pageContent} />
+      <LandingSectionEditor initialPageContent={pageContent} initialHasPublished={!!data?.published_at} />
     </div>
   );
 }

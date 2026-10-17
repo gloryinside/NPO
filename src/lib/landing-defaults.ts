@@ -13,13 +13,13 @@ export function getDefaultSectionData(type: LandingSectionType): LandingSection[
   switch (type) {
     case 'hero':
       return {
-        bgType: 'color',
-        bgValue: '#1a3a5c',
+        bgType: 'image',
+        bgValue: '/img/landing/hero-default.webp',
         headline: '함께 만드는 따뜻한 세상',
         subheadline: '여러분의 후원이 변화를 만듭니다.',
         ctaText: '지금 후원하기',
         ctaUrl: '#campaigns',
-        overlayOpacity: 40,
+        overlayOpacity: 60,
         textAlign: 'center',
       }
     case 'stats':
@@ -167,6 +167,6 @@ export function createSection(type: LandingSectionType, sortOrder: number): Land
 }
 
 export const EMPTY_PAGE_CONTENT: LandingPageContent = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   sections: [],
 }

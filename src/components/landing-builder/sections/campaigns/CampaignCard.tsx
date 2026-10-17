@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
+import { DEFAULT_CAMPAIGN_THUMB } from '@/lib/brand-images'
 
 export interface CampaignRow {
   id: string
@@ -38,7 +39,7 @@ export function CampaignCard({ campaign, showProgress = true, compact = false }:
           <img src={campaign.thumbnail_url} alt={campaign.title}
             className={`w-full ${compact ? 'h-32' : 'h-48'} object-cover`} />
         ) : (
-          <div className={`w-full ${compact ? 'h-32' : 'h-48'} bg-gradient-to-br from-[var(--accent-soft)] to-[var(--surface-2)]`} />
+          <img src={DEFAULT_CAMPAIGN_THUMB} alt="" className={`w-full ${compact ? 'h-32' : 'h-48'} object-cover art-adapt`} />
         )}
         <div className={`${compact ? 'p-4' : 'p-5'} flex-1 flex flex-col`}>
           <div className="flex items-start justify-between gap-2 mb-2">

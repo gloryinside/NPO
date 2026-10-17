@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { CampaignsBaseData } from '@/lib/landing-variants/campaigns-schemas'
 import type { CampaignRow } from './CampaignCard'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
+import { DEFAULT_CAMPAIGN_THUMB } from '@/lib/brand-images'
 
 function formatKRW(n: number) { return new Intl.NumberFormat('ko-KR').format(n) + '원' }
 
@@ -36,7 +37,7 @@ export function CampaignsList({ data, campaigns }: { data: CampaignsBaseData; ca
                         <img src={c.thumbnail_url} alt={c.title} className="w-24 h-24 sm:w-full sm:h-full object-cover"
                           style={{ borderRadius: 'calc(var(--radius-card) - 4px)' }} />
                       ) : (
-                        <div className="w-24 h-24 sm:w-full sm:h-full bg-gradient-to-br from-[var(--accent-soft)] to-[var(--surface-2)]"
+                        <img src={DEFAULT_CAMPAIGN_THUMB} alt="" className="w-24 h-24 sm:w-full sm:h-full object-cover art-adapt"
                           style={{ borderRadius: 'calc(var(--radius-card) - 4px)' }} />
                       )}
                       <div className="flex flex-col">

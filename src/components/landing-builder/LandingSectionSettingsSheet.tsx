@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react'
+import { DISPLAY_OPTIONS, parseDisplay, parseSchedule, normalizeDisplayFields, type SectionDisplay, type Schedule } from '@/lib/landing/display'
 import type {
   LandingSection,
   HeroSectionData,
@@ -86,11 +87,16 @@ interface Props {
 
 export function LandingSectionSettingsSheet({ section, open, onClose, onSave, onRequestVariantChange }: Props) {
   const [data, setData] = useState<LandingSection['data']>(section.data)
+  // 표시 설정은 변형 폼과 분리해 보관 — 폼이 data 전체를 바꿔도 지워지지 않게, 저장할 때 합친다
+  const raw = section.data as Record<string, unknown>
+  const [display, setDisplay] = useState<SectionDisplay>(parseDisplay(raw?.style))
+  const [schedule, setSchedule] = useState<Schedule>(parseSchedule(raw?.schedule))
 
   if (!open) return null
 
   function handleSave() {
-    onSave(section.id, data)
+    const merged = normalizeDisplayFields({ ...(data as Record<string, unknown>), style: display, schedule })
+    onSave(section.id, merged as LandingSection['data'])
     onClose()
   }
 
@@ -300,6 +306,55 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
           {section.type === 'richtext' && section.variant !== 'richtext-quote' && (
             <RichtextForm data={data as RichtextSectionData} onChange={patch} />
           )}
+
+          {/* 표시 설정 — 테마·여백·보이는 기간(JobYLW 포털 빌더 방식) */}
+          <fieldset className="mt-6 space-y-3 rounded-xl border border-[var(--border)] p-4">
+            <legend className="px-1 text-sm font-semibold text-[var(--text)]">표시 설정</legend>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-xs text-[var(--muted-foreground)]">
+                배경 테마
+                <select
+                  value={display.theme}
+                  onChange={(e) => setDisplay({ ...display, theme: e.target.value as SectionDisplay['theme'] })}
+                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+                >
+                  {DISPLAY_OPTIONS.theme.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+              <label className="text-xs text-[var(--muted-foreground)]">
+                위아래 여백
+                <select
+                  value={display.spacing}
+                  onChange={(e) => setDisplay({ ...display, spacing: e.target.value as SectionDisplay['spacing'] })}
+                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+                >
+                  {DISPLAY_OPTIONS.spacing.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+              <label className="text-xs text-[var(--muted-foreground)]">
+                보이기 시작
+                <input
+                  type="date"
+                  value={schedule.from ?? ''}
+                  onChange={(e) => setSchedule({ ...schedule, from: e.target.value || undefined })}
+                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+                />
+              </label>
+              <label className="text-xs text-[var(--muted-foreground)]">
+                보이기 끝
+                <input
+                  type="date"
+                  value={schedule.until ?? ''}
+                  min={schedule.from}
+                  onChange={(e) => setSchedule({ ...schedule, until: e.target.value || undefined })}
+                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+                />
+              </label>
+            </div>
+            <p className="text-[11px] text-[var(--muted-foreground)]">
+              기간을 정하면 그 날짜(한국 시간, 시작·끝 당일 포함)에만 공개 화면에 보입니다. 캠페인 마감 배너가 저절로 내려가요.
+            </p>
+          </fieldset>
         </div>
 
         {/* 푸터 */}
