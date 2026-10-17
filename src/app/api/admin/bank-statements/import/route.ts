@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { reconcileBankBatch } from "@/lib/payments/reconciliation";
 import { logAudit } from "@/lib/audit";
 import crypto from "node:crypto";
@@ -32,8 +31,6 @@ type ParsedRow = {
 };
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;

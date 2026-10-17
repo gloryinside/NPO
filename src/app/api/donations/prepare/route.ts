@@ -11,6 +11,7 @@ import { getOrgTossKeys } from "@/lib/toss/keys";
 import { sendOfflineDonationReceived, sendBillingKeyFailedEmail } from "@/lib/email";
 import { deleteBillingKey, issueBillingKey } from "@/lib/billing/toss-billing";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * POST /api/donations/prepare
@@ -43,12 +44,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const {
     campaignId,

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * G-D146: 환불 승인 워크플로.
@@ -44,18 +44,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
 
-  let body: { paymentId?: unknown; amount?: unknown; reason?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ paymentId?: unknown; amount?: unknown; reason?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const paymentId = typeof body.paymentId === "string" ? body.paymentId : "";
   const amount = Number(body.amount);
   const reason = typeof body.reason === "string" ? body.reason : null;

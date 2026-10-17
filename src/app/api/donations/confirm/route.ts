@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { confirmDonation } from "@/lib/donations/confirm";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * POST /api/donations/confirm
@@ -24,12 +25,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const { paymentKey, orderId, amount } = body as {
     paymentKey?: string;

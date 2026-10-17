@@ -2,6 +2,7 @@ import { requireDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getT } from "@/lib/i18n/donor";
 import { EmptyState } from "@/components/donor/ui/EmptyState";
+import { formatDate, formatKRW as formatAmount } from "@/lib/format";
 
 type ReceiptRow = {
   id: string;
@@ -11,20 +12,6 @@ type ReceiptRow = {
   pdf_url: string | null;
   issued_at: string | null;
 };
-
-function formatAmount(value: number | null | undefined) {
-  if (value == null) return "-";
-  return `${new Intl.NumberFormat("ko-KR").format(Number(value))}원`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleDateString("ko-KR");
-  } catch {
-    return value;
-  }
-}
 
 export default async function DonorReceiptsPage() {
   const { member } = await requireDonorSession();

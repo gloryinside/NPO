@@ -1,10 +1,6 @@
 import type { DonorDashboardSnapshot } from "@/types/dashboard";
 import { getT } from "@/lib/i18n/donor";
-
-function formatAmount(value: number | null | undefined): string {
-  if (value == null) return "-";
-  return `${new Intl.NumberFormat("ko-KR").format(Number(value))}원`;
-}
+import { formatKRW as formatAmount } from "@/lib/format";
 
 function calcDaysUntilNext(
   upcoming: DonorDashboardSnapshot["upcoming_payments"],

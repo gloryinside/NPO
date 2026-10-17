@@ -3,9 +3,9 @@ import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
-import { checkCsrf } from "@/lib/security/csrf";
 import { checkPasswordStrength } from "@/lib/security/password-policy";
 import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * G-D01: 후원자 본인 비밀번호 변경
@@ -17,8 +17,6 @@ import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits
  * - 감사 로그 기록 (비밀번호 원문은 저장 X)
  */
 export async function PATCH(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
@@ -33,12 +31,9 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  let body: { currentPassword?: unknown; newPassword?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ currentPassword?: unknown; newPassword?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const currentPassword =
     typeof body.currentPassword === "string" ? body.currentPassword : "";

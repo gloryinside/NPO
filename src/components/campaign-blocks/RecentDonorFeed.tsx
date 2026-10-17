@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { formatKRW } from "@/lib/format";
 
 interface Donor {
   masked_name: string
@@ -12,10 +13,6 @@ interface RecentDonorFeedProps {
   slug: string
   limit?: number
   variant?: 'list' | 'toast'
-}
-
-function formatKRW(n: number): string {
-  return new Intl.NumberFormat('ko-KR').format(n) + '원'
 }
 
 function relativeTime(iso: string | null): string {

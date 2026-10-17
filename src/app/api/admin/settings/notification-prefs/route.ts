@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * G-D152: 기관별 admin 알림 설정 조회/저장.
@@ -33,8 +33,6 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
@@ -45,12 +43,9 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  let body: { prefs?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ prefs?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   if (!body.prefs || typeof body.prefs !== "object") {
     return NextResponse.json({ error: "prefs 객체 필수" }, { status: 400 });
   }

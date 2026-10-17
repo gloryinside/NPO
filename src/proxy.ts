@@ -1,9 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveTenant } from "@/lib/tenant/resolver";
+import { checkCsrf, requiresCsrfCheck } from "@/lib/security/csrf";
 
 const TENANT_HEADERS = ["x-tenant-id", "x-tenant-slug"] as const;
 
 export async function proxy(req: NextRequest) {
+  // [보안] 데이터를 바꾸는 API는 우리 사이트에서 온 요청만 받는다(CSRF). 정책은 lib/security/csrf
+  if (requiresCsrfCheck(req.nextUrl.pathname, req.method)) {
+    const blocked = checkCsrf(req);
+    if (blocked) return blocked;
+  }
+
   const host = req.headers.get("host") || "";
   const tenant = await resolveTenant(host);
 

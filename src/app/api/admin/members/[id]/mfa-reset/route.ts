@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const adminUser = await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user: adminUser } = guard.ctx;
   const { id: memberId } = await params;
 
   const supabase = createSupabaseAdminClient();
 
-  // Resolve supabase_uid from member record
+  // [보안] 이 기관의 후원자만 — 예전엔 id만으로 찾아 다른 기관 후원자의 2단계 인증도 지울 수 있었다
   const { data: member, error: memberErr } = await supabase
     .from("members")
     .select("id, supabase_uid, org_id")
     .eq("id", memberId)
+    .eq("org_id", tenant.id)
     .maybeSingle();
 
   if (memberErr || !member) {
@@ -62,10 +65,10 @@ export async function POST(
   await supabase
     .from("member_mfa_backup_codes")
     .delete()
-    .eq("member_id", memberId);
+    .eq("member_id", member.id);
 
   await logAudit({
-    orgId: member.org_id,
+    orgId: tenant.id,
     actorId: adminUser.id,
     action: "admin.mfa_reset",
     resourceType: "member",

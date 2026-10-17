@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { issueReauthToken } from "@/lib/auth/reauth";
-import { checkCsrf } from "@/lib/security/csrf";
 import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * SP-5: 재인증 토큰 발급.
@@ -16,8 +16,6 @@ import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits
  * - OTP 사용자: 이 엔드포인트 미지원 (OTP 재발송 플로우 별도)
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
 
   const session = await getDonorSession();
   if (!session) {
@@ -38,12 +36,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { password?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ password?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const password = typeof body.password === "string" ? body.password : "";
   if (!password) {
     return NextResponse.json(

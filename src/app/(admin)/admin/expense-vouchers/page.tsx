@@ -4,6 +4,7 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
 import { JsonForm } from "@/components/admin/json-form";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "지출 결의" };
 
@@ -21,8 +22,6 @@ type Row = {
   total_amount: number; vendor: string | null; description: string;
   status: string; programs: { name: string | null } | null;
 };
-
-function formatKRW(n: number): string { return n.toLocaleString("ko-KR") + "원"; }
 
 export default async function ExpenseVouchersPage({
   searchParams,

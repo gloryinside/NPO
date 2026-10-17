@@ -21,9 +21,11 @@ import { InviteButton } from "@/components/admin/members/invite-button";
 import { ManualPaymentDialog } from "@/components/admin/payments/manual-payment-dialog";
 import { RetryButton } from "@/components/admin/payments/retry-button";
 import { resolveAccountStatesBatch } from "@/lib/members/account-state";
-import type { Member, MemberStatus, MemberType } from "@/types/member";
+import type { Member, MemberStatus } from "@/types/member";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 import type { PayStatus, IncomeStatus } from "@/types/payment";
+import { formatDate, formatKRW as formatAmount } from "@/lib/format";
+import { PAY_STATUS_LABEL, INCOME_STATUS_LABEL, PROMISE_STATUS_LABEL, PROMISE_TYPE_LABEL, payMethodLabel } from "@/lib/labels";
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -39,17 +41,6 @@ type ReceiptRow = {
 const TABS = ["basic", "promises", "payments", "receipts", "consultations", "cheers"] as const;
 type TabId = (typeof TABS)[number];
 
-const PAY_METHOD_LABEL: Record<string, string> = {
-  card: "카드",
-  cms: "자동이체(CMS)",
-  transfer: "계좌이체",
-  virtual: "가상계좌",
-  manual: "직접 받음",
-  naverpay: "네이버페이",
-  kakaopay: "카카오페이",
-  payco: "페이코",
-};
-const payMethodLabel = (m: string | null | undefined) => (m ? PAY_METHOD_LABEL[m] ?? m : "-");
 
 type PromiseRow = {
   id: string;
@@ -94,56 +85,6 @@ const MEMBER_STATUS_LABEL: Record<MemberStatus, string> = {
   inactive: "비활성",
   deceased: "사망",
 };
-
-const MEMBER_TYPE_LABEL: Record<MemberType, string> = {
-  individual: "개인",
-  corporate: "법인",
-  volunteer: "자원봉사자",
-  prospect: "잠재후원자",
-};
-
-const PROMISE_STATUS_LABEL: Record<PromiseStatus, string> = {
-  active: "진행중",
-  suspended: "일시중지",
-  cancelled: "해지",
-  completed: "완료",
-  pending_billing: "카드 등록 대기",
-};
-
-const PROMISE_TYPE_LABEL: Record<PromiseType, string> = {
-  regular: "정기",
-  onetime: "일시",
-};
-
-const PAY_STATUS_LABEL: Record<PayStatus, string> = {
-  paid: "결제 완료",
-  unpaid: "미납",
-  failed: "결제 실패",
-  cancelled: "취소",
-  refunded: "환불",
-  pending: "결제 대기",
-};
-
-const INCOME_STATUS_LABEL: Record<IncomeStatus, string> = {
-  pending: "회계 반영 전",
-  processing: "회계 반영 중",
-  confirmed: "회계 반영됨",
-  excluded: "회계 제외",
-};
-
-function formatAmount(value: number | null | undefined) {
-  if (value == null) return "-";
-  return `${new Intl.NumberFormat("ko-KR").format(Number(value))}원`;
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleDateString("ko-KR");
-  } catch {
-    return value;
-  }
-}
 
 function MemberStatusBadge({ status }: { status: MemberStatus }) {
   const styles: Record<MemberStatus, React.CSSProperties> = {

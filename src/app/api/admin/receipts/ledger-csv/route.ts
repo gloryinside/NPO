@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { kstParts } from "@/lib/billing/kst";
 import { logAudit } from "@/lib/audit";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /**
  * GET /api/admin/receipts/ledger-csv?year=2026 — 기부금영수증 발급 대장 CSV(엑셀용 UTF-8 BOM).
@@ -11,13 +10,9 @@ import { logAudit } from "@/lib/audit";
  * 예전 화면의 "CSV 다운로드" 링크가 가리키던 경로가 없어 404였다.
  */
 export async function GET(req: NextRequest) {
-  const adminUser = await requireAdminUser();
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user: adminUser } = guard.ctx;
   const yearParam = new URL(req.url).searchParams.get("year");
   const year = yearParam ? Number(yearParam) : kstParts().year;
   if (!Number.isInteger(year) || year < 2000 || year > 2999) {

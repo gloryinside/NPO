@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
 import { nextCode } from "@/lib/codes-seq";
@@ -24,8 +23,6 @@ import { nextCode } from "@/lib/codes-seq";
 type InputRow = { email: string; name: string; phone?: string | null; note?: string | null };
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;

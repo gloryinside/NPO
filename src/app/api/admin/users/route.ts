@@ -1,9 +1,8 @@
 import { adminAppMetadata, isAdminOfTenant } from "@/lib/auth/tenant-binding";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /**
  * GET /api/admin/users
@@ -14,14 +13,10 @@ import { checkCsrf } from "@/lib/security/csrf";
  */
 
 export async function GET() {
-  await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
   const supabase = createSupabaseAdminClient();
 
@@ -46,23 +41,14 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
-  await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const { email } = body as { email?: string };
   if (!email || typeof email !== "string" || !email.includes("@"))
@@ -116,16 +102,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
-  await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");

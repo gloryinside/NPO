@@ -1,23 +1,19 @@
 import { checkRrn } from "@/lib/receipt/validation";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: RouteContext) {
-  await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
   const { id } = await params;
 
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
   const supabase = createSupabaseAdminClient();
 
@@ -91,23 +87,16 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
  * 후원자 기본정보 업데이트
  */
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  const user = await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user } = guard.ctx;
 
   const { id } = await params;
 
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const {
     name,

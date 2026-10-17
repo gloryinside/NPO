@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { nextCode } from "@/lib/codes-seq";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /**
  * POST /api/admin/payments
@@ -10,15 +10,13 @@ import { nextCode } from "@/lib/codes-seq";
  * Toss 결제가 아니므로 toss_payment_key 없이 pay_status='paid' 로 즉시 저장.
  */
 export async function POST(req: NextRequest) {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const { memberId, campaignId, promiseId, amount, payDate, note } = body as {
     memberId?: string;

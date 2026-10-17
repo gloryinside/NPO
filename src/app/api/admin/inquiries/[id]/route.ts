@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type RouteParams = Promise<{ id: string }>;
 
 // GET /api/admin/inquiries/[id]
 export async function GET(_req: NextRequest, { params }: { params: RouteParams }) {
   const { id } = await params;
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin

@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatDate } from "@/lib/format";
 
 type AdminUser = {
   id: string;
@@ -18,15 +19,6 @@ type AdminUser = {
   last_sign_in_at: string | null;
   confirmed: boolean;
 };
-
-function formatDate(val: string | null | undefined) {
-  if (!val) return "-";
-  try {
-    return new Date(val).toLocaleDateString("ko-KR");
-  } catch {
-    return val;
-  }
-}
 
 export default function UsersPage() {
   const confirm = useConfirm();

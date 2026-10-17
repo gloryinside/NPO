@@ -1,7 +1,6 @@
 import type { TiersPricingTableData } from '@/lib/landing-variants/tiers-schemas'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
-
-function formatKRW(n: number) { return new Intl.NumberFormat('ko-KR').format(n) + '원' }
+import { formatKRW } from '@/lib/format'
 
 export function TiersPricingTable({ data }: { data: TiersPricingTableData }) {
   const { title = '후원 플랜', subtitle, tiers, recommendedIndex = 1 } = data

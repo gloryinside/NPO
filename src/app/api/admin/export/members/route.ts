@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { toCsv, csvHeaders } from "@/lib/csv";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type MemberRow = {
   member_code: string;
@@ -35,14 +34,9 @@ const TYPE_LABEL: Record<string, string> = {
  * 현재 필터 기준으로 후원자 목록 CSV 다운로드.
  */
 export async function GET(req: NextRequest) {
-  await requireAdminUser();
-
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return new Response("Tenant not found", { status: 400 });
-  }
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim() ?? "";

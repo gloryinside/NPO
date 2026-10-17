@@ -6,14 +6,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateText, Output } from 'ai'
 import { requireAdminApi } from '@/lib/auth/api-guard'
-import { checkCsrf } from '@/lib/security/csrf'
 import { rateLimit } from '@/lib/rate-limit'
 import { landingAiEnabled } from '@/lib/landing/ai'
 import { ASSIST_MODEL, ASSIST_SYSTEM, assistOutputSchema, describeScreensForPrompt, resolveLinks } from '@/lib/admin/assist'
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req)
-  if (csrf) return csrf
   const guard = await requireAdminApi()
   if (!guard.ok) return guard.response
   const { user } = guard.ctx

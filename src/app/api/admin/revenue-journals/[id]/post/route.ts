@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { enqueueErpEvent } from "@/lib/erp/outbound-queue";
 
 /**
@@ -10,11 +9,9 @@ import { enqueueErpEvent } from "@/lib/erp/outbound-queue";
  *   외부 ERP가 처리 후 external_voucher_no 를 PATCH 해주면 완료.
  */
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant } = guard.ctx;

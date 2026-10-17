@@ -2,10 +2,7 @@ import { sendAlimtalk } from './alimtalk-client';
 import { sendSms } from '@/lib/sms/nhn-client';
 import { TEMPLATES } from './templates';
 import { sendDonationConfirmed, sendReceiptIssued as sendReceiptEmail } from '@/lib/email';
-
-function fmt(n: number): string {
-  return new Intl.NumberFormat('ko-KR').format(n) + '원';
-}
+import { formatKRW as fmt } from '@/lib/format';
 
 async function sendWithFallback(phone: string | null, templateCode: string, params: Record<string, string>, smsBody: string): Promise<void> {
   if (!phone) return;

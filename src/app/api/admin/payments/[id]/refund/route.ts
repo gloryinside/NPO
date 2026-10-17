@@ -3,6 +3,7 @@ import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { refundPayment, type ReasonCode } from '@/lib/payments/refund'
 import { logAudit } from '@/lib/audit'
+import { readJsonObject } from '@/lib/http/body'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -14,12 +15,9 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const { id: paymentId } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+  const parsed = await readJsonObject(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
 
   const { reasonCode, reasonNote, refundAmount } = body as {
     reasonCode?: string

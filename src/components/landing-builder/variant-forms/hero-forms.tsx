@@ -7,7 +7,6 @@ import { ImageUploadField } from '../ImageUploadField'
 
 // 공용 유틸 — SettingsSheet 기존 스타일 그대로 사용
 const inputCls = 'w-full rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]'
-const textareaCls = `${inputCls} min-h-[80px] resize-y`
 const repeatGroupCls = 'rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3 space-y-2'
 const removeBtnCls = 'text-xs text-[var(--negative)] hover:opacity-80 transition-opacity'
 const addBtnCls = 'w-full rounded-md border-2 border-dashed border-[var(--border)] py-2 text-xs text-[var(--muted-foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors'

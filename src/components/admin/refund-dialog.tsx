@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ReasonCode } from '@/lib/payments/refund'
+import { formatDate, formatKRW } from '@/lib/format'
 
 interface RefundDialogProps {
   payment: {
@@ -29,15 +30,6 @@ const REASON_OPTIONS: { value: ReasonCode; label: string }[] = [
   { value: 'error', label: '오류' },
   { value: 'other', label: '기타' },
 ]
-
-function formatKRW(n: number) {
-  return `${new Intl.NumberFormat('ko-KR').format(n)}원`
-}
-
-function formatDate(v: string | null) {
-  if (!v) return '-'
-  try { return new Date(v).toLocaleDateString('ko-KR') } catch { return v }
-}
 
 export function RefundDialog({ payment, onClose, onRefunded }: RefundDialogProps) {
   const [isFullRefund, setIsFullRefund] = useState(true)

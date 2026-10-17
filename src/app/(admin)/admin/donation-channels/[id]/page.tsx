@@ -5,12 +5,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
 import { JsonForm } from "@/components/admin/json-form";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "채널 상세" };
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function ChannelDetailPage({
   params,

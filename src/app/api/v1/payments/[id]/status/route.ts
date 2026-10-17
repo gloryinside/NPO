@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hashApiKey } from "@/lib/secrets/crypto";
+import { readJsonObject } from "@/lib/http/body";
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -40,12 +41,9 @@ export async function PATCH(
   }
   const orgId = secret.org_id;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const statusMap: Record<number, string> = {
     2: "processing",

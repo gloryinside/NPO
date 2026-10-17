@@ -1,11 +1,8 @@
 import type { UpcomingPayment } from '@/lib/donor/upcoming-payments';
+import { formatKRW } from "@/lib/format";
 
 interface UpcomingPaymentsCardProps {
   payments: UpcomingPayment[];
-}
-
-function formatKRW(n: number): string {
-  return `${new Intl.NumberFormat('ko-KR').format(n)}원`;
 }
 
 function formatMDay(isoDate: string): string {

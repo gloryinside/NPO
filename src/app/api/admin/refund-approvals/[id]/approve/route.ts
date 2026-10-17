@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { logAudit } from "@/lib/audit";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { refundPayment } from "@/lib/payments/refund";
@@ -14,11 +13,9 @@ import { logNotification } from "@/lib/email/notification-log";
  * 승인 후에는 실제 Toss 환불 API 호출 단계로 전환 (별도 lib에서 처리 — 본 라우트는 상태만 전환).
  */
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;

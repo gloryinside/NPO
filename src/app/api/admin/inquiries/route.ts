@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 // GET /api/admin/inquiries?status=open&page=0
 export async function GET(req: NextRequest) {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") ?? "open";
   const page = Math.max(0, Number(searchParams.get("page") ?? 0));

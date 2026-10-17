@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseCsv } from "@/lib/csv";
 import { reserveCodes } from "@/lib/codes-seq";
 import { logAudit } from "@/lib/audit";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /**
  * POST /api/admin/members/import
@@ -86,8 +85,9 @@ function normalizeBirthDate(raw: string): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user } = guard.ctx;
 
   const formData = await req.formData();
   const file = formData.get("file");

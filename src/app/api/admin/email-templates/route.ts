@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminUser } from '@/lib/auth';
-import { requireTenant } from '@/lib/tenant/context';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { SCENARIOS } from '@/lib/email/default-templates';
 import { renderTemplate } from '@/lib/email/template-renderer';
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 export async function GET() {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
   const supabase = createSupabaseAdminClient();
 
   const { data: customs } = await supabase
@@ -35,8 +35,9 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
   const supabase = createSupabaseAdminClient();
 
   const body = await req.json();

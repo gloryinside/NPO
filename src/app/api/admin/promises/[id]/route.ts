@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revokePromiseBilling } from "@/lib/billing/revoke";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit, type AuditAction } from "@/lib/audit";
 import {
@@ -10,6 +8,8 @@ import {
 } from "@/lib/promises/status-change-email";
 import { sendEmail } from "@/lib/email/send-email";
 import { logNotification, type NotificationKind } from "@/lib/email/notification-log";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /**
  * PATCH /api/admin/promises/[id]
@@ -23,16 +23,14 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user } = guard.ctx;
   const { id } = await params;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const allowed = ["active", "suspended", "cancelled", "completed"];
   const {

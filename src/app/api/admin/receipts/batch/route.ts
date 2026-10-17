@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
-import { checkCsrf } from "@/lib/security/csrf";
 import { issueAnnualReceipts } from "@/lib/receipt/annual-batch";
 import { logAudit } from "@/lib/audit";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /** 한 요청당 기부자 수 — 결제 조회 쿼리의 member_id 목록(URL 길이)을 넘지 않게 */
 export const MAX_BATCH = 200;
@@ -15,16 +13,10 @@ export const MAX_BATCH = 200;
  * 발급 규칙은 연말 자동 발급과 같다(멱등 — 이미 유효한 영수증이 있으면 건너뜀, 기관 기재사항 누락 시 즉시 중단).
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
-  const adminUser = await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user: adminUser } = guard.ctx;
 
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
   const body = (await req.json().catch(() => null)) as { year?: unknown; memberIds?: unknown } | null;
   const year = Number(body?.year);

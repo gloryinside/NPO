@@ -4,12 +4,9 @@ import { requireTenant } from '@/lib/tenant/context'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getPromiseChangeStats } from '@/lib/promises/change-stats'
 import { PromiseChangeChart } from '@/components/admin/charts/promise-change-chart'
+import { formatKRW } from '@/lib/format'
 
 export const dynamic = 'force-dynamic'
-
-function formatKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원'
-}
 
 function formatDelta(n: number): string {
   if (n === 0) return '±0원'

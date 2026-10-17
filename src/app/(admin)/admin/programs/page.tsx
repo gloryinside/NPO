@@ -4,6 +4,7 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
 import { JsonForm } from "@/components/admin/json-form";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "사업/프로그램" };
 
@@ -24,10 +25,6 @@ type Row = {
   start_date: string | null;
   end_date: string | null;
 };
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function ProgramsPage({
   searchParams,

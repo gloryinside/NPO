@@ -180,7 +180,7 @@ export function ReconcileClient({ initialRows, isSuper }: Props) {
               <th className="px-4 py-3 text-left font-medium">후원자</th>
               <th className="px-4 py-3 text-left font-medium">캠페인</th>
               <th className="px-4 py-3 text-right font-medium">금액</th>
-              <th className="px-4 py-3 text-left font-medium">수입상태</th>
+              <th className="px-4 py-3 text-left font-medium">회계 반영</th>
               <th className="px-4 py-3 text-left font-medium">결제수단</th>
               <th className="px-4 py-3" />
             </tr>

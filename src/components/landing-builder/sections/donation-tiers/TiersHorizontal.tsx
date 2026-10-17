@@ -1,7 +1,6 @@
 import type { TiersBaseData } from '@/lib/landing-variants/tiers-schemas'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
-
-function formatKRW(n: number) { return new Intl.NumberFormat('ko-KR').format(n) + '원' }
+import { formatKRW } from '@/lib/format'
 
 export function TiersHorizontal({ data }: { data: TiersBaseData }) {
   const { title = '후원 등급', subtitle, tiers } = data

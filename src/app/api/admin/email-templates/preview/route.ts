@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminUser } from '@/lib/auth';
-import { requireTenant } from '@/lib/tenant/context';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSampleVariables } from '@/lib/email/default-templates';
 import { renderTemplate, renderSubject } from '@/lib/email/template-renderer';
 import type { ScenarioKey } from '@/lib/email/default-templates';
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 export async function POST(req: NextRequest) {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
   const supabase = createSupabaseAdminClient();
 
   const { scenario, subject, bodyJson } = (await req.json()) as {

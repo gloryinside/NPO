@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type RouteParams = Promise<{ id: string }>;
 
 // PATCH /api/admin/board/[id]
 export async function PATCH(req: NextRequest, { params }: { params: RouteParams }) {
   const { id } = await params;
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let body: { title?: unknown; body?: unknown; pinned?: unknown; published?: unknown; category?: unknown };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ title?: unknown; body?: unknown; pinned?: unknown; published?: unknown; category?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (typeof body.title === "string") patch.title = body.title.trim();
@@ -40,8 +40,9 @@ export async function PATCH(req: NextRequest, { params }: { params: RouteParams 
 // DELETE /api/admin/board/[id]
 export async function DELETE(_req: NextRequest, { params }: { params: RouteParams }) {
   const { id } = await params;
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
   const admin = createSupabaseAdminClient();
   const { error } = await admin

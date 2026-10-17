@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * G-D199: 회원 병합 실행.
@@ -22,8 +22,6 @@ import { logAudit } from "@/lib/audit";
  * 트랜잭션 보호는 RPC 없이 순차 update — 실패 시 일부만 병합될 수 있어 로그로 복구.
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
@@ -34,12 +32,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { primaryId?: unknown; duplicateIds?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ primaryId?: unknown; duplicateIds?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const primaryId =
     typeof body.primaryId === "string" ? body.primaryId : "";
   const duplicateIds = Array.isArray(body.duplicateIds)

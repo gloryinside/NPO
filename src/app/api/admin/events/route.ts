@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
+import { readJsonObject } from "@/lib/http/body";
 
 const VALID_TYPES = new Set(["meetup", "gala", "volunteer", "workshop", "briefing", "other"]);
 const VALID_STATUS = new Set(["planning", "open", "closed", "completed", "cancelled"]);
@@ -28,15 +28,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant } = guard.ctx;
 
-  let body: Record<string, unknown>;
-  try { body = await req.json(); }
-  catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const title = typeof body.title === "string" ? body.title.trim() : "";
   const startAt = typeof body.startAt === "string" ? body.startAt : "";

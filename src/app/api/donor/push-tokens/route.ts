@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
+import { readJsonObject } from "@/lib/http/body";
 
 const VALID_PLATFORM = new Set(["ios", "android", "web"]);
 
@@ -14,14 +14,12 @@ const VALID_PLATFORM = new Set(["ios", "android", "web"]);
  *   비활성화.
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) return NextResponse.json({ error: "인증" }, { status: 401 });
 
-  let body: Record<string, unknown>;
-  try { body = await req.json(); }
-  catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const deviceId = typeof body.deviceId === "string" ? body.deviceId : "";
   const platform = typeof body.platform === "string" ? body.platform : "";
@@ -55,8 +53,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) return NextResponse.json({ error: "인증" }, { status: 401 });
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 // Next.js 16: 같은 부모 아래 서로 다른 slug 이름 금지.
 // 세그먼트는 `[id]`로 통일, 값은 member.id.
@@ -18,7 +17,9 @@ type RouteContext = { params: Promise<{ id: string }> };
  * - 보안 헤더: no-store 캐시 차단
  */
 export async function GET(req: NextRequest, { params }: RouteContext) {
-  const admin = await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user: admin } = guard.ctx;
 
   const { id: memberId } = await params;
   const { searchParams } = new URL(req.url);
@@ -26,13 +27,6 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
 
   if (!receiptId) {
     return NextResponse.json({ error: "receiptId 파라미터가 필요합니다." }, { status: 400 });
-  }
-
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
   }
 
   const encKey = process.env.RECEIPTS_ENCRYPTION_KEY;

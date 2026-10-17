@@ -6,8 +6,8 @@ import {
   updateNotificationPrefs,
 } from '@/lib/donor/notification-prefs'
 import type { NotificationPrefs } from '@/lib/donor/notification-prefs'
-import { checkCsrf } from '@/lib/security/csrf'
 import { enforceDonorLimit, limitResponse } from '@/lib/security/endpoint-limits'
+import { readJsonObject } from '@/lib/http/body'
 
 export async function GET() {
   const session = await getDonorSession()
@@ -19,19 +19,14 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const csrf = checkCsrf(req)
-  if (csrf) return csrf
   const session = await getDonorSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const rl = enforceDonorLimit(session.member.id, 'notif:patch')
   if (!rl.allowed) return limitResponse(rl)
 
-  let body: Partial<NotificationPrefs>
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+  const parsed = await readJsonObject<Partial<NotificationPrefs>>(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
 
   const supabase = createSupabaseAdminClient()
   const result = await updateNotificationPrefs(supabase, session.member.id, body)

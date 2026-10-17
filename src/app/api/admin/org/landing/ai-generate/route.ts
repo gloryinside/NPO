@@ -19,6 +19,7 @@ import {
   LANDING_AI_SYSTEM,
   landingAiEnabled,
 } from '@/lib/landing/ai'
+import { readJsonObject } from '@/lib/http/body'
 
 const HOURLY_LIMIT = 10
 
@@ -34,12 +35,9 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let body: { brief?: unknown }
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+  const parsed = await readJsonObject<{ brief?: unknown }>(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
   const brief = typeof body.brief === 'string' ? body.brief.trim().slice(0, 1500) : ''
   if (brief.length < 10) {
     return NextResponse.json({ error: '기관 소개를 10자 이상 적어 주세요.' }, { status: 400 })

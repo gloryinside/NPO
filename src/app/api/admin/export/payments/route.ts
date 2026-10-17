@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { toCsv, csvHeaders } from "@/lib/csv";
+import { payStatusLabel, incomeStatusLabel, payMethodLabel } from "@/lib/labels";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type PaymentExport = {
   payment_code: string;
@@ -16,35 +16,14 @@ type PaymentExport = {
   campaigns: { title: string } | null;
 };
 
-const PAY_STATUS_LABEL: Record<string, string> = {
-  paid: "완료",
-  pending: "대기",
-  unpaid: "미납",
-  failed: "실패",
-  cancelled: "취소",
-  refunded: "환불",
-};
-
-const INCOME_STATUS_LABEL: Record<string, string> = {
-  pending: "수입대기",
-  processing: "수입진행",
-  confirmed: "수입완료",
-  excluded: "수입제외",
-};
-
 /**
  * GET /api/admin/export/payments?status=
  * 납입 현황 CSV 다운로드.
  */
 export async function GET(req: NextRequest) {
-  await requireAdminUser();
-
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return new Response("Tenant not found", { status: 400 });
-  }
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") ?? "all";
@@ -72,13 +51,13 @@ export async function GET(req: NextRequest) {
     p.campaigns?.title ?? "",
     p.amount,
     p.pay_date ? new Date(p.pay_date).toLocaleDateString("ko-KR") : "",
-    PAY_STATUS_LABEL[p.pay_status] ?? p.pay_status,
-    INCOME_STATUS_LABEL[p.income_status] ?? p.income_status,
-    p.pg_method ?? p.pay_method ?? "",
+    payStatusLabel(p.pay_status),
+    incomeStatusLabel(p.income_status),
+    p.pg_method ?? payMethodLabel(p.pay_method),
   ]);
 
   const csv = toCsv(
-    ["결제코드", "회원코드", "후원자", "캠페인", "금액", "결제일", "납부상태", "수입상태", "결제수단"],
+    ["결제번호", "후원자번호", "후원자", "캠페인", "금액", "결제일", "결제 상태", "회계 반영", "결제수단"],
     csvRows
   );
 

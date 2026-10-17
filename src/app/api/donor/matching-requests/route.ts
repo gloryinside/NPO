@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * GET  /api/donor/matching-requests  — 본인 매칭 신청 이력
@@ -28,14 +28,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
 
-  let body: { programId?: unknown; donorPaymentId?: unknown };
-  try { body = await req.json(); }
-  catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  const parsed = await readJsonObject<{ programId?: unknown; donorPaymentId?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const programId = typeof body.programId === "string" ? body.programId : "";
   const donorPaymentId = typeof body.donorPaymentId === "string" ? body.donorPaymentId : "";

@@ -3,6 +3,7 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
 import { JsonForm } from "@/components/admin/json-form";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "기업 매칭 프로그램" };
 
@@ -16,10 +17,6 @@ type Row = {
   contact_email: string | null;
   members: { name: string | null } | null;
 };
-
-function formatKRW(n: number | null): string {
-  return n != null ? n.toLocaleString("ko-KR") + "원" : "-";
-}
 
 export default async function MatchingProgramsPage() {
   await requireAdminUser();

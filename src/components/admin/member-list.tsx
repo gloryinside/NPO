@@ -20,6 +20,7 @@ import { StatCard } from "@/components/common/stat-card";
 import { FilterBar, FilterDropdown } from "@/components/common/filter-bar";
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
 import { DetailDrawer } from "@/components/common/detail-drawer";
+import { formatDate } from "@/lib/format";
 
 type Props = {
   members: Member[];
@@ -66,15 +67,6 @@ function StatusBadge({ status }: { status: MemberStatus }) {
       {STATUS_LABELS[status]}
     </Badge>
   );
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleDateString("ko-KR");
-  } catch {
-    return value;
-  }
 }
 
 type NewMemberForm = {

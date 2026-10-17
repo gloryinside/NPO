@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { formatKRW } from '@/lib/format'
 
 export interface AmountHistoryItem {
   id: string
@@ -366,10 +367,6 @@ function Chip({
       {children}
     </button>
   )
-}
-
-function formatKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원'
 }
 
 function formatDelta(delta: number): string {

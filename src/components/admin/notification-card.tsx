@@ -1,15 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { formatDateTime } from "@/lib/format";
 
 const TYPE_ICON: Record<string, string> = {
   billing_failed: '⚠️',
   pledge_suspended: '🚫',
 };
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleString('ko-KR');
-}
 
 export function NotificationCard({ notification }: { notification: { id: string; type: string; title: string; body: string; read: boolean; created_at: string } }) {
   const router = useRouter();
@@ -38,7 +35,7 @@ export function NotificationCard({ notification }: { notification: { id: string;
           <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{n.title}</div>
           <div className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>{n.body}</div>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{formatDate(n.created_at)}</span>
+            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{formatDateTime(n.created_at)}</span>
             {!n.read && <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>클릭하여 읽음 처리</span>}
           </div>
         </div>

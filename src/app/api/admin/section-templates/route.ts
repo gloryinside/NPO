@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { readJsonObject } from '@/lib/http/body'
 
 /**
  * Tier A #7: 페이지 빌더 공통 섹션 템플릿.
@@ -35,12 +36,9 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdminApi()
   if (!guard.ok) return guard.response
 
-  let body: { name?: string; description?: string; variant_id?: string; block?: unknown } = {}
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+  const parsed = await readJsonObject<{ name?: string; description?: string; variant_id?: string; block?: unknown }>(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
 
   const name = body.name?.trim()
   const variantId = body.variant_id?.trim()

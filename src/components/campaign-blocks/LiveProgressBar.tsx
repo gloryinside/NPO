@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { formatKRW } from "@/lib/format";
 
 interface ProgressResponse {
   raised?: number
@@ -15,10 +16,6 @@ interface LiveProgressBarProps {
   initialRaised: number
   initialGoal: number | null
   initialDonors?: number
-}
-
-function formatKRW(n: number): string {
-  return new Intl.NumberFormat('ko-KR').format(n) + '원'
 }
 
 /**

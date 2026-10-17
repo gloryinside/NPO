@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import type { PaymentWithRelations } from "@/types/payment";
+import { formatKRW } from "@/lib/format";
 
 type Props = {
   payments: PaymentWithRelations[];
@@ -15,9 +16,6 @@ type Props = {
   initialQ: string;
 };
 
-function formatKRW(n: number) {
-  return new Intl.NumberFormat("ko-KR").format(n) + "원";
-}
 function formatDate(v: string | null) {
   if (!v) return "-";
   return v.slice(0, 10).replace(/-/g, ".");

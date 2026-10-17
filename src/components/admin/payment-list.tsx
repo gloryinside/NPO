@@ -18,8 +18,9 @@ import { StatCard } from "@/components/common/stat-card";
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
 import { DetailDrawer } from "@/components/common/detail-drawer";
 import { FilterBar, FilterDropdown } from "@/components/common/filter-bar";
-import { formatKRW } from "@/lib/format";
+import { formatDate, formatKRW, formatKRW as formatAmount } from "@/lib/format";
 import { toast } from "sonner";
+import { PAY_STATUS_LABEL, INCOME_STATUS_LABEL } from "@/lib/labels";
 
 type Props = {
   payments: PaymentWithRelations[];
@@ -40,15 +41,6 @@ const STATUS_TABS: Array<{ value: string; label: string }> = [
   { value: "failed", label: "실패" },
 ];
 
-const PAY_STATUS_LABEL: Record<PayStatus, string> = {
-  paid: "완료",
-  unpaid: "미납",
-  failed: "실패",
-  cancelled: "취소",
-  refunded: "환불",
-  pending: "대기",
-};
-
 const PAY_STATUS_CLASS: Record<PayStatus, string> = {
   paid: "bg-[var(--positive-soft)] text-[var(--positive)]",
   pending: "bg-[rgba(136,136,170,0.15)] text-[var(--muted-foreground)]",
@@ -56,13 +48,6 @@ const PAY_STATUS_CLASS: Record<PayStatus, string> = {
   failed: "bg-[var(--negative-soft)] text-[var(--negative)]",
   cancelled: "bg-[var(--negative-soft)] text-[var(--negative)]",
   refunded: "bg-[var(--warning-soft)] text-[var(--warning)]",
-};
-
-const INCOME_STATUS_LABEL: Record<IncomeStatus, string> = {
-  pending: "수입대기",
-  processing: "수입진행",
-  confirmed: "수입완료",
-  excluded: "수입제외",
 };
 
 const INCOME_STATUS_CLASS: Record<IncomeStatus, string> = {
@@ -86,20 +71,6 @@ function IncomeStatusBadge({ status }: { status: IncomeStatus }) {
       {INCOME_STATUS_LABEL[status]}
     </Badge>
   );
-}
-
-function formatAmount(value: number | null | undefined) {
-  if (value == null) return "-";
-  return `${new Intl.NumberFormat("ko-KR").format(Number(value))}원`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleDateString("ko-KR");
-  } catch {
-    return value;
-  }
 }
 
 type ManualPayForm = {

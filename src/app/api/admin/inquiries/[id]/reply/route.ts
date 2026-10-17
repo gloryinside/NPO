@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/send-email";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type RouteParams = Promise<{ id: string }>;
 
 // POST /api/admin/inquiries/[id]/reply — 관리자 답변 등록
 export async function POST(req: NextRequest, { params }: { params: RouteParams }) {
   const { id } = await params;
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let body: { body?: unknown };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ body?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const replyText = typeof body.body === "string" ? body.body.trim() : "";
   if (!replyText || replyText.length > 3000)
     return NextResponse.json({ error: "답변 내용을 입력해주세요. (3000자 이하)" }, { status: 400 });

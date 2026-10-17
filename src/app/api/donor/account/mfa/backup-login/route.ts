@@ -8,8 +8,8 @@ import {
   MFA_BYPASS_COOKIE,
   MFA_BYPASS_TTL_SECONDS,
 } from "@/lib/auth/mfa-bypass";
-import { checkCsrf } from "@/lib/security/csrf";
 import { rateLimit } from "@/lib/rate-limit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * SP-5 후속: 백업 코드로 MFA 우회 로그인.
@@ -23,8 +23,6 @@ import { rateLimit } from "@/lib/rate-limit";
  * 매칭 실패는 brute-force 방지를 위해 rate-limit.
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
 
   const supabase = await createSupabaseServerClient();
   const {
@@ -48,12 +46,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { code?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ code?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const code = typeof body.code === "string" ? body.code : "";
   if (!code) {
     return NextResponse.json(

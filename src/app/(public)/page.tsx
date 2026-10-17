@@ -19,6 +19,7 @@ import { LandingRenderer } from "@/components/landing-builder/LandingRenderer";
 import { migrateToV2 } from "@/lib/landing-migrate";
 import type { LandingPageContent } from "@/types/landing";
 import { DEFAULT_CAMPAIGN_THUMB, DEFAULT_OG_IMAGE } from "@/lib/brand-images";
+import { formatKRW } from "@/lib/format";
 
 export const revalidate = 60;
 
@@ -58,10 +59,6 @@ const FEATURES = [
     description: "세법에 맞는 기부금 영수증을 자동으로 발급하세요.",
   },
 ];
-
-function formatKRW(n: number) {
-  return new Intl.NumberFormat("ko-KR").format(n) + "원";
-}
 
 type OrgRow = {
   name: string;

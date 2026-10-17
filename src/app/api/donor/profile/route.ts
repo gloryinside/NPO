@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
-import { checkCsrf } from "@/lib/security/csrf";
 import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * PATCH /api/donor/profile
@@ -15,8 +15,6 @@ import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits
  * G-D25: 변경 전/후 값을 member_audit_log 에 기록 (best-effort).
  */
 export async function PATCH(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
@@ -24,12 +22,9 @@ export async function PATCH(req: NextRequest) {
   const rl = enforceDonorLimit(session.member.id, "profile:patch");
   if (!rl.allowed) return limitResponse(rl);
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const { name, phone, birthDate, postalCode, addressLine1, addressLine2 } =
     body as {

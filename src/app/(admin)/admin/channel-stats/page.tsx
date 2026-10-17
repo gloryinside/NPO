@@ -3,6 +3,7 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "채널별 통계" };
 
@@ -10,10 +11,6 @@ const TYPE_LABEL: Record<string, string> = {
   box: "모금함", street: "거리모금", booth: "부스",
   online: "온라인", partner: "파트너", other: "기타",
 };
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function ChannelStatsPage({
   searchParams,

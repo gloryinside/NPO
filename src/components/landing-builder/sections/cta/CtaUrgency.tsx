@@ -2,8 +2,7 @@
 import { useEffect, useState } from 'react'
 import type { CtaUrgencyData } from '@/lib/landing-variants/cta-schemas'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
-
-function formatKRW(n: number) { return new Intl.NumberFormat('ko-KR').format(n) + '원' }
+import { formatKRW } from '@/lib/format'
 
 function calcDdays(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)

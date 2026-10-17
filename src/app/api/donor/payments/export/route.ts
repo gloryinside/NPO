@@ -3,6 +3,7 @@ import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
 import { CSV_BOM, csvRow } from "@/lib/csv/escape";
+import { payStatusLabel } from "@/lib/labels";
 
 /**
  * G-D05: 후원자 본인 납입내역 CSV 내보내기
@@ -12,15 +13,6 @@ import { CSV_BOM, csvRow } from "@/lib/csv/escape";
  *  - 최대 5000건까지 내보내기 (그 이상은 연도로 분할 권장)
  *  - UTF-8 BOM 포함 → Excel 한글 정상 표시
  */
-const PAY_STATUS_LABEL: Record<string, string> = {
-  paid: "완료",
-  unpaid: "미납",
-  failed: "실패",
-  cancelled: "취소",
-  refunded: "환불",
-  pending: "대기",
-};
-
 const ALLOWED_STATUS = new Set([
   "paid",
   "unpaid",
@@ -168,7 +160,7 @@ export async function GET(req: NextRequest) {
         typeLabel,
         r.promises?.promise_code ?? "",
         r.amount ?? 0,
-        PAY_STATUS_LABEL[r.pay_status ?? ""] ?? r.pay_status ?? "",
+        payStatusLabel(r.pay_status),
         r.pay_method ?? "",
         r.receipts?.receipt_code ?? "",
         r.note ?? "",

@@ -17,29 +17,8 @@ import { PledgeCancelButton } from "@/components/donor/pledge-cancel-button";
 import { PaymentCancelButton } from "@/components/donor/payment-cancel-button";
 import { PaymentRetryButton } from "@/components/donor/payment-retry-button";
 import type { DonorDashboardSnapshot } from "@/types/dashboard";
-
-function formatAmount(value: number | null | undefined): string {
-  if (value == null) return "-";
-  return `${new Intl.NumberFormat("ko-KR").format(Number(value))}원`;
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleDateString("ko-KR");
-  } catch {
-    return value;
-  }
-}
-
-const PAY_STATUS_LABEL: Record<string, string> = {
-  paid: "완료",
-  unpaid: "미납",
-  failed: "실패",
-  cancelled: "취소",
-  refunded: "환불",
-  pending: "대기",
-};
+import { formatDate, formatKRW as formatAmount } from "@/lib/format";
+import { payStatusLabel } from "@/lib/labels";
 
 const PAY_STATUS_COLOR: Record<string, string> = {
   paid: "var(--positive)",
@@ -348,7 +327,7 @@ async function DashboardBody({
                             "var(--muted-foreground)",
                         }}
                       >
-                        {PAY_STATUS_LABEL[status] ?? status}
+                        {payStatusLabel(status)}
                       </span>
                       <span
                         className="text-sm font-semibold"

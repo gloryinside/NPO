@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DONATION_TYPE_CODES } from "./validation";
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
+import { formatKRW as formatAmount } from "@/lib/format";
 
 /**
  * 기부금 영수증 PDF 생성.
@@ -93,10 +94,6 @@ function getPdfMake(): PdfMakeSingleton {
   }
 
   return pdfmake;
-}
-
-function formatAmount(n: number): string {
-  return `${new Intl.NumberFormat("ko-KR").format(n)}원`;
 }
 
 /**

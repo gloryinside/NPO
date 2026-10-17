@@ -2,6 +2,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { Toaster } from "sonner";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
+import { SessionExpiredGuard } from "@/components/common/session-expired-guard";
 
 export default async function AdminLayout({
   children,
@@ -21,6 +22,12 @@ export default async function AdminLayout({
       <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
         <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
           <AdminBreadcrumb />
+          <SessionExpiredGuard
+            apiPrefix="/api/admin/"
+            loginHref="/admin/login?reason=expired"
+            dismissible
+            expiredBody="오래 쓰지 않아 로그아웃됐어요. 쓰던 내용이 있으면 닫고 복사해 둔 뒤 다시 로그인하세요."
+          />
           {children}
         </div>
       </main>

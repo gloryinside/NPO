@@ -4,7 +4,6 @@ import {
   signOtpToken,
   otpSessionCookieConfig,
 } from "@/lib/auth/otp-session";
-import { checkCsrf } from "@/lib/security/csrf";
 import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 
 /**
@@ -14,9 +13,7 @@ import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits
  * - Supabase 세션은 Supabase 클라이언트가 자체 refresh 함 → 여기선 OTP JWT만 대상
  * - 인증 없음 / 이미 만료 → 401 (클라이언트가 로그인 페이지로 유도)
  */
-export async function POST(req: Request) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
+export async function POST(_req: Request) {
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });

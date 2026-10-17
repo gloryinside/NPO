@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { formatDate, formatKRW } from "@/lib/format";
 
 type ReceiptRow = {
   memberId: string;
@@ -15,19 +16,6 @@ type ReceiptRow = {
   receiptPdfUrl: string | null;
   issuedAt: string | null;
 };
-
-function formatKRW(v: number) {
-  return `${new Intl.NumberFormat("ko-KR").format(v)}원`;
-}
-
-function formatDateTime(iso: string | null) {
-  if (!iso) return "-";
-  try {
-    return new Date(iso).toLocaleDateString("ko-KR");
-  } catch {
-    return iso;
-  }
-}
 
 export function ReceiptBulkActions({
   year,
@@ -129,9 +117,6 @@ export function ReceiptBulkActions({
       router.refresh();
     }
   }
-
-
-
 
   return (
     <div>
@@ -270,7 +255,7 @@ export function ReceiptBulkActions({
                       )}
                     </td>
                     <td className="px-4 py-3 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
-                      {isIssuedNow ? formatDateTime(r.issuedAt) : "-"}
+                      {isIssuedNow ? formatDate(r.issuedAt) : "-"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">

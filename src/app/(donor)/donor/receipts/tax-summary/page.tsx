@@ -4,6 +4,7 @@ import { kstCurrentYear } from "@/lib/donor/kst-time";
 import { EmptyState } from "@/components/donor/ui/EmptyState";
 import { PrintButtonClient } from "@/components/donor/ui/PrintButtonClient";
 import { TaxYearSelect } from "@/components/donor/ui/TaxYearSelect";
+import { formatDate, formatKRW as formatAmount } from "@/lib/format";
 
 export const metadata = { title: "연말정산 요약" };
 
@@ -15,18 +16,6 @@ type ReceiptRow = {
   issued_at: string | null;
   pdf_url: string | null;
 };
-
-function formatAmount(v: number) {
-  return `${new Intl.NumberFormat("ko-KR").format(v)}원`;
-}
-function formatDate(iso: string | null) {
-  if (!iso) return "-";
-  try {
-    return new Date(iso).toLocaleDateString("ko-KR");
-  } catch {
-    return iso;
-  }
-}
 
 /**
  * G-D52: 연말정산(기부금공제) 제출용 요약 페이지.

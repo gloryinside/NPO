@@ -5,7 +5,6 @@ import { getTenant } from "@/lib/tenant/context";
 import { findReferrerByCode } from "@/lib/donor/referral";
 import { isDonorAuthBypassEnabled } from "@/lib/auth/donor-bypass";
 import { nextCode } from "@/lib/codes-seq";
-import { checkCsrf } from "@/lib/security/csrf";
 
 /**
  * 현재 로그인한 Supabase 유저의 이메일로 members 행을 찾아
@@ -15,8 +14,6 @@ import { checkCsrf } from "@/lib/security/csrf";
  * 이미 referrer_id가 있으면 덮어쓰지 않는다 (기존 관계 보호).
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

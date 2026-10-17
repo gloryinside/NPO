@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
 import { csvHeaders } from "@/lib/csv";
 import { createClaim } from "@/lib/cms/claim";
+import { readJsonObject } from "@/lib/http/body";
 
 export async function GET() {
   const guard = await requireAdminApi();
@@ -28,8 +28,6 @@ export async function GET() {
  *   청구 명단을 기록하고 CMS 대행사에 올릴 CSV를 바로 내려준다.
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
@@ -37,12 +35,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "회계 담당자 권한이 필요합니다." }, { status: 403 });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const claimDate = typeof body.claimDate === "string" ? body.claimDate : "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(claimDate)) {
     return NextResponse.json({ error: "출금일을 골라 주세요." }, { status: 400 });

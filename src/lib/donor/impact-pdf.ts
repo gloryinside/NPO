@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { TDocumentDefinitions } from 'pdfmake/interfaces'
 import type { DonorImpact } from './impact'
+import { formatKRW } from '@/lib/format'
 
 /**
  * Phase 5-A: 후원자 연간 임팩트 리포트 PDF.
@@ -47,10 +48,6 @@ function getPdfMake(): PdfMakeSingleton {
     configured = true
   }
   return pdfmake
-}
-
-function formatKRW(n: number): string {
-  return `${new Intl.NumberFormat('ko-KR').format(n)}원`
 }
 
 export async function generateImpactPdf(data: ImpactReportData): Promise<Buffer> {

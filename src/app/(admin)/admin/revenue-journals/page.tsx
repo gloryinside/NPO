@@ -4,6 +4,7 @@ import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
 import { JsonForm } from "@/components/admin/json-form";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "수입결의" };
 
@@ -16,10 +17,6 @@ type Row = {
   total_amount: number; payment_count: number; status: string;
   posted_to_erp_at: string | null; external_voucher_no: string | null;
 };
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function RevenueJournalsPage() {
   await requireAdminUser();

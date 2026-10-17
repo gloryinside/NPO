@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
 import { applyClaimResult } from "@/lib/cms/claim";
 import { kstParts } from "@/lib/billing/kst";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * POST /api/admin/cms-claim-files/[id]/result
@@ -13,8 +13,6 @@ import { kstParts } from "@/lib/billing/kst";
  *   대행사 출금 결과 반영 — 실패로 고른 줄 외에는 모두 출금 완료로 처리한다.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
@@ -23,12 +21,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const { id } = await params;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const failedLineIds = Array.isArray(body.failedLineIds)
     ? body.failedLineIds.filter((v): v is string => typeof v === "string")
     : [];

@@ -48,7 +48,7 @@ export default async function ErpReconcilePage() {
     <div>
       <PageHeader
         title="입금 내역 ERP 반영"
-        description="납입 건의 수입상태를 검토하고 일괄 확정합니다."
+        description="입금된 후원금이 회계(ERP)에 반영됐는지 확인하고 한꺼번에 확정해요."
       />
       <ReconcileClient initialRows={rows} isSuper={isSuper} />
     </div>

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
 
 const VALID_TIERS = ["bronze", "silver", "gold", "platinum", "diamond"] as const;
 
@@ -15,19 +15,14 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
   const { id: memberId } = await params;
 
-  let body: { tier?: unknown; override?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ tier?: unknown; override?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const override = body.override === true;
   const tier = typeof body.tier === "string" ? body.tier : null;

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendSms } from "@/lib/sms/nhn-client";
 import { sendAlimtalk } from "@/lib/notifications/alimtalk-client";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /**
  * POST /api/admin/communications
@@ -18,15 +18,13 @@ import { logAudit } from "@/lib/audit";
  *   template_params Record<string,string>?  알림톡 파라미터
  */
 export async function POST(req: NextRequest) {
-  const user = await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user } = guard.ctx;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const { member_ids, channel, message, template_code, template_params } = body as {
     member_ids?: unknown;

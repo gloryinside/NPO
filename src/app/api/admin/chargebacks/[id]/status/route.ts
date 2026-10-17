@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * G-D147: 카드 분쟁 상태 전환 + 증빙 보관.
@@ -25,8 +25,6 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
@@ -38,12 +36,9 @@ export async function PATCH(
   }
   const { id } = await params;
 
-  let body: { status?: unknown; note?: unknown; evidenceUrl?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ status?: unknown; note?: unknown; evidenceUrl?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const status = typeof body.status === "string" ? body.status : "";
   if (!ALLOWED.has(status)) {
     return NextResponse.json(

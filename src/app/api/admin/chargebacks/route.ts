@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * POST /api/admin/chargebacks — 카드 결제 이의 제기(chargeback) 직접 등록.
@@ -14,8 +14,6 @@ import { logAudit } from "@/lib/audit";
  * finance 또는 super 전용.
  */
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
@@ -23,12 +21,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "회계 담당자 권한이 필요합니다." }, { status: 403 });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const paymentCode = typeof body.paymentCode === "string" ? body.paymentCode.trim() : "";
   const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 500) : "";
   const tossCaseId = typeof body.tossCaseId === "string" && body.tossCaseId.trim() ? body.tossCaseId.trim().slice(0, 100) : null;

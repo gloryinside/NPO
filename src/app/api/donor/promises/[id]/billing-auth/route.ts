@@ -4,7 +4,6 @@ import { getDonorSession } from '@/lib/auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getOrgTossKeys } from '@/lib/toss/keys'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
-import { checkCsrf } from '@/lib/security/csrf'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -17,8 +16,6 @@ type RouteContext = { params: Promise<{ id: string }> }
  * 없으면 무작위 UUID를 만들어 먼저 저장한다(유추 불가 값이어야 함).
  */
 export async function POST(req: NextRequest, { params }: RouteContext) {
-  const csrf = checkCsrf(req)
-  if (csrf) return csrf
   const session = await getDonorSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

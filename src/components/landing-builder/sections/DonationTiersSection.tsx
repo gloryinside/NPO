@@ -1,11 +1,8 @@
 import type { DonationTiersSectionData } from '@/types/landing'
+import { formatKRW } from "@/lib/format";
 
 interface Props {
   data: DonationTiersSectionData
-}
-
-function formatKRW(n: number) {
-  return new Intl.NumberFormat('ko-KR').format(n) + '원'
 }
 
 export function DonationTiersSection({ data }: Props) {

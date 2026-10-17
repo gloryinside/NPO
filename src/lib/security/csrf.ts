@@ -96,3 +96,22 @@ export function checkCsrf(req: NextRequest | Request): Response | null {
     { status: 403 }
   );
 }
+
+/**
+ * 같은 사이트 확인(Origin/Referer)이 필요한 API인지 — proxy에서 모든 API에 한 번에 적용한다.
+ * 라우트마다 checkCsrf를 붙이다 보면 빠뜨리는 곳이 생겨서(관리자 API 40여 곳 누락) 정책을 한곳으로 모았다.
+ *
+ * 제외: 다른 서버가 부르는 API — 자체 인증(서명·API 키·cron 비밀)을 쓴다
+ *   /api/webhooks/*  결제사 웹훅(서명 검증)
+ *   /api/cron/*      예약 작업(CRON_SECRET)
+ *   /api/v1/*        ERP 연동 API(API 키)
+ *   /api/donations/[id]/webhooks  후원 이벤트 웹훅
+ */
+const CSRF_EXEMPT = [/^\/api\/webhooks(\/|$)/, /^\/api\/cron(\/|$)/, /^\/api\/v1(\/|$)/, /^\/api\/donations\/[^/]+\/webhooks(\/|$)/];
+
+export function requiresCsrfCheck(pathname: string, method: string): boolean {
+  const m = method.toUpperCase();
+  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return false;
+  if (!pathname.startsWith("/api/")) return false;
+  return !CSRF_EXEMPT.some((re) => re.test(pathname));
+}

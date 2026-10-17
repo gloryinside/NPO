@@ -6,7 +6,7 @@ import { getOrgTossKeys } from '@/lib/toss/keys'
 import { deleteBillingKey, issueBillingKey } from '@/lib/billing/toss-billing'
 import { openBillingKey, sealBillingKey } from '@/lib/billing/billing-key-store'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
-import { checkCsrf } from '@/lib/security/csrf'
+import { readJsonObject } from '@/lib/http/body'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -22,8 +22,6 @@ type RouteContext = { params: Promise<{ id: string }> }
  * - 발급 성공 시 toss_billing_key + customer_key 교체, status → active (pending_billing이었다면)
  */
 export async function POST(req: NextRequest, { params }: RouteContext) {
-  const csrf = checkCsrf(req)
-  if (csrf) return csrf
   const session = await getDonorSession()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -40,18 +38,15 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const { id: promiseId } = await params
 
-  let body: {
+  const parsed = await readJsonObject<{
     cardNumber?: string
     cardExpirationYear?: string
     cardExpirationMonth?: string
     cardPassword?: string
     customerIdentityNumber?: string
-  } = {}
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+  }>(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
 
   const {
     cardNumber,

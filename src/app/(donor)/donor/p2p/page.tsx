@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { JsonForm } from "@/components/admin/json-form";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "내 P2P 모금 페이지" };
 
@@ -16,10 +17,6 @@ type Page = {
   created_at: string;
   campaigns: { slug: string; title: string } | null;
 };
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function DonorP2PPage() {
   const session = await getDonorSession();

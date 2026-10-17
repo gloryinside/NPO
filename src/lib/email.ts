@@ -10,6 +10,7 @@
 
 import { resolveTemplate } from '@/lib/email/resolve-template';
 import type { ScenarioKey } from '@/lib/email/default-templates';
+import { formatKRW as fmt } from '@/lib/format';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "";
@@ -51,10 +52,6 @@ async function sendEmail(opts: SendOptions): Promise<void> {
     const body = await res.text();
     throw new Error(`Resend error ${res.status}: ${body}`);
   }
-}
-
-function fmt(n: number): string {
-  return new Intl.NumberFormat("ko-KR").format(n) + "원";
 }
 
 async function sendViaTemplate(

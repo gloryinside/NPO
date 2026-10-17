@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { formatKRW } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,6 @@ export async function generateMetadata({
   const { data: page } = await supabase
     .from("p2p_pages").select("title").eq("campaign_id", campaign.id).eq("slug", pageSlug).maybeSingle();
   return { title: page?.title ?? "P2P 모금" };
-}
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
 }
 
 export default async function P2PPublicPage({

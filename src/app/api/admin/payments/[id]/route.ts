@@ -1,34 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
-import { checkCsrf } from "@/lib/security/csrf";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 const ALLOWED_PAY_STATUS = ["paid", "unpaid", "failed", "cancelled", "refunded", "pending"] as const;
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
-  const user = await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user } = guard.ctx;
 
   const { id } = await params;
 
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const supabase = createSupabaseAdminClient();
 
@@ -41,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     .maybeSingle();
 
   if (!existing) {
-    return NextResponse.json({ error: "납입 내역을 찾을 수 없습니다." }, { status: 404 });
+    return NextResponse.json({ error: "결제 내역을 찾을 수 없습니다." }, { status: 404 });
   }
 
   const update: Record<string, unknown> = {
@@ -72,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   if (income_status !== undefined) {
     const ALLOWED_INCOME = ["pending", "processing", "confirmed", "excluded"];
     if (!ALLOWED_INCOME.includes(income_status)) {
-      return NextResponse.json({ error: "유효하지 않은 수입 상태입니다." }, { status: 400 });
+      return NextResponse.json({ error: "알 수 없는 회계 반영 상태입니다." }, { status: 400 });
     }
     update.income_status = income_status;
   }

@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/layer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatKRW as won } from "@/lib/format";
 
 /**
  * 카드 결제 이의 제기(chargeback) — 카드사에 "내가 한 결제가 아니다/취소해 달라"는 요청이 들어온 건.
@@ -46,7 +47,6 @@ const NEXT: Record<Status, Status[]> = {
   closed: [],
 };
 
-const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 const day = (iso: string | null) => (iso ? iso.slice(0, 10).replace(/-/g, ".") : "-");
 
 export function ChargebackList({ rows }: { rows: ChargebackRow[] }) {

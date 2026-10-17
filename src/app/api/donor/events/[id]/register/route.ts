@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 
 /**
  * POST /api/donor/events/[id]/register
@@ -14,8 +13,6 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   const { id: eventId } = await params;

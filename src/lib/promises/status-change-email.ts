@@ -1,3 +1,4 @@
+import { formatKRW as fmtKRW } from "@/lib/format";
 /**
  * 어드민이 약정 상태를 변경했을 때 후원자에게 발송되는 알림 이메일.
  *
@@ -18,10 +19,6 @@ export interface PromiseStatusChangeEmailParams {
   amount: number
   reason?: string | null
   suspendedUntil?: string | null
-}
-
-function fmtKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원'
 }
 
 function escapeHtml(s: string): string {

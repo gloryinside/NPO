@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
-import { checkCsrf } from "@/lib/security/csrf";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { notifyReceiptIssued } from "@/lib/notifications/send";
 import { kstParts } from "@/lib/billing/kst";
 import { collectYearDonations, issueReceipt, loadOrgForReceipt, RECEIPT_BUCKET } from "@/lib/receipt/issue";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 // Next.js 16: 같은 부모 아래 서로 다른 slug 이름 금지 — [id] 값은 member.id
 type RouteContext = { params: Promise<{ id: string }> };
@@ -50,7 +49,8 @@ async function downloadExisting(supabase: ReturnType<typeof createSupabaseAdminC
 }
 
 export async function GET(req: NextRequest, { params }: RouteContext) {
-  await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
   const r = await resolve(params, new URL(req.url).searchParams.get("year"));
   if ("error" in r) return r.error;
   const c = r.ctx;
@@ -71,9 +71,9 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
 }
 
 export async function POST(req: NextRequest, { params }: RouteContext) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
-  const adminUser = await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { user: adminUser } = guard.ctx;
   const body = (await req.json().catch(() => ({}))) as { year?: unknown; reissue?: unknown };
   const r = await resolve(params, body.year);
   if ("error" in r) return r.error;

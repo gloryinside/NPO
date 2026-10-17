@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminRoles } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
 import { pushErpWebhook } from "@/lib/erp/webhook";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 const VALID_STATUSES = ["pending", "processing", "confirmed", "excluded"] as const;
 type IncomeStatus = (typeof VALID_STATUSES)[number];
@@ -16,15 +16,13 @@ type IncomeStatus = (typeof VALID_STATUSES)[number];
  * - 되돌리기(pending): super 전용
  */
 export async function PATCH(req: NextRequest) {
-  const user = await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user } = guard.ctx;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const { payment_ids, target_status } = body as {
     payment_ids?: unknown;

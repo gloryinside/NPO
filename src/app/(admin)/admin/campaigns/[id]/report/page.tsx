@@ -9,15 +9,7 @@ const ReportDailyChart = dynamic(
   { ssr: true }
 )
 import { notFound } from 'next/navigation'
-
-function formatKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원'
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '-'
-  try { return new Date(iso).toLocaleDateString('ko-KR') } catch { return iso }
-}
+import { formatDate, formatKRW } from '@/lib/format'
 
 export default async function CampaignReportPage({
   params,

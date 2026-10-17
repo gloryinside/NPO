@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole, type AdminRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
+import { readJsonObject } from "@/lib/http/body";
 
 const ALLOWED: AdminRole[] = ["super", "campaign_manager", "finance", "support"];
 
@@ -72,8 +72,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
@@ -86,12 +84,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { userId?: unknown; role?: unknown; action?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ userId?: unknown; role?: unknown; action?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const userId = typeof body.userId === "string" ? body.userId : "";
   const role =
     typeof body.role === "string" && ALLOWED.includes(body.role as AdminRole)

@@ -1,3 +1,4 @@
+import { formatKRW as fmtKRW } from "@/lib/format";
 /**
  * 환불 실행 후 후원자 알림 이메일.
  *
@@ -17,10 +18,6 @@ export interface RefundEmailParams {
   originalAmount: number
   refundAmount: number
   reasonNote?: string | null
-}
-
-function fmtKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원'
 }
 
 function escapeHtml(s: string): string {

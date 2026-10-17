@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -13,8 +13,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: RouteParams }
 ) {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
   const { id: memberId } = await params;
 
   const supabase = createSupabaseAdminClient();
@@ -41,16 +42,14 @@ export async function POST(
   req: NextRequest,
   { params }: { params: RouteParams }
 ) {
-  const user = await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user } = guard.ctx;
   const { id: memberId } = await params;
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const { logType, subject, content } = body as {
     logType?: string;

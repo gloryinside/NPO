@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { checkCsrf } from "@/lib/security/csrf";
 import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
+import { readJsonObject } from "@/lib/http/body";
 
 const CATEGORIES = ["general", "payment", "receipt", "donation", "other"] as const;
 
@@ -26,8 +26,6 @@ export async function GET() {
 
 // POST /api/donor/inquiries — 문의 작성
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
 
   const session = await getDonorSession();
   if (!session) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
@@ -35,10 +33,9 @@ export async function POST(req: NextRequest) {
   const rl = enforceDonorLimit(session.member.id, "inquiry:post", "default");
   if (!rl.allowed) return limitResponse(rl);
 
-  let body: { subject?: unknown; body?: unknown; category?: unknown };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ subject?: unknown; body?: unknown; category?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const subject = typeof body.subject === "string" ? body.subject.trim() : "";
   const text = typeof body.body === "string" ? body.body.trim() : "";

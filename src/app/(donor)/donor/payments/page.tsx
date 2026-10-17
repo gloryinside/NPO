@@ -18,6 +18,7 @@ import { getPgErrorMessage } from "@/lib/payments/pg-error-messages";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
 import { Suspense } from "react";
 import { EmptyArt } from "@/components/donor/ui/EmptyState";
+import { formatDate, formatKRW as formatAmount } from "@/lib/format";
 
 function PayStatusBadge({ status, label }: { status: PayStatus; label: string }) {
   const styles: Record<PayStatus, React.CSSProperties> = {
@@ -42,20 +43,6 @@ function PayStatusBadge({ status, label }: { status: PayStatus; label: string })
       {label}
     </Badge>
   );
-}
-
-function formatAmount(value: number | null | undefined) {
-  if (value == null) return "-";
-  return `${new Intl.NumberFormat("ko-KR").format(Number(value))}원`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleDateString("ko-KR");
-  } catch {
-    return value;
-  }
 }
 
 type SearchParams = Promise<{

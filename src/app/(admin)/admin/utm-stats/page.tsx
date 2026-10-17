@@ -2,12 +2,9 @@ import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "UTM 분석" };
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function UtmStatsPage({
   searchParams,

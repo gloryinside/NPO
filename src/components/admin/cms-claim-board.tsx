@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { ClaimablePayment, ClaimLine } from "@/lib/cms/claim";
+import { formatKRW as won } from "@/lib/format";
 
 /**
  * 자동이체(CMS) 청구 — 3단계로만 보이게 한다.
@@ -35,7 +36,6 @@ const FILE_STATUS: Record<ClaimFileRow["status"], { label: string; tone: string 
   completed: { label: "반영 끝", tone: "var(--positive)" },
 };
 
-const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 const dot = (d: string | null) => (d ? d.slice(0, 10).replace(/-/g, ".") : "-");
 
 function downloadBlob(blob: Blob, filename: string) {

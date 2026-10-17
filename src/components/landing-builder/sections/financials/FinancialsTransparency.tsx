@@ -1,9 +1,6 @@
 import type { FinancialsTransparencyData } from '@/lib/landing-variants/financials-schemas'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
-
-function formatKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원'
-}
+import { formatKRW } from '@/lib/format'
 
 export function FinancialsTransparency({ data }: { data: FinancialsTransparencyData }) {
   const { title = '상세 사용 내역', year, totalRaised, totalUsed, items, reportUrl } = data

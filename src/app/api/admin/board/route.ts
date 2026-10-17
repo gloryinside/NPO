@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 const TYPES = ["notice", "faq"] as const;
 
 // GET /api/admin/board?type=notice
 export async function GET(req: NextRequest) {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
   const { searchParams } = new URL(req.url);
   const type = TYPES.includes(searchParams.get("type") as typeof TYPES[number])
     ? searchParams.get("type")!
@@ -30,13 +31,13 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/board
 export async function POST(req: NextRequest) {
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let body: { post_type?: unknown; category?: unknown; title?: unknown; body?: unknown; pinned?: unknown; published?: unknown };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ post_type?: unknown; category?: unknown; title?: unknown; body?: unknown; pinned?: unknown; published?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const post_type = TYPES.includes(body.post_type as typeof TYPES[number])
     ? (body.post_type as string)

@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDonorSession } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { checkCsrf } from '@/lib/security/csrf';
 import { enforceDonorLimit, limitResponse } from '@/lib/security/endpoint-limits';
 
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const rl = enforceDonorLimit(session.member.id, 'payment:cancel', 'sensitive');

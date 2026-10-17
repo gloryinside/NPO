@@ -5,11 +5,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { writeMemberAudit } from "@/lib/donor/audit-log";
 import { sendEmail } from "@/lib/email/send-email";
-import { checkCsrf } from "@/lib/security/csrf";
 import { enforceDonorLimit, limitResponse } from "@/lib/security/endpoint-limits";
 import { cookies } from "next/headers";
 import { revokeOtpSession, OTP_SESSION_COOKIE_NAME } from "@/lib/auth/otp-session";
 import { decodeJwt } from "jose";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * G-D02: 후원자 본인 계정 삭제
@@ -27,8 +27,6 @@ import { decodeJwt } from "jose";
  * Hard-delete는 추후 관리자 요청 플로우로 분리.
  */
 export async function DELETE(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
   const session = await getDonorSession();
   if (!session) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
@@ -36,12 +34,9 @@ export async function DELETE(req: NextRequest) {
   const rl = enforceDonorLimit(session.member.id, "account:delete", "sensitive");
   if (!rl.allowed) return limitResponse(rl);
 
-  let body: { currentPassword?: unknown; confirmText?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ currentPassword?: unknown; confirmText?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   // 확인 단계
   if (session.authMethod === "supabase" && session.user?.email) {

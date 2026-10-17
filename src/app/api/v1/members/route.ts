@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { authenticateV1 } from "@/lib/erp/v1-auth";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * GET /api/v1/members  — ERP가 회원 마스터 조회 (거래처 동기화용)
@@ -47,9 +48,9 @@ export async function PATCH(req: NextRequest) {
   const memberCode = req.nextUrl.searchParams.get("memberCode");
   if (!memberCode) return NextResponse.json({ error: "memberCode required" }, { status: 400 });
 
-  let body: { bpCode?: unknown };
-  try { body = await req.json(); }
-  catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  const parsed = await readJsonObject<{ bpCode?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const bpCode = typeof body.bpCode === "string" ? body.bpCode.trim() : "";
   if (!bpCode) return NextResponse.json({ error: "bpCode required" }, { status: 400 });

@@ -1,3 +1,4 @@
+import { formatKRW as fmtKRW } from "@/lib/format";
 /**
  * Phase 6-B / G-106: 정기후원 약정 금액 변경 후 감사 이메일.
  *
@@ -18,10 +19,6 @@ export interface AmountChangeEmailParams {
   campaignTitle: string | null
   previousAmount: number
   newAmount: number
-}
-
-function fmtKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원'
 }
 
 function escapeHtml(s: string): string {

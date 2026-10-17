@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { CampaignsSectionData } from '@/types/landing'
 import { DEFAULT_CAMPAIGN_THUMB } from '@/lib/brand-images'
+import { formatKRW } from '@/lib/format'
 
 interface CampaignRow {
   id: string
@@ -17,10 +18,6 @@ interface CampaignRow {
 interface Props {
   data: CampaignsSectionData
   campaigns: CampaignRow[]
-}
-
-function formatKRW(n: number) {
-  return new Intl.NumberFormat('ko-KR').format(n) + '원'
 }
 
 export function CampaignsSection({ data, campaigns }: Props) {

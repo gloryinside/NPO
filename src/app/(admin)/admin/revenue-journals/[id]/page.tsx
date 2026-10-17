@@ -5,12 +5,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
 import { JsonPostButton } from "@/components/admin/json-post-button";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "수입결의 상세" };
-
-function formatKRW(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function RevenueJournalDetailPage({
   params,

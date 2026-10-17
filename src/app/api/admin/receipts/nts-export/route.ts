@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { kstParts } from "@/lib/billing/kst";
 import { logAudit } from "@/lib/audit";
 import { buildXlsx } from "@/lib/export/xlsx";
 import { buildNtsDataset, NTS_COLUMNS, type NtsSourceRow } from "@/lib/receipt/nts-dataset";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 /**
  * GET /api/admin/receipts/nts-export?year=2026[&format=json]
@@ -17,7 +16,9 @@ import { buildNtsDataset, NTS_COLUMNS, type NtsSourceRow } from "@/lib/receipt/n
  *  - 기관 필수 기재사항이 비면 다운로드를 막는다(422).
  */
 export async function GET(req: NextRequest) {
-  const adminUser = await requireAdminUser();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant, user: adminUser } = guard.ctx;
 
   const url = new URL(req.url);
   const yearParam = url.searchParams.get("year");
@@ -26,13 +27,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "year 파라미터가 유효하지 않습니다." }, { status: 400 });
   }
   const preview = url.searchParams.get("format") === "json";
-
-  let tenant;
-  try {
-    tenant = await requireTenant();
-  } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
-  }
 
   const supabase = createSupabaseAdminClient();
   const { data: org } = await supabase

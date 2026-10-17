@@ -1,6 +1,7 @@
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { formatKRW } from "@/lib/format";
 
 export const metadata = { title: "환불 승인" };
 
@@ -19,9 +20,6 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "var(--negative)",
 };
 
-function formatKRW(n: number) {
-  return `${n.toLocaleString("ko-KR")}원`;
-}
 function formatDate(iso: string) {
   try {
     return new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });

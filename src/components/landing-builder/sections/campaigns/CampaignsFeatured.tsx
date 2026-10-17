@@ -4,8 +4,7 @@ import { CampaignCard, type CampaignRow } from './CampaignCard'
 import { MotionFadeUp } from '../../shared/MotionWrapper'
 import { Badge } from '@/components/ui/badge'
 import { DEFAULT_CAMPAIGN_THUMB } from '@/lib/brand-images'
-
-function formatKRW(n: number) { return new Intl.NumberFormat('ko-KR').format(n) + '원' }
+import { formatKRW } from '@/lib/format'
 
 export function CampaignsFeatured({ data, campaigns }: { data: CampaignsBaseData; campaigns: CampaignRow[] }) {
   const { title = '진행 중인 캠페인', subtitle, showProgress = true, maxCount = 4 } = data

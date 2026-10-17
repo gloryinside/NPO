@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DEFAULT_CAMPAIGN_THUMB } from '@/lib/brand-images'
+import { formatKRW } from '@/lib/format'
 
 export interface CampaignRow {
   id: string
@@ -12,8 +13,6 @@ export interface CampaignRow {
   thumbnail_url: string | null
   raised: number
 }
-
-function formatKRW(n: number) { return new Intl.NumberFormat('ko-KR').format(n) + '원' }
 
 interface Props {
   campaign: CampaignRow

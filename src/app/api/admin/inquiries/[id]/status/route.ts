@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth";
-import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readJsonObject } from "@/lib/http/body";
+import { requireAdminApi } from "@/lib/auth/api-guard";
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -10,13 +10,13 @@ const ALLOWED = ["open", "answered", "closed"] as const;
 // PATCH /api/admin/inquiries/[id]/status — 상태 변경 (재오픈 / 닫기)
 export async function PATCH(req: NextRequest, { params }: { params: RouteParams }) {
   const { id } = await params;
-  await requireAdminUser();
-  const tenant = await requireTenant();
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  const { tenant } = guard.ctx;
 
-  let body: { status?: unknown };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ status?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const status = ALLOWED.includes(body.status as typeof ALLOWED[number])
     ? (body.status as string)
     : null;

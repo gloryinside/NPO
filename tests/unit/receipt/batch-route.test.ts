@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const issueAnnualReceipts = vi.fn()
-vi.mock('@/lib/auth', () => ({ requireAdminUser: vi.fn(async () => ({ id: 'admin-1', email: 'a@x.test' })) }))
-vi.mock('@/lib/tenant/context', () => ({ requireTenant: vi.fn(async () => ({ id: 'org-1' })) }))
+vi.mock('@/lib/auth/api-guard', () => ({
+  requireAdminApi: vi.fn(async () => ({ ok: true, ctx: { user: { id: 'admin-1', email: 'a@x.test' }, tenant: { id: 'org-1' } } })),
+}))
 vi.mock('@/lib/audit', () => ({ logAudit: vi.fn(async () => {}) }))
 vi.mock('@/lib/receipt/annual-batch', () => ({ issueAnnualReceipts: (...a: unknown[]) => issueAnnualReceipts(...a) }))
 

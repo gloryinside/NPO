@@ -3,7 +3,7 @@ import { adminClaims } from "@/lib/auth/tenant-binding";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
-import { checkCsrf } from "@/lib/security/csrf";
+import { readJsonObject } from "@/lib/http/body";
 
 /**
  * G-D100: 관리자 비밀번호 재설정 이메일 발송.
@@ -16,15 +16,10 @@ import { checkCsrf } from "@/lib/security/csrf";
 const REDIRECT_PATH = "/admin/password/reset";
 
 export async function POST(req: NextRequest) {
-  const csrf = checkCsrf(req);
-  if (csrf) return csrf;
 
-  let body: { email?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await readJsonObject<{ email?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const email =
     typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
