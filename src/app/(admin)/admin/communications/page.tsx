@@ -17,6 +17,8 @@ const CHAR_LIMIT = 90;
 export default function CommunicationsPage() {
   const [channel, setChannel] = useState<Channel>("sms");
   const [message, setMessage] = useState("");
+  // 결제·영수증 같은 안내는 info, 소식·캠페인 홍보는 ad(정보통신망법 제50조 — 동의자에게만, 표시·수신거부 자동 첨부)
+  const [purpose, setPurpose] = useState<"info" | "ad">("info");
   const [templateCode, setTemplateCode] = useState("");
   const [templateParams, setTemplateParams] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
@@ -24,7 +26,7 @@ export default function CommunicationsPage() {
   const [selected, setSelected] = useState<MemberRow[]>([]);
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ succeeded: number; failed: number; total: number } | null>(null);
+  const [result, setResult] = useState<{ succeeded: number; failed: number; total: number; skippedNoConsent?: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const searchMembers = useCallback(async () => {
@@ -32,7 +34,7 @@ export default function CommunicationsPage() {
     setSearching(true);
     try {
       const res = await fetch(
-        `/api/admin/members?search=${encodeURIComponent(memberSearch)}&limit=20`
+        `/api/admin/members?q=${encodeURIComponent(memberSearch)}&limit=20`
       );
       const json = await res.json();
       setSearchResults(json.members ?? json.data ?? []);
@@ -86,6 +88,7 @@ export default function CommunicationsPage() {
           member_ids: selected.map((m) => m.id),
           channel,
           message: channel === "sms" ? message : undefined,
+          purpose: channel === "sms" ? purpose : "info",
           template_code: channel === "alimtalk" ? templateCode : undefined,
           template_params: channel === "alimtalk" ? parsedParams : undefined,
         }),
@@ -142,6 +145,21 @@ export default function CommunicationsPage() {
 
             {channel === "sms" ? (
               <div>
+                <div className="mb-3 flex flex-wrap gap-4 text-sm text-[var(--text)]" role="radiogroup" aria-label="문자 종류">
+                  <label className="inline-flex items-center gap-1.5">
+                    <input type="radio" name="purpose" checked={purpose === "info"} onChange={() => setPurpose("info")} />
+                    안내(결제·영수증·약정 등)
+                  </label>
+                  <label className="inline-flex items-center gap-1.5">
+                    <input type="radio" name="purpose" checked={purpose === "ad"} onChange={() => setPurpose("ad")} />
+                    광고(소식·캠페인·행사 홍보)
+                  </label>
+                </div>
+                {purpose === "ad" && (
+                  <p className="mb-2 rounded-lg bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--text)]">
+                    마케팅 수신에 동의한 후원자에게만 보내고, 밤 9시~아침 8시에는 보낼 수 없습니다. 앞에 &lsquo;(광고)기관명&rsquo;, 끝에 &lsquo;무료수신거부 대표전화&rsquo;가 자동으로 붙어 본문은 그만큼 짧아집니다.
+                  </p>
+                )}
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value.slice(0, CHAR_LIMIT))}
@@ -193,6 +211,7 @@ export default function CommunicationsPage() {
               }`}
             >
               {result.succeeded}건 성공 / {result.failed}건 실패 (총 {result.total}건)
+              {result.skippedNoConsent ? ` · 수신 미동의 ${result.skippedNoConsent}명 제외` : ""}
             </div>
           )}
           {error && (

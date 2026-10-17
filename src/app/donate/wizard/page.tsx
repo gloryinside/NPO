@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getDonorSession } from '@/lib/auth';
 import { WizardClient } from './WizardClient';
+import { runningTest } from '@/lib/ab/form-test-data';
 import { FormSettingsSchema, defaultFormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
 export default async function WizardPage({
@@ -87,13 +88,14 @@ export default async function WizardPage({
     ...(c.form_settings ?? {}),
   });
 
-  const donorSession = await getDonorSession();
+  const [donorSession, abTest] = await Promise.all([getDonorSession(), runningTest(sb, c.org_id, c.id)]);
 
   return (
     <WizardClient
       campaign={{ id: c.id, slug: c.slug, title: c.title, orgId: c.org_id }}
       settings={settings}
       isLoggedIn={!!donorSession}
+      abTest={abTest}
       prefill={{
         type: sp.type,
         amount: sp.amount ? Number(sp.amount) : undefined,

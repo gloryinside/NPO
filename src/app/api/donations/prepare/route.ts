@@ -14,6 +14,11 @@ import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { readJsonObject } from "@/lib/http/body";
 import { needsBillingRegistration, resolveRegularFlow } from "@/lib/billing/regular-flow";
 import { parseDonorProfile, profileColumns } from "@/lib/donations/donor-profile";
+import { isPickable, reservationUntil } from "@/lib/sponsorship/pick";
+import { resolveAgent, type ActiveAgent } from "@/lib/f2f/agents";
+import { resolveAbTag } from "@/lib/ab/form-test-data";
+import { consentRows, parseDonationConsents } from "@/lib/legal/consent";
+import { parseBasket, singleDesignation, type DesignationOption, type SplitItem } from "@/lib/donations/designation-basket";
 
 /**
  * POST /api/donations/prepare
@@ -26,6 +31,9 @@ import { parseDonorProfile, profileColumns } from "@/lib/donations/donor-profile
  *
  * member_code / payment_code 는 DB 카운터(next_code_seq)로 원자 발번한다.
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CHILD_TAKEN = "방금 다른 분이 이 아이와 결연을 신청했어요. 다른 아이를 골라 주세요.";
+
 export async function POST(req: NextRequest) {
   // Rate limit: IP 당 분당 10회
   const ip = getClientIp(req.headers);
@@ -84,6 +92,8 @@ export async function POST(req: NextRequest) {
     rrnConsent?: boolean;
     customFields?: Record<string, unknown>;
     designation?: string;
+    /** 여러 사업 담기 — [{ key, amount }] */
+    basket?: unknown;
     idempotencyKey?: string;
     cardNumber?: string;
     cardExpirationYear?: string;
@@ -125,6 +135,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: profileParsed.error }, { status: 400 });
   }
   const profile = profileParsed.value;
+
+  // 필수 동의(약관·개인정보 수집이용·만 14세 이상) — 화면에서 막아도 서버에서 다시 확인하고 기록한다(lib/legal/consent)
+  const consentParsed = parseDonationConsents(body.consents, profile.birthDate, kstToday());
+  if (!consentParsed.ok) {
+    return NextResponse.json({ error: consentParsed.error }, { status: 400 });
+  }
+  const consents = consentParsed.value;
 
   const supabase = createSupabaseAdminClient();
 
@@ -198,6 +215,65 @@ export async function POST(req: NextRequest) {
         { error: "허용되지 않은 결제수단입니다." },
         { status: 400 }
       );
+    }
+  }
+
+  // 1b'. 후원 목적 — 캠페인 설정에 있는 것만 받는다. 여러 사업 담기면 사업별 금액 합이 결제 금액과 같아야 한다.
+  const designationOptions =
+    ((campaign.form_settings as { designations?: DesignationOption[] } | null)?.designations ?? []);
+  let designationValue: string | null = null;
+  let designationSplit: SplitItem[] | null = null;
+  if (body.basket !== undefined && body.basket !== null) {
+    const basket = parseBasket(body.basket, designationOptions);
+    if (!basket.ok) return NextResponse.json({ error: basket.error }, { status: 400 });
+    if (basket.total !== amount) {
+      return NextResponse.json({ error: "사업별 금액의 합이 후원 금액과 다릅니다. 화면을 새로 고쳐 주세요." }, { status: 400 });
+    }
+    designationSplit = basket.items;
+    designationValue = basket.items.length === 1 ? basket.items[0]!.key : null;
+  } else {
+    const one = singleDesignation(designation, designationOptions);
+    if (one) {
+      designationValue = one.key;
+      designationSplit = [{ key: one.key, label: one.label, amount, programId: one.programId ?? null }];
+    }
+  }
+
+  // 1b'''. 현장 모금(태블릿) — 링크 토큰이 이 캠페인 모금가 것이면 신청에 모금가를 붙인다. 토큰이 틀리면 받지 않는다.
+  let f2fAgent: ActiveAgent | null = null;
+  if (body.f2fToken !== undefined && body.f2fToken !== null) {
+    f2fAgent = await resolveAgent(supabase, tenant.id, body.f2fToken);
+    if (!f2fAgent || f2fAgent.campaignId !== campaign.id) {
+      return NextResponse.json({ error: "현장 모금 링크가 만료되었거나 중지되었습니다. 담당자에게 새 링크를 받아 주세요." }, { status: 403 });
+    }
+  }
+
+  // 1b''''. 신청 화면 A/B 비교 — 진행 중인 실험이면 신청에 안을 붙인다(안은 방문자 id로 서버가 다시 정함)
+  const abTag = f2fAgent ? null : await resolveAbTag(supabase, tenant.id, campaign.id, body.abTestId, body.abVisitorId);
+
+  // 1b''. 결연 아동 선택 — 정기후원이고 캠페인이 켰을 때만. 지금 고를 수 있는 아이인지 먼저 본다(최종 확보는 약정 생성 뒤)
+  const beneficiaryId = typeof body.beneficiaryId === "string" && UUID_RE.test(body.beneficiaryId) ? body.beneficiaryId : null;
+  if (body.beneficiaryId !== undefined && body.beneficiaryId !== null && !beneficiaryId) {
+    return NextResponse.json({ error: "결연할 아이 정보가 올바르지 않습니다." }, { status: 400 });
+  }
+  if (beneficiaryId) {
+    const fs = campaign.form_settings as { sponsorshipPick?: boolean; sponsorshipProgramId?: string | null } | null;
+    if (!isRegular || !fs?.sponsorshipPick) {
+      return NextResponse.json({ error: "결연은 정기후원으로만 신청할 수 있어요." }, { status: 400 });
+    }
+    const { data: child } = await supabase
+      .from("beneficiaries")
+      .select("status, public_listing, reserved_until, program_id")
+      .eq("id", beneficiaryId)
+      .eq("org_id", tenant.id)
+      .maybeSingle();
+    if (!child || !isPickable(child) || (fs.sponsorshipProgramId && child.program_id !== fs.sponsorshipProgramId)) {
+      return NextResponse.json({ error: CHILD_TAKEN }, { status: 409 });
+    }
+    // 돈이 오가기 전부터 아이를 잡아 두므로 한 곳에서 여러 아이를 묶지 못하게 한다
+    const holdLimit = rateLimit(`donations:child-hold:${ip}`, 3, 60 * 60_000);
+    if (!holdLimit.allowed) {
+      return NextResponse.json({ error: "잠시 후 다시 신청해 주세요." }, { status: 429 });
     }
   }
 
@@ -278,6 +354,9 @@ export async function POST(req: NextRequest) {
         phone,
         email,
         ...profileColumns(profile),
+        // 마케팅 동의는 새 후원자에게만 — 로그인 없는 신청서로 기존 후원자의 동의를 바꾸지 않는다(변경은 마이페이지)
+        marketing_consent: consents.marketing,
+        marketing_consent_at: new Date().toISOString(),
       })
       .select("id")
       .single();
@@ -387,10 +466,17 @@ export async function POST(req: NextRequest) {
       ...(rrnPendingEncrypted ? { rrn_pending_encrypted: rrnPendingEncrypted, rrn_consent_at: new Date().toISOString() } : {}),
       ...(payMethod ? { pay_method: payMethod } : {}),
       ...(customFields ? { custom_fields: customFields } : {}),
-      ...(designation ? { designation } : {}),
-      ...(typeof body.utmSource === "string" ? { utm_source: body.utmSource } : {}),
-      ...(typeof body.utmMedium === "string" ? { utm_medium: body.utmMedium } : {}),
-      ...(typeof body.utmCampaign === "string" ? { utm_campaign: body.utmCampaign } : {}),
+      ...(designationValue ? { designation: designationValue } : {}),
+      ...(designationSplit ? { designation_split: designationSplit } : {}),
+      ...(abTag ?? {}),
+      // 현장 모금은 유입 경로를 모금가로 고정한다(유입 분석·실적 집계)
+      ...(f2fAgent
+        ? { f2f_agent_id: f2fAgent.id, utm_source: "f2f", utm_medium: "tablet", utm_campaign: f2fAgent.code }
+        : {
+            ...(typeof body.utmSource === "string" ? { utm_source: body.utmSource } : {}),
+            ...(typeof body.utmMedium === "string" ? { utm_medium: body.utmMedium } : {}),
+            ...(typeof body.utmCampaign === "string" ? { utm_campaign: body.utmCampaign } : {}),
+          }),
       ...(typeof body.utmContent === "string" ? { utm_content: body.utmContent } : {}),
       ...(typeof body.utmTerm === "string" ? { utm_term: body.utmTerm } : {}),
       ...(typeof body.referrer === "string" ? { referrer: String(body.referrer).slice(0, 500) } : {}),
@@ -405,6 +491,21 @@ export async function POST(req: NextRequest) {
       { error: "결제 준비 실패" },
       { status: 500 }
     );
+  }
+
+  // 5c. 동의 기록 — 신청 한 건마다 문구 판과 함께 남긴다(입증용)
+  {
+    const { error: consentErr } = await supabase.from("consent_records").insert(
+      consentRows({
+        orgId: tenant.id,
+        memberId,
+        paymentId: payment.id,
+        consents,
+        rrn: !!rrnPendingEncrypted,
+        source: f2fAgent ? "f2f" : "donation_form",
+      }),
+    );
+    if (consentErr) console.error("[donations/prepare] consent records:", consentErr.message);
   }
 
   // 6. 정기후원: 빌링키 발급 + promise 생성
@@ -464,6 +565,11 @@ export async function POST(req: NextRequest) {
       toss_billing_key: billingKey ? await sealBillingKey(billingKey) : null,
       // 결제창 방식은 등록 완료 콜백에서 같은 customerKey로 빌링키를 발급하므로 미리 저장
       customer_key: billingKey || sdkBilling ? customerKey : null,
+      // 매달 만드는 결제에 후원 목적·사업별 금액을 그대로 옮긴다(process-payments)
+      designation: designationValue,
+      designation_split: designationSplit,
+      f2f_agent_id: f2fAgent?.id ?? null,
+      ...(abTag ?? {}),
     });
     if ('error' in created) {
       // 약정 저장 실패 — 방금 발급한 빌링키를 토스에서 지워 고아 키를 남기지 않는다
@@ -473,6 +579,51 @@ export async function POST(req: NextRequest) {
         if (keys.tossSecretKey) await deleteBillingKey(keys.tossSecretKey, billingKey);
       }
       return NextResponse.json({ error: '정기후원 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.' }, { status: 500 });
+    }
+    // 고른 아이를 이 약정 몫으로 잡는다 — 그 사이 다른 신청이 먼저 잡았으면 약정·결제를 거두고 다시 고르게 한다.
+    // 결연은 약정이 유효해지거나 첫 결제가 되면 DB 트리거(start_requested_sponsorship)가 만든다.
+    if (beneficiaryId) {
+      // 같은 후원자는 결연 신청을 하나씩만 진행한다(이전 신청이 끝나거나 기한이 지나면 다시)
+      const { data: myPromises } = await supabase
+        .from("promises")
+        .select("id")
+        .eq("org_id", tenant.id)
+        .eq("member_id", memberId)
+        .neq("id", created.id)
+        .not("beneficiary_id", "is", null)
+        .in("status", ["pending_billing"]);
+      const myIds = (myPromises ?? []).map((p) => p.id as string);
+      const { count: myHolds } = myIds.length
+        ? await supabase
+            .from("beneficiaries")
+            .select("id", { count: "exact", head: true })
+            .eq("org_id", tenant.id)
+            .in("reserved_promise_id", myIds)
+            .gt("reserved_until", new Date().toISOString())
+        : { count: 0 };
+      const { data: reserved } = (myHolds ?? 0) > 0
+        ? { data: false }
+        : await supabase.rpc("reserve_beneficiary", {
+        p_org: tenant.id,
+        p_beneficiary: beneficiaryId,
+        p_promise: created.id,
+        p_until: reservationUntil(isOfflineMethod),
+      });
+      if (reserved !== true) {
+        await supabase.from("promises").update({ status: "cancelled" }).eq("id", created.id).eq("org_id", tenant.id);
+        await supabase.from("payments").update({ pay_status: "cancelled", fail_reason: "결연 아동 선점" }).eq("id", payment.id).eq("org_id", tenant.id);
+        if (billingKey) {
+          const keys = await getOrgTossKeys(tenant.id);
+          if (keys.tossSecretKey) await deleteBillingKey(keys.tossSecretKey, billingKey);
+        }
+        return NextResponse.json({ error: CHILD_TAKEN }, { status: 409 });
+      }
+      const { error: linkChildErr } = await supabase
+        .from("promises")
+        .update({ beneficiary_id: beneficiaryId })
+        .eq("id", created.id)
+        .eq("org_id", tenant.id);
+      if (linkChildErr) console.error("[donations/prepare] promise beneficiary link:", linkChildErr.message);
     }
     if (sdkBilling) {
       billingAuth = { customerKey, promiseId: created.id, method: regularFlow === 'account_billing' ? 'account' : 'card' };

@@ -29,9 +29,11 @@ function linkify(escaped: string): string {
 export function renderJourneyEmail(
   t: { subject: string; body: string },
   vars: JourneyVars,
-  footer: { orgName: string; settingsUrl: string | null },
+  footer: { orgName: string; settingsUrl: string | null; ad?: boolean },
 ): { subject: string; html: string; text: string } {
-  const subject = fillText(t.subject, vars).replace(/[\r\n]+/g, " ").trim().slice(0, 200);
+  const plain = fillText(t.subject, vars).replace(/[\r\n]+/g, " ").trim();
+  // 광고성 메일(마케팅 동의자 대상)은 제목 앞에 '(광고)' — 정보통신망법 제50조
+  const subject = (footer.ad && !plain.startsWith("(광고)") ? `(광고) ${plain}` : plain).slice(0, 200);
   const text = fillText(t.body, vars);
   const paragraphs = text
     .split(/\n{2,}/)
@@ -40,6 +42,7 @@ export function renderJourneyEmail(
   const settings = footer.settingsUrl
     ? `더 받고 싶지 않으시면 <a href="${escapeHtml(footer.settingsUrl)}" style="color:#6b7280">알림 설정</a>에서 끌 수 있습니다.`
     : "더 받고 싶지 않으시면 이 메일에 답장해 주세요.";
-  const html = `<div style="font-family:-apple-system,'Noto Sans KR','Apple SD Gothic Neo',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;font-size:15px;line-height:1.7">${paragraphs}<hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0 12px"><p style="font-size:12px;color:#6b7280;margin:0">${escapeHtml(footer.orgName)} · ${settings}</p></div>`;
+  const adNote = footer.ad ? "광고성 정보 수신에 동의하신 분께 보내는 메일입니다. " : "";
+  const html = `<div style="font-family:-apple-system,'Noto Sans KR','Apple SD Gothic Neo',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;font-size:15px;line-height:1.7">${paragraphs}<hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0 12px"><p style="font-size:12px;color:#6b7280;margin:0">${escapeHtml(footer.orgName)} · ${adNote}${settings}</p></div>`;
   return { subject, html, text };
 }

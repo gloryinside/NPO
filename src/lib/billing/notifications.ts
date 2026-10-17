@@ -40,14 +40,16 @@ export async function createBillingFailedNotification(
   const supabase = createSupabaseAdminClient();
   const title = `자동결제 실패: ${name}님 ${amount.toLocaleString()}원`;
 
-  await supabase.from('admin_notifications').insert({
+  // 표의 칸은 kind/title/body/link — 예전엔 없는 칸(type·meta)에 넣어 알림이 조용히 저장되지 않았다
+  const { error: notifyErr } = await supabase.from('admin_notifications').insert({
     org_id: orgId,
-    type: 'billing_failed',
+    kind: 'billing_failed',
     title,
     body: failureMessage,
     read: false,
-    meta: { payment_id: paymentId, member_id: memberId, amount },
+    link: `/admin/members/${memberId}`,
   });
+  if (notifyErr) console.error('[billing/notifications] billing_failed:', notifyErr.message, { paymentId });
 
   if (contactEmail) {
     await sendEmail({
@@ -82,14 +84,15 @@ export async function createPledgeSuspendedNotification(
   const supabase = createSupabaseAdminClient();
   const title = `약정 정지: ${name}님 ${amount.toLocaleString()}원 정기후원`;
 
-  await supabase.from('admin_notifications').insert({
+  const { error: notifyErr } = await supabase.from('admin_notifications').insert({
     org_id: orgId,
-    type: 'pledge_suspended',
+    kind: 'pledge_suspended',
     title,
     body: `3회 결제 실패로 약정이 정지되었습니다.`,
     read: false,
-    meta: { promise_id: promiseId, member_id: memberId, amount },
+    link: `/admin/members/${memberId}`,
   });
+  if (notifyErr) console.error('[billing/notifications] pledge_suspended:', notifyErr.message, { promiseId });
 
   if (contactEmail) {
     await sendEmail({

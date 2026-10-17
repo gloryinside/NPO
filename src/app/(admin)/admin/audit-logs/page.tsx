@@ -19,6 +19,20 @@ type AuditLogRow = {
 };
 
 const ACTION_LABEL: Record<string, string> = {
+  "beneficiary.public_listing": "결연 아동 공개 설정",
+  "sponsor_letter.write": "후원자 편지 작성",
+  "f2f.agent_create": "현장 모금 링크 발급",
+  "f2f.agent_revoke": "현장 모금 링크 중지",
+  "f2f.consent_sign": "현장 출금동의 서명",
+  "disclosure.nts_save": "기부금 활용실적 명세서 저장",
+  "member.view": "후원자 정보 조회",
+  "settings.privacy_officer": "개인정보 보호책임자 지정",
+  "receipt.download": "영수증 내려받기",
+  "membership.plan_save": "회비 종류 저장",
+  "membership.plan_assign": "회비 가입·변경",
+  "membership.fee_record": "회비 납부 기록",
+  "ab_test.start": "신청 화면 A/B 비교 시작",
+  "ab_test.stop": "신청 화면 A/B 비교 종료",
   "member.create": "후원자 등록",
   "member.update": "후원자 수정",
   "member.delete": "후원자 삭제",

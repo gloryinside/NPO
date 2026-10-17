@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logAudit } from "@/lib/audit";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { notifyReceiptIssued } from "@/lib/notifications/send";
@@ -67,6 +68,16 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
     .limit(1)
     .maybeSingle();
   if (!receipt) return NextResponse.json({ error: "발급된 영수증이 없습니다." }, { status: 404 });
+  await logAudit({
+    orgId: c.tenantId,
+    actorId: guard.ctx.user.id,
+    actorEmail: guard.ctx.user.email ?? null,
+    action: "receipt.download",
+    resourceType: "receipt",
+    resourceId: receipt.receipt_code as string,
+    summary: `영수증 내려받기 (${receipt.receipt_code}, ${c.year}년)`,
+    metadata: { memberId: c.memberId },
+  });
   return downloadExisting(supabase, c, receipt.receipt_code as string);
 }
 

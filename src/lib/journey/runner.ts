@@ -212,7 +212,7 @@ export async function runJourneyForOrg(
         마이페이지: site ? `${site}/donor` : "",
         ...t.vars,
       };
-      const msg = renderJourneyEmail(step, vars, { orgName: org.name, settingsUrl: site ? `${site}/donor/settings` : null });
+      const msg = renderJourneyEmail(step, vars, { orgName: org.name, settingsUrl: site ? `${site}/donor/settings` : null, ad: step.needsMarketingConsent });
       const res = await send({ to: m.email as string, subject: msg.subject, html: msg.html });
       if (res.success) {
         report.sent++;

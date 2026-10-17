@@ -1,5 +1,7 @@
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readOfficer } from "@/lib/legal/privacy-settings";
+import { activeProcessors } from "@/lib/legal/processors";
 import { defaultPrivacyPolicy } from "@/lib/legal/default-templates";
 import { renderSimpleMarkdown } from "@/lib/markdown/simple-render";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -20,7 +22,7 @@ export default async function PrivacyPage() {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from("orgs")
-    .select("name, privacy_policy_markdown, contact_email, contact_address")
+    .select("name, privacy_policy_markdown, contact_email, contact_address, contact_phone, privacy_settings")
     .eq("id", tenant.id)
     .maybeSingle();
 
@@ -30,6 +32,9 @@ export default async function PrivacyPage() {
       orgName: data?.name ?? tenant.name,
       contactEmail: data?.contact_email ?? null,
       contactAddress: data?.contact_address ?? null,
+      contactPhone: data?.contact_phone ?? null,
+      officer: readOfficer(data?.privacy_settings),
+      processors: activeProcessors(),
     });
 
   // renderSimpleMarkdown 이 입력을 escape 한 뒤 지정 태그만 재생성하므로 안전하지만,

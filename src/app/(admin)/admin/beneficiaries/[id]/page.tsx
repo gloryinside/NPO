@@ -58,6 +58,40 @@ export default async function BeneficiaryDetailPage({
           </p>
         </section>
 
+        <section className="rounded-2xl border p-5 lg:col-span-2"
+          style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+          <h2 className="mb-1 text-sm font-semibold text-[var(--text)]">후원 신청 화면 공개</h2>
+          <p className="mb-3 text-xs text-[var(--muted-foreground)]">
+            켜면 &lsquo;결연 아동 선택&rsquo;을 켠 캠페인의 정기후원 신청 화면에 사진·소개·나이·지역(첫 낱말만)이 보이고, 이름은 성만 보입니다.
+            보호자 동의를 받은 아이만 켜 주세요. 소개는 그대로 공개되니 학교·동네처럼 아이를 알아볼 수 있는 내용은 빼 주세요.
+            {ben.reserved_until && new Date(ben.reserved_until) > new Date() && (
+              <> 지금 다른 후원자의 신청이 진행 중입니다({new Date(ben.reserved_until).toLocaleDateString("ko-KR")}까지).</>
+            )}
+          </p>
+          <JsonForm
+            url={`/api/admin/beneficiaries/${id}`}
+            method="PATCH"
+            fields={[
+              { name: "publicListing", label: "신청 화면에 공개", type: "checkbox", defaultValue: !!ben.public_listing },
+              { name: "guardianName", label: "동의한 보호자 이름", defaultValue: ben.listing_consent_by ?? "", helpText: "공개할 때 필수 — 서면·문자 등 동의 원본은 기관이 보관하세요." },
+              {
+                name: "guardianRelation", label: "아이와의 관계", type: "select", defaultValue: ben.listing_consent_relation ?? "",
+                options: [
+                  { value: "", label: "골라 주세요" },
+                  { value: "부모", label: "부모" },
+                  { value: "조부모", label: "조부모" },
+                  { value: "후견인", label: "후견인" },
+                  { value: "시설장", label: "시설장" },
+                  { value: "본인(만 14세 이상)", label: "본인(만 14세 이상)" },
+                ],
+              },
+              { name: "consentDate", label: "동의 날짜", type: "date", defaultValue: ben.listing_consent_date ?? "" },
+            ]}
+            submitLabel="저장"
+            successMessage="저장했습니다"
+          />
+        </section>
+
         <section>
           <h2 className="mb-3 text-sm font-semibold text-[var(--text)]">결연 후원자</h2>
           {sponsorships.length === 0 ? (

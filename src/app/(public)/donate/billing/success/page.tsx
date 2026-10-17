@@ -2,12 +2,16 @@ import Image from "next/image";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { completeBillingAuth } from "@/lib/billing/complete-billing-auth";
+import { isTokenShape } from "@/lib/f2f/agents";
 
 /**
  * 정기후원 카드 등록 완료(토스 결제창 requestBillingAuth의 successUrl).
  * 쿼리: promiseId(우리가 붙임), authKey·customerKey(토스가 붙임)
  */
-type SP = Promise<{ promiseId?: string; authKey?: string; customerKey?: string }>;
+type SP = Promise<{ promiseId?: string; authKey?: string; customerKey?: string; f2f?: string }>;
+
+// 현장 모금 링크 토큰이 주소에 실려 올 수 있다 — 다른 사이트로 주소가 새지 않게
+export const metadata = { referrer: "no-referrer" as const };
 
 const REASON_MESSAGE: Record<string, string> = {
   invalid_request: "잘못된 요청입니다. 후원 신청을 처음부터 다시 진행해 주세요.",
@@ -22,6 +26,8 @@ export default async function BillingSuccessPage({ searchParams }: { searchParam
   const tenant = await requireTenant();
   const sp = await searchParams;
   const result = await completeBillingAuth(createSupabaseAdminClient(), tenant.id, sp);
+  // 현장 모금(태블릿)에서 온 신청이면 마이페이지 대신 다음 신청으로
+  const nextHref = isTokenShape(sp.f2f) ? `/f2f/${sp.f2f}` : null;
 
   return (
     <main className="mx-auto max-w-xl px-4 py-16">
@@ -34,8 +40,8 @@ export default async function BillingSuccessPage({ searchParams }: { searchParam
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               매월 {result.amount.toLocaleString("ko-KR")}원이 등록하신 카드로 결제됩니다. (약정번호 {result.promiseCode})
             </p>
-            <a href="/donor" className="mt-6 inline-flex rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-glow hover:bg-[var(--accent-hover)]">
-              내 후원 보기
+            <a href={nextHref ?? "/donor"} className="mt-6 inline-flex rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-glow hover:bg-[var(--accent-hover)]">
+              {nextHref ? "다음 분 신청 받기" : "내 후원 보기"}
             </a>
           </>
         ) : (

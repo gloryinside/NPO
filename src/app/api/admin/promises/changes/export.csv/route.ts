@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/auth/api-guard'
+import { logAudit } from '@/lib/audit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { listChangesForExport } from '@/lib/promises/change-stats'
 import { CSV_BOM, csvRow } from '@/lib/csv/escape'
@@ -23,6 +24,14 @@ export async function GET(req: NextRequest) {
   const supabase = createSupabaseAdminClient()
   const rows = await listChangesForExport(supabase, guard.ctx.tenant.id, {
     sinceDays: days,
+  })
+  await logAudit({
+    orgId: guard.ctx.tenant.id,
+    actorId: guard.ctx.user.id,
+    actorEmail: guard.ctx.user.email ?? null,
+    action: 'admin.data_export',
+    resourceType: 'promise_amount_change',
+    summary: `정기후원 금액 변경 내역 내려받기 (최근 ${days}일, ${rows.length}건)`,
   })
 
   const headers = [

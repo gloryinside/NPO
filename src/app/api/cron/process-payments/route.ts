@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   // (예전: pay_day === 오늘 만 → 그날 실패하면 그 달 청구가 영영 빠졌다)
   const { data: promises, error: fetchErr } = await supabase
     .from("promises")
-    .select("id, org_id, member_id, campaign_id, amount, pay_method, pay_day, started_at")
+    .select("id, org_id, member_id, campaign_id, amount, pay_method, pay_day, started_at, designation, designation_split")
     .eq("status", "active")
     .eq("type", "regular")
     .lte("pay_day", todayDay);
@@ -88,6 +88,9 @@ export async function GET(req: NextRequest) {
         amount: promise.amount,
         pay_status: "unpaid",
         pay_method: promise.pay_method ?? "card",
+        // 후원자가 고른 목적·사업별 나눔을 매달 그대로 — 금액이 바뀌었으면 배분 때 같은 비율로 나눈다
+        designation: promise.designation ?? null,
+        designation_split: promise.designation_split ?? null,
         idempotency_key: idempotencyKey,
         pay_date: payDate <= today ? payDate : today,
       });

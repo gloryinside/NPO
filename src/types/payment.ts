@@ -15,6 +15,10 @@ export type Payment = {
   member_id: string | null;
   promise_id: string | null;
   campaign_id: string | null;
+  /** 후원자가 고른 목적(설정의 key) — 여러 사업을 담았으면 null */
+  designation?: string | null;
+  /** 사업별 금액 (lib/donations/designation-basket SplitItem[]) */
+  designation_split?: unknown;
   amount: number;
   pay_date: string | null;
   deposit_date: string | null;

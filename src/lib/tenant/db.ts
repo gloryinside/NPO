@@ -112,6 +112,10 @@ export const TENANT_TABLES = [
   'virtual_account_mappings',
   'volunteer_activities',
   'withdrawal_consents',
+  'f2f_agents',
+  'form_ab_tests',
+  'form_ab_views',
+  'consent_records',
 ] as const
 
 export type TenantTable = (typeof TENANT_TABLES)[number]

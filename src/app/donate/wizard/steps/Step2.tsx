@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { sanitizeHtml } from '@/lib/campaign-builder/sanitize-html';
 import PayMethodSelector from '@/components/public/donation/PayMethodSelector';
 import AgreementSection from '@/components/public/donation/AgreementSection';
+import { UNDER_14_MESSAGE } from '@/lib/legal/consent';
 import { getAddressSearch } from '@/lib/address/search';
 import { requestAccountBillingAuth } from '@/lib/billing/account-billing-client';
 import { REGULAR_PAY_METHODS } from '@/lib/billing/regular-flow';
@@ -113,6 +114,8 @@ export function Step2({
   setState,
   onBack,
   onDone,
+  f2fToken,
+  abTag,
 }: {
   campaign: { id: string; slug: string; title: string };
   settings: FormSettings;
@@ -120,6 +123,10 @@ export function Step2({
   setState: (s: WizardState) => void;
   onBack: () => void;
   onDone: () => void;
+  /** 현장 모금(태블릿) 링크 토큰 — 있으면 신청에 모금가가 붙는다 */
+  f2fToken?: string;
+  /** 신청 화면 A/B 비교 — 서버가 방문자 id로 안을 다시 정한다 */
+  abTag?: { testId: string; visitorId: string };
 }) {
   const [info, setInfo] = useState({ name: '', dob: '', mobile: '', email: '', postalCode: '', address1: '', address2: '' });
   const [donorType, setDonorType] = useState<DonorType>('individual');
@@ -143,7 +150,7 @@ export function Step2({
   const [receipt, setReceipt] = useState(settings.requireReceipt);
   const [identityVerified, setIdentityVerified] = useState(false);
   const [identityName, setIdentityName] = useState('');
-  const [ag, setAg] = useState({ terms: false, privacy: false, receipt: false, marketing: false });
+  const [ag, setAg] = useState({ terms: false, privacy: false, over14: false, receipt: false, marketing: false });
   // 연말정산 간소화 반영용 주민등록번호 — 영수증 신청 시에만, 별도 동의 필수
   const [rrn, setRrn] = useState('');
   const [rrnConsent, setRrnConsent] = useState(false);
@@ -178,7 +185,8 @@ export function Step2({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit() {
-    if (!ag.terms || !ag.privacy) return void toast.error('필수 약관에 동의해 주세요.');
+    if (!ag.terms || !ag.privacy) return void toast.error('필수 약관과 개인정보 수집·이용에 동의해 주세요.');
+    if (!ag.over14) return void toast.error(UNDER_14_MESSAGE);
     const rrnDigits = rrn.replace(/\D/g, '');
     if (receipt && donorType === 'corporate' && businessNo.replace(/\D/g, '').length !== 10) {
       return void toast.error('영수증을 받으려면 사업자등록번호 10자리를 입력해 주세요.');
@@ -197,7 +205,14 @@ export function Step2({
         campaignId: campaign.id,
         amount: state.amount,
         donationType: state.type,
-        designation: state.designation,
+        designation: state.basket ? undefined : state.designation,
+        basket: state.basket,
+        beneficiaryId: state.type === 'regular' ? state.beneficiaryId : undefined,
+        f2fToken,
+        // 서버가 다시 확인하고 동의 기록으로 남긴다
+        consents: { terms: ag.terms, privacy: ag.privacy, over14: ag.over14, marketing: !!settings.marketingOptInLabel && ag.marketing },
+        abTestId: abTag?.testId,
+        abVisitorId: abTag?.visitorId,
         memberName: info.name,
         memberPhone: info.mobile,
         memberEmail: info.email,
@@ -221,11 +236,18 @@ export function Step2({
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return void toast.error((err as Record<string, string>)?.error ?? '후원 준비 중 오류가 발생했습니다.');
+      toast.error((err as Record<string, string>)?.error ?? '후원 준비 중 오류가 발생했습니다.');
+      // 고른 아이를 다른 분이 먼저 신청했으면 첫 단계로 돌아가 다시 고르게 한다
+      if (res.status === 409 && state.beneficiaryId) {
+        setState({ ...state, beneficiaryId: undefined, idempotencyKey: crypto.randomUUID() });
+        onBack();
+      }
+      return;
     }
 
     const data = (await res.json()) as {
       offline?: boolean;
+      paymentId?: string;
       orderId?: string;
       paymentCode?: string;
       amount?: number;
@@ -237,7 +259,7 @@ export function Step2({
 
     // 오프라인 결제(transfer/cms/manual) — 계좌 안내 후 Step3로 이동
     if (data.offline) {
-      setState({ ...state, donorInfo: info, paymentMethod: method, customFields, receiptOptIn: receipt, paymentCode: data.paymentCode });
+      setState({ ...state, donorInfo: info, paymentMethod: method, customFields, receiptOptIn: receipt, paymentCode: data.paymentCode, paymentId: data.paymentId });
       onDone();
       return;
     }
@@ -247,6 +269,8 @@ export function Step2({
     if (state.type === 'regular' && data.billingAuth && data.tossClientKey) {
       const back = new URL('/donate/billing/success', window.location.origin);
       back.searchParams.set('promiseId', data.billingAuth.promiseId);
+      // 현장 모금이면 등록 완료 화면에서 다음 신청으로 돌아올 수 있게
+      if (f2fToken) back.searchParams.set('f2f', f2fToken);
       // 자동이체 — 토스 계좌 자동결제 등록 창(연동 자리: lib/billing/account-billing-client)
       if (data.billingAuth.method === 'account') {
         try {
@@ -525,14 +549,16 @@ export function Step2({
           allChecked:
             ag.terms &&
             ag.privacy &&
+            ag.over14 &&
             (!settings.requireReceipt || ag.receipt) &&
             (!settings.marketingOptInLabel || ag.marketing),
           terms: ag.terms,
           privacy: ag.privacy,
+          over14: ag.over14,
           receipt: ag.receipt ?? false,
           marketing: ag.marketing,
         }}
-        onChange={(v: { terms: boolean; privacy: boolean; receipt: boolean; marketing: boolean }) => setAg({ terms: v.terms, privacy: v.privacy, receipt: v.receipt, marketing: v.marketing })}
+        onChange={(v: { terms: boolean; privacy: boolean; over14: boolean; receipt: boolean; marketing: boolean }) => setAg({ terms: v.terms, privacy: v.privacy, over14: v.over14, receipt: v.receipt, marketing: v.marketing })}
       />
 
       <div className="flex gap-2">

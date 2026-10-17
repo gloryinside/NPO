@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ReceiptIssueButton } from "@/components/admin/receipt-issue-button";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
+import { logAudit } from "@/lib/audit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   Table,
@@ -137,7 +138,7 @@ export default async function MemberDetailPage({
   params: RouteParams;
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
   const { id } = await params;
   const { tab } = await searchParams;
   const initialTab: TabId = TABS.includes(tab as TabId) ? (tab as TabId) : "basic";
@@ -172,6 +173,16 @@ export default async function MemberDetailPage({
 
     if (!memberData) notFound();
     member = memberData as Member;
+    // 개인정보 처리 기록 — 누가 언제 어느 후원자 정보를 봤는지(안전성 확보조치 기준 접속기록)
+    void logAudit({
+      orgId: tenant.id,
+      actorId: adminUser.id,
+      actorEmail: adminUser.email ?? null,
+      action: "member.view",
+      resourceType: "member",
+      resourceId: id,
+      summary: `후원자 정보 조회 (${(memberData as { member_code?: string }).member_code ?? id})`,
+    });
 
     const [promisesRes, paymentsRes, stateMap, cheerRes, receiptRes] = await Promise.all([
       supabase

@@ -7,6 +7,7 @@
  */
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getClientIp } from "@/lib/rate-limit";
 
 export type AuditAction =
   // 후원자
@@ -37,6 +38,20 @@ export type AuditAction =
   | "cms.consent_revoke"
   | "journey.update"
   | "settings.admin_mfa"
+  | "beneficiary.public_listing"
+  | "sponsor_letter.write"
+  | "f2f.agent_create"
+  | "f2f.agent_revoke"
+  | "f2f.consent_sign"
+  | "disclosure.nts_save"
+  | "member.view"
+  | "settings.privacy_officer"
+  | "receipt.download"
+  | "membership.plan_save"
+  | "membership.plan_assign"
+  | "membership.fee_record"
+  | "ab_test.start"
+  | "ab_test.stop"
   // 캠페인
   | "campaign.create"
   | "campaign.update"
@@ -114,8 +129,20 @@ export type AuditLogInput = {
  * });
  * ```
  */
+/** 요청 안에서 부른 경우 접속지(IP) — 크론 등 요청 밖이면 null */
+async function requestIp(): Promise<string | null> {
+  try {
+    const { headers } = await import("next/headers");
+    const ip = getClientIp(await headers());
+    return ip && ip !== "unknown" ? ip.slice(0, 64) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function logAudit(input: AuditLogInput): Promise<void> {
   const supabase = createSupabaseAdminClient();
+  const ip_address = await requestIp();
   const { error } = await supabase.from("audit_logs").insert({
     org_id: input.orgId,
     actor_id: input.actorId ?? null,
@@ -125,6 +152,7 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
     resource_id: input.resourceId ?? null,
     summary: input.summary ?? null,
     metadata: input.metadata ?? null,
+    ip_address,
   });
 
   if (error) {

@@ -21,6 +21,7 @@ import { FilterBar, FilterDropdown } from "@/components/common/filter-bar";
 import { formatDate, formatKRW, formatKRW as formatAmount } from "@/lib/format";
 import { toast } from "sonner";
 import { PAY_STATUS_LABEL, INCOME_STATUS_LABEL } from "@/lib/labels";
+import { readSplit, scaleSplit } from "@/lib/donations/designation-basket";
 
 type Props = {
   payments: PaymentWithRelations[];
@@ -634,6 +635,21 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
                 <dd className="text-[var(--text)]">{detailTarget.pg_method ?? "-"}</dd>
                 <dt className="text-[var(--muted-foreground)]">캠페인</dt>
                 <dd className="text-[var(--text)]">{detailTarget.campaigns?.title ?? "-"}</dd>
+                {readSplit(detailTarget.designation_split).length > 0 && (
+                  <>
+                    <dt className="text-[var(--muted-foreground)]">후원 사업</dt>
+                    <dd className="text-[var(--text)]">
+                      <ul className="space-y-0.5">
+                        {scaleSplit(readSplit(detailTarget.designation_split), Number(detailTarget.amount)).map((d) => (
+                          <li key={d.key} className="flex justify-between gap-3">
+                            <span>{d.label}</span>
+                            <span className="tabular-nums">{formatKRW(d.amount)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </dd>
+                  </>
+                )}
                 <dt className="text-[var(--muted-foreground)]">납부상태</dt>
                 <dd><PayStatusBadge status={detailTarget.pay_status} /></dd>
                 <dt className="text-[var(--muted-foreground)]">수입상태</dt>

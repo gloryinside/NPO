@@ -1,8 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { Content, TableCell, TDocumentDefinitions } from "pdfmake/interfaces";
 import { formatKRW as formatAmount } from "@/lib/format";
 import { maskRrn } from "./validation";
+import { renderPdf } from "@/lib/pdf/pdfmake";
 
 /**
  * 기부금영수증 PDF — 소득세법 시행규칙 [별지 제45호의2서식] <개정 2021. 3. 16.> 구성을 따른다.
@@ -48,35 +47,6 @@ export type ReceiptData = {
   /** 진위 확인 주소(QR) — 없으면 생략 */
   verifyUrl?: string | null;
 };
-
-type PdfOutputDocument = { getBuffer(): Promise<Buffer> };
-type PdfMakeSingleton = {
-  setFonts(fonts: Record<string, { normal: string; bold: string; italics?: string; bolditalics?: string }>): void;
-  setUrlAccessPolicy(cb: (url: string) => boolean): void;
-  createPdf(def: TDocumentDefinitions): PdfOutputDocument;
-};
-
-const fontsDir = path.join(process.cwd(), "public", "fonts");
-let configured = false;
-
-function getPdfMake(): PdfMakeSingleton {
-  const regular = path.join(fontsDir, "NotoSansKR-Regular.ttf");
-  const bold = path.join(fontsDir, "NotoSansKR-Bold.ttf");
-  if (!fs.existsSync(regular) || !fs.existsSync(bold)) {
-    throw new Error(
-      "Korean font files not found. Place NotoSansKR-Regular.ttf and NotoSansKR-Bold.ttf in public/fonts/ — see public/fonts/README.md for download instructions."
-    );
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfmake = require("pdfmake") as PdfMakeSingleton;
-  if (!configured) {
-    pdfmake.setFonts({ NotoSansKR: { normal: regular, bold, italics: regular, bolditalics: bold } });
-    // 영수증 문서는 외부 리소스를 참조하지 않는다 — SSRF 방어 목적으로 전 URL 차단.
-    pdfmake.setUrlAccessPolicy(() => false);
-    configured = true;
-  }
-  return pdfmake;
-}
 
 /** 표기용 기부자 번호: 주민등록번호는 가리고, 사업자등록번호(10자리)는 그대로 */
 export function displayDonorId(raw: string | null): string {
@@ -224,6 +194,5 @@ export function buildReceiptDocDefinition(data: ReceiptData): TDocumentDefinitio
 
 /** 기부금영수증 PDF 를 생성해 Buffer 로 반환 */
 export async function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
-  const pdfmake = getPdfMake();
-  return await pdfmake.createPdf(buildReceiptDocDefinition(data)).getBuffer();
+  return renderPdf(buildReceiptDocDefinition(data));
 }

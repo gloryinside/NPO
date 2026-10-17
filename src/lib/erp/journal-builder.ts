@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { allocateSplit, readSplit } from "@/lib/donations/designation-basket";
 
 /**
  * 결제 한 건 → 분개(JournalLine) 미리보기 생성.
@@ -201,14 +202,31 @@ export async function autoAllocateToPrograms(
 
   const { data: payment } = await supabase
     .from("payments")
-    .select("id, amount, campaign_id")
+    .select("id, amount, campaign_id, designation_split")
     .eq("id", paymentId)
     .eq("org_id", orgId)
     .maybeSingle();
-  if (!payment || !payment.campaign_id) return { allocated: 0, programs: 0 };
+  if (!payment) return { allocated: 0, programs: 0 };
 
   const amount = Number(payment.amount ?? 0);
   if (amount <= 0) return { allocated: 0, programs: 0 };
+
+  // 후원자가 사업을 직접 골랐으면(지정기부) 그 나눔이 캠페인 배분 규칙보다 먼저다
+  const donorShares = allocateSplit(readSplit(payment.designation_split), amount);
+  if (donorShares.length > 0) {
+    const { error } = await supabase.from("payment_program_allocations").insert(
+      donorShares.map((s) => ({
+        org_id: orgId, payment_id: paymentId, program_id: s.programId, amount: s.amount,
+        source: "auto", notes: "후원자 지정",
+      })),
+    );
+    if (error) {
+      console.error("[journal-builder] donor allocation failed:", error.message);
+      return { allocated: 0, programs: 0 };
+    }
+    return { allocated: donorShares.reduce((a, s) => a + s.amount, 0), programs: donorShares.length };
+  }
+  if (!payment.campaign_id) return { allocated: 0, programs: 0 };
 
   // 해당 캠페인에 연결된 program_funding 룰
   const { data: fundings } = await supabase

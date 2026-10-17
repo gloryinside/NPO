@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { SponsorLetters } from "@/components/donor/sponsor-letters";
 
 export const metadata = { title: "내 결연" };
 
@@ -129,6 +130,8 @@ export default async function DonorSponsorshipsPage() {
                     </ul>
                   </div>
                 )}
+
+                <SponsorLetters sponsorshipId={s.id} canWrite={s.status === "active"} childName={ben?.name ?? "아이"} />
               </section>
             );
           })}

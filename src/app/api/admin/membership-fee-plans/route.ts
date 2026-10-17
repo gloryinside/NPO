@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readJsonObject } from "@/lib/http/body";
-
-const VALID_CYCLE = new Set(["annual", "monthly", "one_time"]);
+import { logAudit } from "@/lib/audit";
+import { parsePlanInput } from "@/lib/membership/fees";
 
 export async function GET() {
   const guard = await requireAdminApi();
@@ -21,32 +21,33 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
-  const { tenant } = guard.ctx;
+  const { tenant, user } = guard.ctx;
 
   const parsed = await readJsonObject(req);
   if (!parsed.ok) return parsed.response;
-  const body = parsed.body;
-
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const feeAmount = Number(body.feeAmount ?? NaN);
-  const cycle = typeof body.cycle === "string" ? body.cycle : "";
-  if (!name || !(feeAmount > 0) || !VALID_CYCLE.has(cycle)) {
-    return NextResponse.json({ error: "name, feeAmount(>0), cycle 필수" }, { status: 400 });
-  }
+  const input = parsePlanInput(parsed.body);
+  if (!input.ok) return NextResponse.json({ error: input.error }, { status: 400 });
 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("membership_fee_plans")
     .insert({
       org_id: tenant.id,
-      name, fee_amount: feeAmount, cycle,
-      description: typeof body.description === "string" ? body.description : null,
-      active: body.active !== false,
+      name: input.value.name,
+      fee_amount: input.value.feeAmount,
+      cycle: input.value.cycle,
+      description: input.value.description,
+      active: parsed.body.active !== false,
     })
     .select("id").maybeSingle();
   if (error) {
-    if (error.code === "23505") return NextResponse.json({ error: "이미 존재하는 이름" }, { status: 409 });
+    if (error.code === "23505") return NextResponse.json({ error: "같은 이름의 회비가 있습니다." }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await logAudit({
+    orgId: tenant.id, actorId: user.id, actorEmail: user.email ?? null,
+    action: "membership.plan_save", resourceType: "membership_fee_plan", resourceId: data?.id ?? null,
+    summary: `회비 종류 추가 (${input.value.name})`,
+  });
   return NextResponse.json({ id: data?.id });
 }

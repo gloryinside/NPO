@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 
 const REFERRAL_STORAGE_KEY = "donor:referralCode";
 
+/** 8자 이상, 영문과 숫자를 모두 포함 */
+function isStrongPassword(pw: string): boolean {
+  return pw.length >= 8 && /[A-Za-z]/.test(pw) && /\d/.test(pw);
+}
+
 export function DonorSignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,6 +46,7 @@ export function DonorSignupForm() {
   }, [searchParams]);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -52,8 +58,12 @@ export function DonorSignupForm() {
       setError("비밀번호가 일치하지 않습니다.");
       return;
     }
-    if (password.length < 6) {
-      setError("비밀번호는 6자 이상이어야 합니다.");
+    if (!isStrongPassword(password)) {
+      setError("비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.");
+      return;
+    }
+    if (!agreed) {
+      setError("개인정보 수집·이용과 만 14세 이상에 동의해 주세요.");
       return;
     }
 
@@ -187,6 +197,18 @@ export function DonorSignupForm() {
               placeholder="••••••••"
               className="border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] placeholder:text-[var(--muted-foreground)]"
             />
+          </div>
+
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs text-[var(--muted-foreground)]">
+            <p>
+              <b className="text-[var(--text)]">개인정보 수집·이용 (필수)</b> — 목적: 마이페이지 계정 관리(로그인, 후원 내역·영수증 확인) ·
+              항목: 이메일, 비밀번호(암호화 저장) · 보유기간: 회원 탈퇴 시까지 · 동의하지 않으면 계정을 만들 수 없으며, 후원은 계정 없이도 할 수 있습니다.{" "}
+              <a href="/privacy" target="_blank" rel="noopener" className="underline">개인정보 처리방침</a>
+            </p>
+            <label className="mt-2 flex items-center gap-2 text-sm text-[var(--text)]">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              위 내용에 동의하며, 만 14세 이상입니다.
+            </label>
           </div>
 
           {error && <p className="text-sm text-[var(--negative)]">{error}</p>}
