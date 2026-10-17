@@ -21,17 +21,19 @@ CREATE TABLE IF NOT EXISTS referral_codes (
 );
 
 -- 전역 unique (대소문자 무시 이미 lower 제약으로 보장)
-CREATE UNIQUE INDEX idx_referral_codes_code ON referral_codes(code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_referral_codes_code ON referral_codes(code);
 
 -- 회원당 1개만
-CREATE UNIQUE INDEX idx_referral_codes_member ON referral_codes(member_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_referral_codes_member ON referral_codes(member_id);
 
 ALTER TABLE referral_codes ENABLE ROW LEVEL SECURITY;
 
 -- 같은 org의 admin만 조회
+-- (2026-10-17) 존재하지 않는 admin_users 참조 → is_org_admin()
+DROP POLICY IF EXISTS referral_codes_admin_read ON referral_codes;
 CREATE POLICY referral_codes_admin_read
   ON referral_codes FOR SELECT
-  USING (org_id IN (SELECT org_id FROM admin_users WHERE supabase_uid = auth.uid()));
+  USING (is_org_admin(org_id));
 
 COMMENT ON TABLE referral_codes IS '후원자 초대용 공유 코드 (member당 1개)';
 

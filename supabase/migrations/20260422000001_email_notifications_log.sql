@@ -30,9 +30,11 @@ CREATE UNIQUE INDEX idx_email_notifications_log_unique_campaign_thanks
 ALTER TABLE email_notifications_log ENABLE ROW LEVEL SECURITY;
 
 -- Admin만 조회 가능 (cron은 service_role key로 RLS bypass)
+-- (2026-10-17) 존재하지 않는 admin_users 참조 → is_org_admin()
+DROP POLICY IF EXISTS email_notifications_log_admin_read ON email_notifications_log;
 CREATE POLICY email_notifications_log_admin_read
   ON email_notifications_log FOR SELECT
-  USING (org_id IN (SELECT org_id FROM admin_users WHERE supabase_uid = auth.uid()));
+  USING (is_org_admin(org_id));
 
 COMMENT ON TABLE email_notifications_log IS '자동화 이메일 발송 로그 — 중복 방지 및 감사 추적용';
 COMMENT ON COLUMN email_notifications_log.kind IS '이메일 종류 — churn_risk_weekly, campaign_closed_thanks 등';

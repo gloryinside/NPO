@@ -28,15 +28,8 @@ create index if not exists idx_members_unit on members (org_id, unit_id);
 create index if not exists idx_payments_unit on payments (org_id, unit_id);
 create index if not exists idx_promises_unit on promises (org_id, unit_id);
 
--- admin_users 에 unit_id (있는 컬럼인지 확인 — 없을 수도 있어 조건부)
-alter table admin_users add column if not exists unit_id uuid references org_units(id) on delete set null;
-alter table admin_users add column if not exists unit_scope text default 'org'
-  check (unit_scope in ('org','unit','sub_units'));
---   org: 전체 org 접근 (기본)
---   unit: 자신의 unit_id 데이터만
---   sub_units: 자신의 unit + 모든 하위 unit 데이터
-
-create index if not exists idx_admin_users_unit on admin_users (org_id, unit_id);
+-- (2026-10-17) 원래 admin_users.unit_id/unit_scope를 추가했으나 admin_users 테이블이 없어 적용 불가였다.
+-- 관리자 신원은 auth.users app_metadata에 있다(20261016000002). 단위별 관리자 범위는 앱에 아직 없으므로 두지 않는다.
 
 alter table org_units enable row level security;
 drop policy if exists "org_units_admin_all" on org_units;
@@ -51,29 +44,11 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (
-    select 1 from admin_users au
-    where au.supabase_uid = auth.uid()
-      and au.org_id = target_org
-      and (
-        au.unit_scope = 'org'                                -- 전체 접근
-        or (au.unit_scope = 'unit' and au.unit_id = target_unit)  -- 자기 unit만
-        or (au.unit_scope = 'sub_units' and (
-          au.unit_id = target_unit
-          or target_unit in (
-            with recursive sub as (
-              select id from org_units where id = au.unit_id
-              union all
-              select c.id from org_units c join sub on c.parent_id = sub.id
-            )
-            select id from sub
-          )
-        ))
-      )
-  );
+  -- 단위별 관리자 범위가 생기기 전까지는 기관 관리자면 모든 단위 접근
+  select is_org_admin(target_org);
 $$;
 
 comment on table org_units is
   '조직 단위(지부/본부). 계층 구조 지원 (parent_id). admin이 unit_id로 데이터 격리.';
 comment on function can_admin_access_unit is
-  'admin이 특정 unit 데이터를 볼 수 있는지 평가. unit_scope에 따라 org/unit/sub_units 분기.';
+  'admin이 특정 unit 데이터를 볼 수 있는지 평가. 현재는 기관 관리자 여부만 본다(단위별 범위 미구현).';
