@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
+import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
@@ -8,6 +9,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
   const { tenant, user } = guard.ctx;
+  // 링크로 받은 서명은 출금동의로 기록되므로, 관리자 화면에서 출금동의를 기록할 수 있는 사람(회계 담당)만 링크를 다룬다
+  if (!(await hasAnyRole(user.id, tenant.id, ["finance"]))) {
+    return NextResponse.json({ error: "회계 담당자 권한이 필요합니다." }, { status: 403 });
+  }
   const { id } = await params;
 
   const { data, error } = await createSupabaseAdminClient()

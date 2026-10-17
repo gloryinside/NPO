@@ -13,7 +13,8 @@ import { CONSENT_WINDOW_MS, decodeSignature, resolveAgent } from "@/lib/f2f/agen
  *   { token, paymentId, payerName, payerRelation, bankName, account(끝 4자리), signature(PNG data URL) }
  *
  * 조건: 같은 모금가 링크로 1시간 안에 접수된 자동이체 정기후원 신청. 서명 이미지는 비공개 버킷(consent-evidence)에 둔다.
- * 기록되면 출금동의 대기 약정이 진행 중으로 바뀐다(관리자 화면에서 기록할 때와 같다).
+ * 이번 신청으로 새로 생긴 후원자면 출금동의 대기 약정이 진행 중으로 바뀐다. 기존 후원자 연락처로 들어온 신청은
+ * 동의만 남기고 관리자 확인을 기다린다(남의 번호로 신청하는 것을 막기 위해).
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers);
@@ -86,13 +87,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: saved.error }, { status: 409 });
   }
 
-  const { data: upd } = await supabase
-    .from("promises")
-    .update({ status: "active", updated_at: now.toISOString() })
-    .eq("id", payment.promise_id)
+  // 이번 신청으로 새로 생긴 후원자만 바로 시작한다. 기존 후원자 번호로 들어온 신청은 다른 사람이 남의 번호를 넣었을 수
+  // 있으므로(현장 태블릿은 본인 확인이 없다) 출금동의는 남기되 약정은 대기로 두고 관리자가 확인한다.
+  const { data: member } = await supabase
+    .from("members")
+    .select("created_at")
+    .eq("id", payment.member_id)
     .eq("org_id", tenant.id)
-    .eq("status", "pending_billing")
-    .select("id");
+    .maybeSingle();
+  const newMember =
+    !!member && new Date(member.created_at as string).getTime() >= new Date(payment.created_at as string).getTime() - 5 * 60_000;
+
+  const { data: upd } = newMember
+    ? await supabase
+        .from("promises")
+        .update({ status: "active", updated_at: now.toISOString() })
+        .eq("id", payment.promise_id)
+        .eq("org_id", tenant.id)
+        .eq("status", "pending_billing")
+        .select("id")
+    : { data: [] as { id: string }[] };
+  if (!newMember) {
+    await supabase.from("admin_notifications").insert({
+      org_id: tenant.id,
+      kind: "f2f_review",
+      title: "현장 신청 확인이 필요해요",
+      body: `이미 등록된 후원자의 연락처로 현장 자동이체 신청이 들어왔습니다(모금가 ${agent.name}). 본인 신청이 맞는지 확인한 뒤 정기후원 관리에서 출금동의를 확인해 시작해 주세요.`,
+      link: "/admin/promises",
+    });
+  }
 
   await logAudit({
     orgId: tenant.id,
@@ -102,7 +125,7 @@ export async function POST(req: NextRequest) {
     resourceType: "promise",
     resourceId: payment.promise_id,
     summary: `현장 출금동의 서명 (${agent.name}/${agent.code})`,
-    metadata: { consentId: saved.id, activated: (upd?.length ?? 0) > 0 },
+    metadata: { consentId: saved.id, activated: (upd?.length ?? 0) > 0, existingMember: !newMember },
   });
   return NextResponse.json({ ok: true });
 }
