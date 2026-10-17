@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 
 /**
  * G-D28: 후원자 포털 에러 바운더리
@@ -26,7 +27,13 @@ export default function DonorError({
         className="w-full max-w-md rounded-2xl border p-8 text-center"
         style={{ borderColor: "var(--border)", background: "var(--surface)" }}
       >
-        <p className="text-5xl mb-4" aria-hidden="true">⚠️</p>
+        <Image
+          src="/img/error/500.webp"
+          alt=""
+          width={480}
+          height={320}
+          className="art-adapt mx-auto mb-4 h-52 w-auto"
+        />
         <h2
           className="text-lg font-semibold"
           style={{ color: "var(--text)" }}
@@ -51,14 +58,14 @@ export default function DonorError({
           <button
             type="button"
             onClick={reset}
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-glow transition-opacity hover:opacity-90"
             style={{ background: "var(--accent)" }}
           >
             다시 시도
           </button>
           <a
             href="/donor"
-            className="rounded-lg border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
+            className="rounded-xl border px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-80"
             style={{
               borderColor: "var(--border)",
               background: "var(--surface-2)",

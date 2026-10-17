@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useDonorT } from "@/lib/i18n/use-donor-t";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type LoginRecord = {
   id: string;
@@ -23,6 +24,7 @@ function parseUA(ua: string | null): string {
 
 export function SessionsCard() {
   const t = useDonorT();
+  const confirm = useConfirm();
   const [records, setRecords] = useState<LoginRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -42,7 +44,13 @@ export function SessionsCard() {
   useEffect(() => { load(); }, [load]);
 
   async function signOutAll() {
-    if (!confirm(t("donor.sessions.confirm_signout_all"))) return;
+    if (
+      !(await confirm({
+        title: t("donor.sessions.confirm_signout_all"),
+        confirmText: t("donor.sessions.signout_all"),
+        tone: "danger",
+      }))
+    ) return;
     setSigningOut(true);
     try {
       const supabase = createSupabaseBrowserClient();

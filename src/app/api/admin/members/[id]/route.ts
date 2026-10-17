@@ -1,3 +1,4 @@
+import { checkRrn } from "@/lib/receipt/validation";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -191,9 +192,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       update.id_number_encrypted = null;
     } else {
       const raw = idNumber.replace(/-/g, "").trim();
-      if (!/^\d{13}$/.test(raw)) {
+      // 형식·생년월일·성별 자리 검증(2020-10 이후 번호는 체크섬이 없어 체크섬은 보지 않는다)
+      const rrnCheck = checkRrn(raw);
+      if (!rrnCheck.ok) {
         return NextResponse.json(
-          { error: "주민등록번호는 13자리 숫자여야 합니다." },
+          { error: rrnCheck.reason === "format" ? "주민등록번호는 13자리 숫자여야 합니다." : "주민등록번호를 다시 확인해 주세요." },
           { status: 400 }
         );
       }
@@ -215,6 +218,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         );
       }
       update.id_number_encrypted = enc;
+      // 관리자 입력 = 기관이 별도로 받은 고유식별정보 처리 동의에 근거(동의서 보관 책임은 기관)
+      update.rrn_consent_at = new Date().toISOString();
     }
   }
 
@@ -223,7 +228,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     .update(update)
     .eq("id", id)
     .eq("org_id", tenant.id)
-    .select("*")
+    // 암호문 컬럼(id_number_encrypted)은 브라우저로 보내지 않는다
+    .select("id, member_code, name, phone, email, birth_date, status, updated_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

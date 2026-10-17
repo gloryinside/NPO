@@ -51,7 +51,7 @@ export function LogoWithText({
       }}
     >
       {showPowered && (
-        <span style={{ fontWeight: 400, color: 'var(--muted-foreground)' }}>
+        <span style={{ fontWeight: 400, opacity: 0.7 }}>
           Powered by
         </span>
       )}

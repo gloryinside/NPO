@@ -95,7 +95,7 @@ const PAY_STATUS_LABEL: Record<PayStatus, string> = {
   unpaid: "미납",
   failed: "실패",
   cancelled: "취소",
-  refunded: "환��",
+  refunded: "환불",
   pending: "대기",
 };
 

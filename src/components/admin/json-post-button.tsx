@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 /**
  * 단순한 "버튼 → fetch(url, body) → router.refresh()" 헬퍼.
@@ -25,11 +26,12 @@ export function JsonPostButton({
   onSuccess?: (data: unknown) => void;
 }) {
   const router = useRouter();
+  const askConfirm = useConfirm();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function submit() {
-    if (confirm && !window.confirm(confirm)) return;
+  async function submit() {
+    if (confirm && !(await askConfirm({ title: confirm, tone: variant === "danger" ? "danger" : "default" }))) return;
     setError(null);
     startTransition(async () => {
       try {

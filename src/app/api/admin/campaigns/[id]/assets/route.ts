@@ -69,12 +69,15 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       public_url: publicUrl,
       mime_type: file.type,
       size_bytes: file.size,
-      original_name: file.name,
     })
     .select()
     .single();
 
-  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
+  if (dbError) {
+    // 기록 실패 시 방금 올린 파일을 지워 고아 파일을 남기지 않는다
+    await admin.storage.from('campaign-assets').remove([storagePath]);
+    return NextResponse.json({ error: dbError.message }, { status: 500 });
+  }
 
   return NextResponse.json({ asset }, { status: 201 });
 }

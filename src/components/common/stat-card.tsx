@@ -36,16 +36,16 @@ export function StatCard({ label, value, delta, hint, tone = 'default' }: StatCa
   return (
     <div
       data-slot="stat-card"
-      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
+      className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card"
     >
       <div className="flex items-center justify-between">
-        <div className="text-[11px] uppercase tracking-[0.5px] text-[var(--muted-foreground)]">
+        <div className="text-xs font-medium text-[var(--muted-foreground)]">
           {label}
         </div>
         {delta && (
           <span
             data-slot="stat-delta"
-            className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] ${DELTA_TONE_CLASS[delta.tone]}`}
+            className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${DELTA_TONE_CLASS[delta.tone]}`}
           >
             <span aria-hidden="true">{DIRECTION_SYMBOL[delta.direction]}</span>
             {delta.value}
@@ -54,12 +54,12 @@ export function StatCard({ label, value, delta, hint, tone = 'default' }: StatCa
       </div>
       <div
         data-slot="stat-value"
-        className={`mt-1 text-[22px] font-bold ${VALUE_TONE_CLASS[tone]}`}
+        className={`mt-2 text-[1.625rem] font-bold leading-none tracking-[-0.025em] tabular-nums ${VALUE_TONE_CLASS[tone]}`}
       >
         {value}
       </div>
       {hint && (
-        <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
+        <div className="mt-1.5 text-xs text-[var(--muted-foreground)]">
           {hint}
         </div>
       )}

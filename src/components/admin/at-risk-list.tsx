@@ -137,6 +137,7 @@ export function AtRiskList({ members }: { members: ChurnRiskMember[] }) {
         rows={filtered}
         rowKey={(m) => m.memberId}
         emptyMessage="이탈 위험 후원자가 없습니다."
+        emptyIllustration="allclear"
         rowActions={(m) => (
           <a
             href={`/admin/members/${m.memberId}`}

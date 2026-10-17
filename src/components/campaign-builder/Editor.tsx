@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { Block, PageContent } from '@/lib/campaign-builder/blocks/schema';
 import { Canvas } from './Canvas';
 import { Palette } from './Palette';
@@ -18,6 +20,7 @@ export function Editor({
   initialContent: PageContent;
   initialFormSettings: any;
 }) {
+  const confirm = useConfirm();
   const [content, setContent] = useState<PageContent>(initialContent);
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
@@ -109,14 +112,23 @@ export function Editor({
 
   async function handlePreview() {
     const token = previewToken ?? (await fetch(`/api/admin/campaigns/${campaignId}/preview-token`, { method: 'POST' }).then(r => r.json()).then(d => d.token).catch(() => null));
-    if (!token) return alert('미리보기 토큰 생성 실패');
+    if (!token) return toast.error('미리보기 토큰 생성 실패');
     window.open(`/campaigns/${campaignSlug}/preview?token=${token}`, '_blank');
   }
 
   async function handlePublish() {
-    if (!confirm('게시하면 공개 페이지가 즉시 업데이트됩니다. 계속하시겠습니까?')) return;
+    if (
+      !(await confirm({
+        title: '캠페인 페이지를 게시할까요?',
+        description: '게시하면 공개 페이지가 즉시 업데이트됩니다. 계속하시겠습니까?',
+        confirmText: '게시',
+        tone: 'danger',
+      }))
+    )
+      return;
     const res = await fetch(`/api/admin/campaigns/${campaignId}/publish`, { method: 'POST' });
-    alert(res.ok ? '게시되었습니다.' : '게시 실패');
+    if (res.ok) toast.success('게시되었습니다.');
+    else toast.error('게시 실패');
   }
 
   const previewSrc = previewToken

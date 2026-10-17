@@ -9,6 +9,7 @@ import { CheerWall } from "@/components/cheer/CheerWall";
 import { LiveProgressBar } from "@/components/campaign-blocks/LiveProgressBar";
 import { RecentDonorFeed } from "@/components/campaign-blocks/RecentDonorFeed";
 import { PersonalizedGreeting } from "@/components/campaign-blocks/PersonalizedGreeting";
+import { DEFAULT_OG_IMAGE } from "@/lib/brand-images";
 
 export const revalidate = 60;
 
@@ -39,7 +40,7 @@ export async function generateMetadata({
   const imageUrl =
     (campaign.og_image_url as string | null) ||
     (campaign.thumbnail_url as string | null) ||
-    undefined;
+    DEFAULT_OG_IMAGE;
 
   return {
     title,
@@ -48,13 +49,13 @@ export async function generateMetadata({
       title,
       description,
       type: "website" as const,
-      images: imageUrl ? [{ url: imageUrl }] : undefined,
+      images: [{ url: imageUrl }],
     },
     twitter: {
       card: "summary_large_image" as const,
       title,
       description,
-      images: imageUrl ? [imageUrl] : undefined,
+      images: [imageUrl],
     },
   };
 }
@@ -201,7 +202,7 @@ export default async function CampaignPublicPage({
 
       <Link
         href={`/campaigns/${campaign.slug}/donate`}
-        className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold transition-opacity hover:opacity-90 bg-[var(--accent)] text-white"
+        className="inline-flex items-center justify-center rounded-xl px-8 py-3 text-base font-semibold transition-opacity hover:bg-[var(--accent-hover)] shadow-glow bg-[var(--accent)] text-white"
       >
         후원하기
       </Link>

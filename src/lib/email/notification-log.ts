@@ -10,6 +10,8 @@ export type NotificationKind =
   | 'promise_cancelled'
   | 'promise_suspended'
   | 'promise_resumed'
+  | 'card_expiring_D-30'
+  | 'card_expiring_D-7'
 
 /**
  * G-85/G-86: 지난 N일 내 같은 (org, kind) 발송이 있었는지 확인.

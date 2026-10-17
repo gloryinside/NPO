@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { CancelConfirmModal } from './cancel-confirm-modal';
 
 export function PaymentCancelButton({ paymentId }: { paymentId: string }) {
@@ -12,7 +13,7 @@ export function PaymentCancelButton({ paymentId }: { paymentId: string }) {
     const res = await fetch(`/api/donor/payments/${paymentId}/cancel`, { method: 'POST' });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      alert(data.error ?? '취소 실패');
+      toast.error(data.error ?? '취소 실패');
       return;
     }
     setShowModal(false);

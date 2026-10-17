@@ -38,22 +38,11 @@ export default async function PublicLayout({
       <style dangerouslySetInnerHTML={{ __html: cssString }} />
       <PublicNav />
       {children}
-      <footer
-        style={{
-          textAlign: "center",
-          padding: "1.5rem 1rem",
-          color: "var(--muted-foreground)",
-          fontSize: 12,
-        }}
-      >
+      {/* 딥네이비 푸터 — JobYLW 공통 푸터 톤 */}
+      <footer className="bg-[var(--footer-bg)] px-6 py-8 text-center text-xs text-white/60">
         <a
           href="/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            textDecoration: "none",
-            color: "inherit",
-          }}
+          className="inline-flex items-center text-white/80 no-underline transition-colors hover:text-white"
         >
           <LogoWithText variant="footer" size="sm" />
         </a>

@@ -501,6 +501,7 @@ export function MemberList({
         rows={members}
         rowKey={(m) => m.id}
         emptyMessage="등록된 후원자가 없습니다."
+        emptyIllustration="donors"
         onRowClick={(m) => setDetailTarget(m)}
         rowActions={(m) => (
           <a

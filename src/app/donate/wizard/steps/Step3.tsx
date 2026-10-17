@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import type { WizardState } from '../WizardClient';
 
 declare global {
@@ -49,17 +50,14 @@ export function Step3({
 
   return (
     <div className="space-y-4 text-center">
-      <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-soft)]">
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <path
-            d="M10 20l8 8 12-16"
-            stroke="var(--accent)"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
+      <Image
+        src="/img/success/donated.webp"
+        alt=""
+        width={480}
+        height={320}
+        priority
+        className="art-adapt animate-rise mx-auto mb-2 h-56 w-auto"
+      />
       <h1 className="text-2xl font-bold text-[var(--text)]">후원해 주셔서 감사합니다</h1>
       <p className="text-[var(--muted-foreground)]">
         소중한 후원에 진심으로 감사드립니다.

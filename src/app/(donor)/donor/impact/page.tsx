@@ -79,7 +79,7 @@ export default async function DonorImpactPage() {
 
       {impact.paymentCount === 0 ? (
         <EmptyState
-          icon="🌱"
+          illustration="payments"
           title={t("donor.impact.empty.title")}
           description={t("donor.impact.empty.body")}
           cta={{ href: '/', label: t("donor.impact.empty.cta") }}

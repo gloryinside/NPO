@@ -3,6 +3,8 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import type { PaymentWithRelations } from "@/types/payment";
 
 type Props = {
@@ -22,13 +24,14 @@ export function CmsErrorList({ payments, total }: Props) {
   const router = useRouter();
   const [processing, setProcessing] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const confirm = useConfirm();
 
   const totalAmount = payments.reduce((s, p) => s + Number(p.amount ?? 0), 0);
 
   const retryOrMarkPaid = useCallback(
     async (id: string, action: "retry" | "paid") => {
       const label = action === "paid" ? "수기 납부완료 처리" : "재출금 예약";
-      if (!confirm(`${label}하시겠습니까?`)) return;
+      if (!(await confirm({ title: `${label}하시겠습니까?`, confirmText: label }))) return;
       setProcessing(id);
       try {
         const body =
@@ -42,7 +45,7 @@ export function CmsErrorList({ payments, total }: Props) {
         });
         if (!res.ok) {
           const d = await res.json();
-          alert(d.error ?? "처리 실패");
+          toast.error(d.error ?? "처리 실패");
           return;
         }
         router.refresh();
@@ -50,12 +53,12 @@ export function CmsErrorList({ payments, total }: Props) {
         setProcessing(null);
       }
     },
-    [router]
+    [router, confirm]
   );
 
   async function bulkMarkPaid() {
     if (selected.size === 0) return;
-    if (!confirm(`선택한 ${selected.size}건을 수기 납부완료 처리하시겠습니까?`)) return;
+    if (!(await confirm({ title: `선택한 ${selected.size}건을 수기 납부완료 처리하시겠습니까?`, confirmText: "납부완료 처리" }))) return;
     for (const id of Array.from(selected)) {
       await fetch(`/api/admin/payments/${id}`, {
         method: "PATCH",
@@ -147,7 +150,7 @@ export function CmsErrorList({ payments, total }: Props) {
                     key={p.id}
                     style={{
                       borderTop: idx > 0 ? "1px solid var(--border)" : undefined,
-                      background: isSelected ? "rgba(124,58,237,0.06)" : undefined,
+                      background: isSelected ? "rgba(0,153,68,0.06)" : undefined,
                     }}
                   >
                     <td className="px-4 py-3">

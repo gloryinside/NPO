@@ -102,7 +102,7 @@ export function substituteVariables(
 // ── 테마 래핑 ─────────────────────────────────────────────
 
 function wrapWithTheme(bodyHtml: string, theme: ThemeInput): string {
-  const accent = theme.accent ?? '#7c3aed';
+  const accent = theme.accent ?? '#009944';
   const logo = theme.logoUrl
     ? `<img src="${escapeHtml(theme.logoUrl)}" alt="${escapeHtml(theme.orgName)}" style="max-height:48px;width:auto;margin-bottom:16px" />`
     : '';
@@ -144,7 +144,7 @@ export function renderTemplate(
   variables: Record<string, string>,
   theme: ThemeInput
 ): string {
-  const accent = theme.accent ?? '#7c3aed';
+  const accent = theme.accent ?? '#009944';
   const rawHtml = renderNode(bodyJson as TiptapNode, accent);
   const substituted = substituteVariables(rawHtml, variables);
   return wrapWithTheme(substituted, theme);

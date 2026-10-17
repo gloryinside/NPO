@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface AssetUploadFieldProps {
   campaignId: string;
@@ -21,7 +22,7 @@ export function AssetUploadField({ campaignId, value, onChange, label }: AssetUp
     });
     setBusy(false);
     if (!res.ok) {
-      alert('업로드 실패');
+      toast.error('업로드 실패');
       return;
     }
     const { asset } = await res.json();

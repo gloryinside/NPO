@@ -203,7 +203,7 @@ function EmailPasswordForm() {
           <Button
             type="submit"
             disabled={loading || mfaCode.length !== 6}
-            className="flex-1 bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50"
+            className="flex-1 bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-glow disabled:opacity-50"
           >
             {loading ? t("donor.login.mfa.submitting") : t("donor.login.mfa.submit")}
           </Button>
@@ -277,7 +277,7 @@ function EmailPasswordForm() {
           <Button
             type="submit"
             disabled={loading || backupCode.replace(/[^A-Z0-9]/g, "").length < 8}
-            className="flex-1 bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50"
+            className="flex-1 bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-glow disabled:opacity-50"
           >
             {loading ? t("donor.login.mfa.submitting") : t("donor.login.backup.submit")}
           </Button>
@@ -320,7 +320,7 @@ function EmailPasswordForm() {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50"
+        className="w-full bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-glow disabled:opacity-50"
       >
         {loading ? t("donor.login.password.submitting") : t("donor.login.password.submit")}
       </Button>

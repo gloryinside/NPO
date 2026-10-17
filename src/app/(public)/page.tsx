@@ -1,10 +1,12 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/auth";
+import { isAdminOfTenant } from "@/lib/auth/tenant-binding";
 import {
   Card,
   CardHeader,
@@ -16,8 +18,28 @@ import { Badge } from "@/components/ui/badge";
 import { LandingRenderer } from "@/components/landing-builder/LandingRenderer";
 import { migrateToV2 } from "@/lib/landing-migrate";
 import type { LandingPageContent } from "@/types/landing";
+import { DEFAULT_CAMPAIGN_THUMB, DEFAULT_OG_IMAGE } from "@/lib/brand-images";
 
 export const revalidate = 60;
+
+// 기관별 검색·공유 미리보기 — 예전엔 모든 기관이 플랫폼 공통 제목을 썼다
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getTenant();
+  if (!tenant) return {};
+  const { data: org } = await createSupabaseAdminClient()
+    .from("orgs")
+    .select("name, tagline, about, hero_image_url")
+    .eq("id", tenant.id)
+    .single();
+  const name = org?.name ?? tenant.name;
+  const description = (org?.tagline || org?.about || `${name}의 후원 캠페인`).slice(0, 160);
+  const image = org?.hero_image_url ?? DEFAULT_OG_IMAGE;
+  return {
+    title: `${name} — 후원하기`,
+    description,
+    openGraph: { title: name, description, siteName: name, locale: "ko_KR", type: "website", images: [image] },
+  };
+}
 
 const FEATURES = [
   {
@@ -91,7 +113,7 @@ export default async function PublicPage({
           </p>
           <Link
             href="/admin/login"
-            className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium text-white bg-[var(--accent)] transition-colors"
+            className="inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-medium text-white bg-[var(--accent)] transition-colors"
           >
             시작하기
           </Link>
@@ -151,7 +173,7 @@ export default async function PublicPage({
   // ── draft 모드: 관리자 세션이면서 ?draft=1 일 때 편집 중 콘텐츠를 미리보기 ──
   // 일반 방문자는 항상 published_content만 본다.
   const adminUser = isDraftRequest ? await getAdminUser() : null;
-  const useDraft = isDraftRequest && adminUser?.user_metadata?.role === "admin";
+  const useDraft = isDraftRequest && isAdminOfTenant(adminUser, tenant.id);
 
   const sourceContent = useDraft
     ? (org?.page_content as LandingPageContent | null | undefined)
@@ -220,9 +242,9 @@ export default async function PublicPage({
   const uniqueDonors = new Set(statsRows.map((r: { member_id: string | null }) => r.member_id).filter(Boolean)).size;
   const showStats = org?.show_stats !== false;
 
-  const heroBg = org?.hero_image_url
-    ? `linear-gradient(to bottom, rgba(10,10,15,0.6), rgba(10,10,15,0.9)), url(${JSON.stringify(org.hero_image_url)}) center/cover no-repeat`
-    : "var(--surface)";
+  // 기관 대표 이미지가 없으면 기본 히어로 일러스트(딥네이비 선화)로 — 둘 다 남색 오버레이 + 흰 글자
+  const heroImage = org?.hero_image_url ?? "/img/landing/hero-default.webp";
+  const heroBg = `linear-gradient(to bottom, rgba(14,32,42,0.6), rgba(14,32,42,0.85)), url(${JSON.stringify(heroImage)}) center/cover no-repeat`;
 
   return (
     <main className="bg-[var(--bg)] min-h-screen">
@@ -231,7 +253,7 @@ export default async function PublicPage({
         className="relative border-b border-[var(--border)] [background:var(--hero-bg)]"
         style={{ '--hero-bg': heroBg } as React.CSSProperties}
       >
-        <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+        <div className="max-w-4xl mx-auto px-6 py-24 text-center">
           {/* G-D89: next/image 로 최적화 (LCP 개선) */}
           {org?.logo_url && (
             <Image
@@ -244,17 +266,17 @@ export default async function PublicPage({
               unoptimized={org.logo_url.endsWith(".svg")}
             />
           )}
-          <h1 className="text-4xl font-bold mb-4 text-[var(--text)]">
+          <h1 className="text-display text-balance mb-4 text-white">
             {org?.tagline ?? `${org?.name ?? tenant.name}의 후원 캠페인`}
           </h1>
           {org?.about && (
-            <p className="text-base max-w-2xl mx-auto mb-8 text-[var(--muted-foreground)]">
+            <p className="text-base max-w-2xl mx-auto mb-8 text-white/85">
               {org.about.slice(0, 200)}{org.about.length > 200 ? "…" : ""}
             </p>
           )}
           <Link
             href="#campaigns"
-            className="inline-flex items-center justify-center rounded-lg px-8 py-3 text-base font-semibold text-white bg-[var(--accent)] transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-xl px-8 py-3 text-base font-semibold text-white bg-[var(--accent)] transition-opacity hover:bg-[var(--accent-hover)] shadow-glow"
           >
             후원하기 →
           </Link>
@@ -316,7 +338,7 @@ export default async function PublicPage({
                         className="w-full h-40 object-cover"
                       />
                     ) : (
-                      <div className="w-full h-40 bg-gradient-to-br from-[var(--accent-soft)] to-[var(--surface-2)]" />
+                      <img src={DEFAULT_CAMPAIGN_THUMB} alt="" className="w-full h-40 object-cover art-adapt" />
                     )}
                     <div className="p-5 flex-1 flex flex-col">
                       <div className="flex items-start justify-between gap-2 mb-2">

@@ -4,10 +4,10 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recha
 type Props = { data: { name: string; value: number }[] };
 
 const COLORS = [
-  "var(--accent, #7c3aed)",
-  "var(--positive, #22c55e)",
-  "var(--warning, #f59e0b)",
-  "var(--muted-foreground, #6b7280)",
+  "var(--accent, #009944)",
+  "var(--chart-2, #334155)",
+  "var(--chart-3, #0284c7)",
+  "var(--chart-4, #d97706)",
 ];
 
 export function PayMethodPieChart({ data }: Props) {

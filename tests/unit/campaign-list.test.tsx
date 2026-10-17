@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { CampaignList } from "@/components/admin/campaign-list";
 import type { Campaign } from "@/types/campaign";
+import { ConfirmProvider } from '@/components/ui/confirm-dialog'
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -54,12 +55,12 @@ afterEach(() => {
 
 describe("CampaignList — 페이지 편집 버튼", () => {
   it("캠페인 행에 '페이지 편집' 버튼이 렌더링된다", () => {
-    render(<CampaignList campaigns={[baseCampaign]} />);
+    render(<ConfirmProvider><CampaignList campaigns={[baseCampaign]} /></ConfirmProvider>);
     expect(screen.getByRole("button", { name: "페이지 편집" })).toBeTruthy();
   });
 
   it("'페이지 편집' 클릭 시 빌더 경로로 이동한다", () => {
-    render(<CampaignList campaigns={[baseCampaign]} />);
+    render(<ConfirmProvider><CampaignList campaigns={[baseCampaign]} /></ConfirmProvider>);
     fireEvent.click(screen.getByRole("button", { name: "페이지 편집" }));
     expect(mockPush).toHaveBeenCalledWith("/admin/campaigns/camp-1/edit");
   });
@@ -67,7 +68,7 @@ describe("CampaignList — 페이지 편집 버튼", () => {
 
 describe("CampaignList — 신규 생성 후 빌더 이동", () => {
   it('"새 캠페인" 버튼 클릭 시 다이얼로그가 열린다', () => {
-    render(<CampaignList campaigns={[]} />);
+    render(<ConfirmProvider><CampaignList campaigns={[]} /></ConfirmProvider>);
     fireEvent.click(screen.getByRole("button", { name: "새 캠페인" }));
     // 다이얼로그가 열리면 dialog role을 가진 요소가 DOM에 나타난다
     expect(screen.getByRole("dialog")).toBeTruthy();

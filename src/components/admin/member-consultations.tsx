@@ -92,7 +92,7 @@ export function MemberConsultations({ memberId }: { memberId: string }) {
         <form onSubmit={handleSubmit} className="p-4 border-b border-[var(--border)] flex flex-col gap-3">
           <div className="flex gap-3">
             <div className="flex flex-col gap-1">
-              <label htmlFor="log-type" className="text-xs text-[var(--muted-foreground)]">��형</label>
+              <label htmlFor="log-type" className="text-xs text-[var(--muted-foreground)]">유형</label>
               <select
                 id="log-type"
                 value={logType}

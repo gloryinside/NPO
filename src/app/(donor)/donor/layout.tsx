@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 export const viewport: Viewport = {
-  themeColor: "#7c3aed",
+  themeColor: "#009944",
 };
 import { DonorNav } from "@/components/donor/donor-nav";
 import { LogoWithText } from "@/components/brand/logo-with-text";
@@ -18,6 +18,7 @@ import { SessionExpiredGuard } from "@/components/donor/auth/SessionExpiredGuard
 import { WebVitalsReporter } from "@/components/observability/WebVitalsReporter";
 import { OfflineBanner } from "@/components/donor/ui/OfflineBanner";
 import { DonorFAB } from "@/components/donor/ui/DonorFAB";
+import { Toaster } from "sonner";
 
 export default async function DonorLayout({
   children,
@@ -32,13 +33,9 @@ export default async function DonorLayout({
       {session && <SessionExpiredGuard />}
       <WebVitalsReporter />
       <OfflineBanner />
+      {/* 글래스 상단 헤더(반투명 + 블러) — JobYLW와 동일 */}
       <header
-        className="sticky top-0 z-40"
-        style={{
-          height: 56,
-          borderBottom: "1px solid var(--border)",
-          background: "var(--surface)",
-        }}
+        className="sticky top-0 z-40 h-16 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-md"
       >
        <div
          className="mx-auto flex h-full items-center gap-3 px-4 sm:px-6 lg:px-8"
@@ -119,9 +116,8 @@ export default async function DonorLayout({
       {session && (
         <nav
           aria-label="모바일 주요 메뉴"
-          className="fixed bottom-0 left-0 right-0 z-40 flex sm:hidden"
+          className="safe-pb fixed bottom-0 left-0 right-0 z-40 flex bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] backdrop-blur-md sm:hidden"
           style={{
-            background: "var(--surface)",
             borderTop: "1px solid var(--border)",
           }}
         >
@@ -172,6 +168,9 @@ export default async function DonorLayout({
           )}
         {children}
       </main>
+
+      {/* 후원자 영역 토스트(결제수단 변경 결과·공유 등) — 모바일 하단 내비 위 */}
+      <Toaster position="top-center" richColors />
 
       {/* G-D61: Legal 풋터 */}
       <footer

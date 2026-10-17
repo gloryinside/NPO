@@ -242,7 +242,7 @@ export default async function AuditLogsPage({
                     <span
                       className="text-xs font-medium px-2 py-0.5 rounded"
                       style={{
-                        background: "rgba(124,58,237,0.1)",
+                        background: "rgba(0,153,68,0.1)",
                         color: "var(--accent)",
                       }}
                     >

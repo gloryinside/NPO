@@ -60,6 +60,7 @@ describe('parseNotificationPrefs', () => {
   })
   it('amount_change false는 유지', () => {
     expect(parseNotificationPrefs({ amount_change: false })).toEqual({
+      ...DEFAULT_NOTIFICATION_PREFS,
       amount_change: false,
     })
   })
@@ -80,6 +81,7 @@ describe('getNotificationPrefs', () => {
   it('있으면 파싱 결과', async () => {
     const s = selectStub({ amount_change: false })
     expect(await getNotificationPrefs(s, 'm1')).toEqual({
+      ...DEFAULT_NOTIFICATION_PREFS,
       amount_change: false,
     })
   })
@@ -89,7 +91,7 @@ describe('updateNotificationPrefs', () => {
   it('partial merge 적용', async () => {
     const s = updateStub({ amount_change: true })
     const r = await updateNotificationPrefs(s, 'm1', { amount_change: false })
-    expect(r).toEqual({ amount_change: false })
+    expect(r).toEqual({ ...DEFAULT_NOTIFICATION_PREFS, amount_change: false })
   })
   it('update 실패 시 null', async () => {
     const s = updateStub({}, { message: 'db' })

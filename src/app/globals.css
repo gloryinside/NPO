@@ -2,29 +2,43 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* dark: 유틸은 테마 토글이 거는 data-theme="dark"를 따른다 */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  /* ===== NPO 디자인 시스템: 5색 의미 토큰 (source of truth) ===== */
-  --bg:        #0a0a0f;
-  --surface:   #13131a;
-  --surface-2: #1c1c27;
-  --border:    #2a2a3a;
-  --text:      #f0f0f8;
-  --muted:     var(--surface-2);   /* shadcn 배경 의미로 재할당 — 기존 #8888aa는 --muted-foreground로 이동 */
-  --muted-2:   #55556a;
+  /* ===== NPO 디자인 시스템: 의미 토큰 (source of truth) =====
+     JobYLW(영림원소프트랩) 디자인 언어와 통일 — 라이트 우선, 슬레이트 중성색,
+     브랜드 그린(#009944)은 '행동·결과 신호'(CTA·진행·성공)에만 절제 사용.
+     '현재 위치' 표시는 그린이 아니라 슬레이트/딥네이비로 한다. */
+  --bg:        #f8fafc;   /* slate-50  */
+  --surface:   #ffffff;
+  --surface-2: #f1f5f9;   /* slate-100 */
+  --surface-3: #e2e8f0;   /* slate-200 — 트랙·스켈레톤 */
+  --border:    #e2e8f0;   /* slate-200 */
+  --text:      #0f172a;   /* slate-900 */
+  --muted:     var(--surface-2);   /* shadcn 배경 의미 — 보조 텍스트는 --muted-foreground */
+  --muted-2:   #94a3b8;   /* slate-400 */
 
-  --accent:    #7c3aed;
-  --positive:  #22c55e;
-  --negative:  #ef4444;
-  --warning:   #f59e0b;
-  --info:      #38bdf8;
+  /* 영림원 CI 그린 + 딥네이비 */
+  --brand:        #009944;
+  --brand-hover:  #007a36;
+  --brand-soft:   #e9f7ef;
+  --brand-bright: #00d35e;
+  --ink:          #20313a;
+  --footer-bg:    #0e202a;
 
-  --accent-soft:   rgba(124, 58, 237, 0.12);
-  --positive-soft: rgba(34, 197, 94, 0.12);
-  --negative-soft: rgba(239, 68, 68, 0.12);
-  --warning-soft:  rgba(245, 158, 11, 0.12);
-  --info-soft:     rgba(56, 189, 248, 0.12);
+  --accent:    var(--brand);
+  --accent-hover: var(--brand-hover);
+  --positive:  #059669;   /* emerald-600 — 브랜드 그린과 구분 */
+  --negative:  #dc2626;
+  --warning:   #d97706;
+  --info:      #0284c7;
+
+  --accent-soft:   var(--brand-soft);
+  --positive-soft: rgba(5, 150, 105, 0.10);
+  --negative-soft: rgba(220, 38, 38, 0.08);
+  --warning-soft:  rgba(217, 119, 6, 0.10);
+  --info-soft:     rgba(2, 132, 199, 0.08);
 
   /* ===== shadcn/ui 호환 레이어: 위 토큰으로 alias ===== */
   --background:            var(--bg);
@@ -37,22 +51,22 @@
   --primary-foreground:    #ffffff;
   --secondary:             var(--surface-2);
   --secondary-foreground:  var(--text);
-  --muted-foreground: #8888aa;   /* 기존 NPO --muted 값 (보조 텍스트) */
+  --muted-foreground:      #64748b;   /* slate-500 */
   --accent-foreground:     #ffffff;
   --destructive:           var(--negative);
   --destructive-foreground:#ffffff;
-  --input:                 var(--border);
+  --input:                 #cbd5e1;   /* slate-300 — 입력 테두리는 카드 보더보다 한 단계 진하게 */
   --ring:                  var(--accent);
-  --radius:                0.5rem;
+  --radius:                0.75rem;   /* rounded-xl 기준 */
 
-  /* shadcn charts (NPO 팔레트에 맞춘 대체) */
-  --chart-1: var(--accent);
-  --chart-2: var(--info);
-  --chart-3: var(--positive);
-  --chart-4: var(--warning);
-  --chart-5: var(--negative);
+  /* 차트 — 브랜드 그린 + 딥네이비 계열, 그 뒤로 구분 색 */
+  --chart-1: var(--brand);
+  --chart-2: #334155;
+  --chart-3: #0284c7;
+  --chart-4: #d97706;
+  --chart-5: #94a3b8;
 
-  /* shadcn sidebar (다크 테마 기본값) */
+  /* 사이드바 — 흰 표면 + 슬레이트 선택 */
   --sidebar:                       var(--surface);
   --sidebar-foreground:            var(--text);
   --sidebar-primary:               var(--accent);
@@ -62,15 +76,17 @@
   --sidebar-border:                var(--border);
   --sidebar-ring:                  var(--accent);
 
-  /* ===== landing variant tokens ===== */
-  --gradient-1: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent), #000 30%));
+  /* ===== 랜딩·카드 표현 토큰 ===== */
+  --gradient-1: linear-gradient(160deg, var(--ink) 0%, var(--footer-bg) 70%);
   --gradient-soft: linear-gradient(180deg, var(--surface), var(--surface-2));
-  --shadow-hero: 0 20px 60px -20px rgb(0 0 0 / 0.4);
-  --shadow-card: 0 4px 20px -4px rgb(0 0 0 / 0.08);
+  /* 다층 중성 그림자(JobYLW shadow-card / shadow-card-hover) */
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 2px 4px rgba(15, 23, 42, 0.04), 0 12px 28px -4px rgba(15, 23, 42, 0.14);
+  --shadow-hero: 0 20px 48px -20px rgba(15, 23, 42, 0.18);
   --radius-hero: 24px;
   --radius-card: 16px;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -87,6 +103,12 @@
   --color-negative:  var(--negative);
   --color-warning:   var(--warning);
   --color-info:      var(--info);
+  --color-brand:        var(--brand);
+  --color-brand-hover:  var(--brand-hover);
+  --color-brand-soft:   var(--brand-soft);
+  --color-brand-bright: var(--brand-bright);
+  --color-ink:          var(--ink);
+  --color-footer-bg:    var(--footer-bg);
 
   /* shadcn/ui 호환 색상 매핑 */
   --color-background:           var(--background);
@@ -121,22 +143,28 @@
   --color-sidebar-border:             var(--sidebar-border);
   --color-sidebar-ring:               var(--sidebar-ring);
 
-  --font-sans:    var(--font-sans);
-  --font-heading: var(--font-sans);
+  /* Pretendard(한글·라틴 일관 메트릭) — JobYLW와 동일 */
+  --font-sans:    "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-heading: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 
-  --radius-sm:  calc(var(--radius) * 0.6);
-  --radius-md:  calc(var(--radius) * 0.8);
-  --radius-lg:  var(--radius);
-  --radius-xl:  calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Tailwind 기본 반경 스케일 고정 — JobYLW와 같은 곡률(rounded-xl=12px, rounded-2xl=16px) */
+  --radius-sm:  0.25rem;
+  --radius-md:  0.375rem;
+  --radius-lg:  0.5rem;
+  --radius-xl:  0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 }
 
 html, body {
   background: var(--bg);
   color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-feature-settings: "ss06"; /* Pretendard: 숫자 1 꼬리 단순화 */
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 @layer base {
@@ -146,47 +174,67 @@ html, body {
   body {
     @apply bg-background text-foreground;
   }
+  /* 포커스 스타일을 따로 주지 않은 상호작용 요소 — 브랜드 링(특이도 0이라 유틸이 우선) */
+  :where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  :where(a, button, input, select, textarea, summary, [role="button"]) {
+    touch-action: manipulation;
+  }
 }
 
-/* ===== 라이트 테마 오버라이드 (Phase Theme-A) =====
-   무레이어 규칙: @layer base의 :root 기본값과 동등한 specificity에서
-   [data-theme="light"] 속성 셀렉터로 오버라이드.
-   data-theme 속성이 소스에서 사용되므로 Tailwind v4 purge 대상 아님. */
-:root[data-theme="light"] {
-  --bg:        #fafafb;
-  --surface:   #ffffff;
-  --surface-2: #f3f3f7;
-  --border:    #e4e4ec;
-  --text:      #18181f;
+/* ===== 다크 테마 오버라이드 =====
+   JobYLW 다크 팔레트(딥네이비 #0b1220 바탕 / #161f30 카드)와 통일.
+   data-theme 속성은 layout.tsx의 초기화 스크립트·ThemeToggle이 건다. */
+:root[data-theme="dark"] {
+  --bg:        #0b1220;
+  --surface:   #161f30;
+  --surface-2: #1e293b;
+  --surface-3: #26334a;
+  --border:    #26324a;
+  --text:      #e2e8f0;
   --muted:     var(--surface-2);
-  --muted-2:   #9a9ab0;
+  --muted-2:   #64748b;
 
-  --accent:    #7c3aed;
-  --positive:  #16a34a;
-  --negative:  #dc2626;
-  --warning:   #d97706;
-  --info:      #0284c7;
+  /* 브랜드 그린 면(버튼)은 유지, 연한 면·hover는 다크 바탕에 녹는 톤으로 */
+  --brand-hover: #00b050;
+  --brand-soft:  #10291d;
+  --positive:  #34d399;
+  --negative:  #f87171;
+  --warning:   #fbbf24;
+  --info:      #38bdf8;
 
-  --accent-soft:   rgba(124, 58, 237, 0.10);
-  --positive-soft: rgba(22, 163, 74, 0.10);
-  --negative-soft: rgba(220, 38, 38, 0.10);
-  --warning-soft:  rgba(217, 119, 6, 0.10);
-  --info-soft:     rgba(2, 132, 199, 0.10);
+  --positive-soft: rgba(52, 211, 153, 0.14);
+  --negative-soft: rgba(248, 113, 113, 0.14);
+  --warning-soft:  rgba(251, 191, 36, 0.14);
+  --info-soft:     rgba(56, 189, 248, 0.14);
 
-  --muted-foreground: #6b6b80;
+  --muted-foreground: #94a3b8;
+  --input: #334155;
 
-  --shadow-hero: 0 20px 60px -20px rgb(0 0 0 / 0.08);
-  --shadow-card: 0 4px 20px -4px rgb(0 0 0 / 0.05);
+  --chart-2: #94a3b8;
+  --chart-5: #475569;
 
-  color-scheme: light;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -6px rgba(0, 0, 0, 0.5);
+  --shadow-hero: 0 20px 60px -20px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
 }
 
 /* ===== landing variant typography ===== */
 .text-display {
-  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-size: clamp(2.25rem, 1.4rem + 3.4vw, 3.75rem);
   font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+}
+.text-display-sm {
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 .text-hero {
   font-size: clamp(2rem, 4vw, 3.5rem);
@@ -194,6 +242,96 @@ html, body {
   line-height: 1.1;
   letter-spacing: -0.015em;
 }
+
+/* ===== JobYLW 공통 표현 유틸 ===== */
+/* 아이브로 라벨 — 작은 대문자 + 넓은 자간, 중성 슬레이트(그린은 다크 히어로에서만) */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+:root[data-theme="dark"] .eyebrow { color: #94a3b8; }
+.surface-dark .eyebrow { color: #cbd5e1; }
+
+/* 딥네이비 다크 서피스 — 히어로·인증 사이드·강조 헤더에 절제 사용 */
+.surface-dark {
+  background-color: var(--footer-bg);
+  background-image:
+    radial-gradient(60rem 32rem at 78% -10%, rgba(148, 163, 184, 0.12), transparent 60%),
+    linear-gradient(160deg, var(--ink) 0%, var(--footer-bg) 70%);
+  color: #f1f5f9;
+}
+
+/* 도트 그리드 텍스처(장식) */
+.dot-grid {
+  background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.18) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+.dot-grid-light {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.22) 1px, transparent 0);
+  background-size: 26px 26px;
+}
+:root[data-theme="dark"] .dot-grid {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.14) 1px, transparent 0);
+}
+/* 폼 뒤 점 격자 — 가운데만 남기고 가장자리로 흐림 */
+.dot-grid-fade {
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, #000 30%, transparent 75%);
+}
+.hero-glow {
+  background: radial-gradient(closest-side, rgba(100, 116, 139, 0.08), transparent);
+}
+
+/* 다층 그림자 */
+.shadow-card { box-shadow: var(--shadow-card); }
+.shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+.shadow-glow {
+  box-shadow: 0 6px 16px -6px rgba(15, 23, 42, 0.28), 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.text-balance { text-wrap: balance; }
+.ease-smooth { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* 페이지 진입 페이드+상승 */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes softpulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.animate-softpulse { animation: softpulse 2s ease-in-out infinite; }
+
+/* 랜딩 섹션 테마 프리셋 — 래퍼 안에서 토큰만 바꿔 섹션이 스스로 따라 칠한다(lib/landing/display.ts) */
+[data-section-theme="highlight"] { --bg: var(--surface-2); background: var(--surface-2); }
+[data-section-theme="brand"] { --bg: var(--brand-soft); background: var(--brand-soft); }
+[data-section-theme="dark"] {
+  --bg: var(--footer-bg);
+  --surface: #16273a;
+  --surface-2: #1d3247;
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #f1f5f9;
+  --muted-foreground: #cbd5e1;
+  --muted-2: #94a3b8;
+  --accent-soft: rgba(0, 211, 94, 0.14);
+  background: var(--footer-bg);
+  color: #f1f5f9;
+  color-scheme: dark;
+}
+[data-section-theme="dark"] .eyebrow { color: #cbd5e1; }
+
+/* 화면 틀 바탕 — 흰 카드가 떠 보이도록 한 단계 어두운 슬레이트(다크에선 페이지 배경) */
+.app-canvas { background-color: #f1f5f9; }
+:root[data-theme="dark"] .app-canvas { background-color: var(--bg); }
+
+/* 투명 배경 선화 일러스트(빈 화면·오류) — 다크에서 남색 선을 밝게 뒤집고 색상은 보존 */
+:root[data-theme="dark"] .art-adapt { filter: invert(0.9) hue-rotate(180deg); }
 
 /* ===== landing variant motion ===== */
 @keyframes ken-burns {

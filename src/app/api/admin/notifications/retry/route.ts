@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         <h1 style="color:#1a3a5c;">감사합니다, ${escapeHtml(name)}님</h1>
         <p>관리자가 수동으로 재발송한 감사 메시지입니다.</p>
         <p><strong>${escapeHtml(campaign.title as string)}</strong> 캠페인이 목표를 달성했습니다.</p>
-        <p>귀하의 누적 후원: <strong style="color:#7c3aed;">${totalAmount.toLocaleString('ko-KR')}원</strong></p>
+        <p>귀하의 누적 후원: <strong style="color:#009944;">${totalAmount.toLocaleString('ko-KR')}원</strong></p>
       </div>
     `,
   })

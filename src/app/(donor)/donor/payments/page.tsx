@@ -17,6 +17,7 @@ import { PaymentsExportBar } from "@/components/donor/payments-export-bar";
 import { getPgErrorMessage } from "@/lib/payments/pg-error-messages";
 import type { PayStatus, PaymentWithRelations } from "@/types/payment";
 import { Suspense } from "react";
+import { EmptyArt } from "@/components/donor/ui/EmptyState";
 
 function PayStatusBadge({ status, label }: { status: PayStatus; label: string }) {
   const styles: Record<PayStatus, React.CSSProperties> = {
@@ -214,6 +215,7 @@ export default async function DonorPaymentsPage({
                   className="py-12 text-center"
                   style={{ color: "var(--muted-foreground)" }}
                 >
+                  <EmptyArt name="payments" className="mb-3 h-36" />
                   {t("donor.payments.empty")}
                 </TableCell>
               </TableRow>

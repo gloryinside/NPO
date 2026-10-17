@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ function formatDate(val: string | null | undefined) {
 }
 
 export default function UsersPage() {
+  const confirm = useConfirm();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
@@ -74,7 +76,15 @@ export default function UsersPage() {
   }
 
   async function handleDelete(userId: string, email: string | undefined) {
-    if (!confirm(`${email ?? userId} 계정을 삭제하시겠습니까?`)) return;
+    if (
+      !(await confirm({
+        title: "계정을 삭제할까요?",
+        description: `${email ?? userId} 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+        confirmText: "삭제",
+        tone: "danger",
+      }))
+    )
+      return;
     const res = await fetch(`/api/admin/users?userId=${userId}`, { method: "DELETE" });
     if (res.ok) fetchUsers();
   }

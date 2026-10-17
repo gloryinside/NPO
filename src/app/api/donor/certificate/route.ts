@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       <stop offset="100%" stop-color="#ede9fe"/>
     </linearGradient>
     <linearGradient id="border" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="0%" stop-color="#009944"/>
       <stop offset="100%" stop-color="#a78bfa"/>
     </linearGradient>
   </defs>
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
   <rect x="60" y="60" width="1080" height="730" fill="none" stroke="#c4b5fd" stroke-width="1" rx="8"/>
 
   <text x="600" y="160" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="28" fill="#6d28d9" font-weight="600" letter-spacing="8">CERTIFICATE OF APPRECIATION</text>
-  <text x="600" y="210" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="18" fill="#7c3aed" letter-spacing="4">감 사 증</text>
+  <text x="600" y="210" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="18" fill="#009944" letter-spacing="4">감 사 증</text>
 
   <text x="600" y="330" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="48" fill="#1f2937" font-weight="700">${memberName} 님</text>
 
@@ -84,10 +84,10 @@ export async function GET(req: NextRequest) {
   </text>
 
   <text x="600" y="560" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="20" fill="#6b7280">누적 후원 금액</text>
-  <text x="600" y="620" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="56" fill="#7c3aed" font-weight="800">${amountKRW}원</text>
+  <text x="600" y="620" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="56" fill="#009944" font-weight="800">${amountKRW}원</text>
 
   <text x="600" y="740" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="16" fill="#6b7280">발급일 ${issuedAt}</text>
-  <text x="600" y="770" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="14" fill="#7c3aed" font-weight="600">${escape(orgName)}</text>
+  <text x="600" y="770" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="14" fill="#009944" font-weight="600">${escape(orgName)}</text>
 </svg>`;
 
   return new NextResponse(svg, {

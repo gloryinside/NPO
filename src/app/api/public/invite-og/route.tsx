@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)',
+          background: 'linear-gradient(135deg, #20313a 0%, #0e202a 100%)',
           color: 'white',
           fontFamily,
           padding: '72px',
@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
     return fallbackOgResponse({
       headline: '함께 후원해요',
       subhead: '후원 프로그램에 초대합니다',
-      gradient: ['#1e3a8a', '#7c3aed'],
+      gradient: ['#20313a', '#0e202a'],
     })
   }
 }

@@ -6,6 +6,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import type { ScenarioKey, VariableDef } from '@/lib/email/default-templates';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 type Props = {
   scenario: ScenarioKey;
@@ -23,6 +24,9 @@ export function EmailTemplateEditor({ scenario, label, variables, initialSubject
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [showVarDropdown, setShowVarDropdown] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const confirm = useConfirm();
 
   const editor = useEditor({
     extensions: [
@@ -103,14 +107,22 @@ export function EmailTemplateEditor({ scenario, label, variables, initialSubject
       setMessage({ type: 'success', text: '저장되었습니다.' });
       router.refresh();
     } catch {
-      setMessage({ type: 'error', text: '저�� 중 오류 발생' });
+      setMessage({ type: 'error', text: '저장 중 오류 발생' });
     } finally {
       setSaving(false);
     }
   }
 
   async function handleReset() {
-    if (!confirm('기본 템플릿으로 초기화하시겠습니까? 커스텀 내용이 사라집니다.')) return;
+    if (
+      !(await confirm({
+        title: '기본 템플릿으로 초기화하시겠습니까?',
+        description: '커스텀 내용이 사라집니다.',
+        confirmText: '초기화',
+        tone: 'danger',
+      }))
+    )
+      return;
     if (!editor) return;
     editor.commands.setContent(initialBodyJson);
     setSubject(initialSubject);
@@ -170,9 +182,9 @@ export function EmailTemplateEditor({ scenario, label, variables, initialSubject
             <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} label="•" />
             <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} label="1." />
             <ToolbarButton onClick={() => {
-              const url = prompt('링크 URL');
-              if (url) editor.chain().focus().setLink({ href: url }).run();
-            }} active={editor.isActive('link')} label="🔗" />
+              setLinkUrl('');
+              setShowLinkInput((v) => !v);
+            }} active={editor.isActive('link') || showLinkInput} label="🔗" />
             <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
             <div className="relative">
               <button
@@ -199,6 +211,48 @@ export function EmailTemplateEditor({ scenario, label, variables, initialSubject
               )}
             </div>
           </div>
+
+          {showLinkInput && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const url = linkUrl.trim();
+                if (url) editor.chain().focus().setLink({ href: url }).run();
+                setShowLinkInput(false);
+                setLinkUrl('');
+              }}
+              className="flex gap-2 items-center"
+            >
+              <input
+                type="url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setShowLinkInput(false);
+                    setLinkUrl('');
+                  }
+                }}
+                placeholder="링크 URL"
+                title="링크 URL"
+                autoFocus
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1.5 text-sm outline-none"
+              />
+              <button type="submit" className="px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium">
+                적용
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLinkInput(false);
+                  setLinkUrl('');
+                }}
+                className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] text-sm"
+              >
+                취소
+              </button>
+            </form>
+          )}
 
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] min-h-[300px]">
             <EditorContent editor={editor} />

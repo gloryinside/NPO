@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 export function ExportButton({
   campaignId,
@@ -11,11 +12,12 @@ export function ExportButton({
   disabled?: boolean;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function exportCsv() {
-    if (!window.confirm("명단을 추출하고 CSV를 다운로드합니다. 계속하시겠습니까?")) return;
+  async function exportCsv() {
+    if (!(await confirm({ title: "명단을 추출할까요?", description: "수신자 명단을 추출해 CSV로 내려받습니다.", confirmText: "추출" }))) return;
     setError(null);
     startTransition(async () => {
       const res = await fetch(`/api/admin/mail-campaigns/${campaignId}/export`, {

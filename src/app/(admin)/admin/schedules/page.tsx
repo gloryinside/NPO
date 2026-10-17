@@ -86,7 +86,7 @@ export default async function SchedulesPage() {
                 style={{
                   borderColor: isToday ? "var(--accent)" : "var(--border)",
                   background: isToday
-                    ? "rgba(124,58,237,0.12)"
+                    ? "rgba(0,153,68,0.12)"
                     : isUpcoming
                       ? "var(--surface-2)"
                       : "var(--surface)",
@@ -135,7 +135,7 @@ export default async function SchedulesPage() {
                 className="flex items-center justify-between px-4 py-3"
                 style={{
                   borderBottom: "1px solid var(--border)",
-                  background: isToday ? "rgba(124,58,237,0.08)" : "var(--surface-2)",
+                  background: isToday ? "rgba(0,153,68,0.08)" : "var(--surface-2)",
                 }}
               >
                 <div className="flex items-center gap-2">

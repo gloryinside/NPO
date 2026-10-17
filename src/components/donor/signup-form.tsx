@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -108,8 +109,16 @@ export function DonorSignupForm() {
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center">
-      <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-lg">
-        <h1 className="mb-1 text-center text-2xl font-semibold text-[var(--text)]">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-card">
+        <Image
+          src="/img/success/welcome-donor.webp"
+          alt=""
+          width={480}
+          height={320}
+          priority
+          className="art-adapt mx-auto mb-2 h-40 w-auto"
+        />
+        <h1 className="mb-1 text-center text-2xl font-bold tracking-[-0.025em] text-[var(--text)]">
           후원자 회원가입
         </h1>
         <p className="mb-6 text-center text-sm text-[var(--muted-foreground)]">
@@ -185,7 +194,7 @@ export function DonorSignupForm() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50"
+            className="w-full bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-glow disabled:opacity-50"
           >
             {loading ? "가입 중..." : "회원가입"}
           </Button>

@@ -35,6 +35,10 @@ export type AuditAction =
   | "receipt.issue"
   | "receipt.reissue"
   | "receipt.nts_export"
+  | "receipt.rrn_view"
+  | "receipt.ledger_export"
+  | "receipt.batch_issue"
+  | "landing.ai_generate"
   // 설정
   | "settings.update_toss"
   | "settings.update_erp"

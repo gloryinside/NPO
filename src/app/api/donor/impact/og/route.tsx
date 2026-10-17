@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          background: 'linear-gradient(135deg, #1a3a5c 0%, #7c3aed 100%)',
+          background: 'linear-gradient(135deg, #20313a 0%, #0e202a 100%)',
           color: 'white',
           fontFamily,
           padding: '60px',
@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
     return fallbackOgResponse({
       headline: '나의 후원 임팩트',
       subhead: '함께한 후원의 기록',
-      gradient: ['#1a3a5c', '#7c3aed'],
+      gradient: ['#20313a', '#0e202a'],
     })
   }
 }

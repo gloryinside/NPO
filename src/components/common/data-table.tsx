@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { EmptyArt, type EmptyIllustration } from '@/components/donor/ui/EmptyState'
 
 export interface DataTableColumn<T> {
   key: string
@@ -16,6 +17,8 @@ export interface DataTableProps<T> {
   rowKey: (row: T) => string
   isLoading?: boolean
   emptyMessage?: string
+  /** 빈 상태 선화 일러스트(선택) */
+  emptyIllustration?: EmptyIllustration
   selectable?: boolean
   selectedIds?: Set<string>
   onSelectionChange?: (ids: Set<string>) => void
@@ -36,6 +39,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactNode {
     rowKey,
     isLoading,
     emptyMessage = '데이터가 없습니다.',
+    emptyIllustration,
     selectable,
     selectedIds,
     onSelectionChange,
@@ -110,8 +114,9 @@ export function DataTable<T>(props: DataTableProps<T>): ReactNode {
             <tr>
               <td
                 colSpan={totalCols}
-                className="px-3 py-10 text-center text-[var(--muted-foreground)]"
+                className="px-3 py-10 text-center text-sm text-[var(--muted-foreground)]"
               >
+                {emptyIllustration && <EmptyArt name={emptyIllustration} className="mb-3 h-36" />}
                 {emptyMessage}
               </td>
             </tr>

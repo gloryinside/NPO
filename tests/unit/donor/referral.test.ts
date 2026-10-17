@@ -60,12 +60,10 @@ describe('ensureReferralCode', () => {
     if (r.ok) expect(r.code.code).toMatch(/^[a-z0-9]{8}$/)
   })
 
-  it('충돌 3회 연속 시 실패', async () => {
+  it('충돌 10회 연속 시 실패', async () => {
     const s = stub([
       { data: null },
-      { error: { code: '23505', message: 'dup' } },
-      { error: { code: '23505', message: 'dup' } },
-      { error: { code: '23505', message: 'dup' } },
+      ...Array.from({ length: 10 }, () => ({ error: { code: '23505', message: 'dup' } })),
     ])
     const r = await ensureReferralCode(s, 'o1', 'm1')
     expect(r.ok).toBe(false)

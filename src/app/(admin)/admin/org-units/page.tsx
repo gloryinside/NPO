@@ -33,7 +33,7 @@ export default async function OrgUnitsPage() {
     <div className="space-y-6">
       <PageHeader
         title="조직 단위 (지부/본부)"
-        description="조직을 본부/지부로 나누어 데이터 접근을 격리합니다. admin_user.unit_scope로 범위 결정."
+        description="조직을 본부/지부로 나누어 관리합니다. 관리자별 단위 접근 범위는 아직 지원하지 않습니다."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

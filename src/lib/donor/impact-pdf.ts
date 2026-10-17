@@ -182,7 +182,7 @@ function metricBox(label: string, value: string) {
   return {
     stack: [
       { text: label, fontSize: 9, color: '#64748b', alignment: 'center' as const },
-      { text: value, fontSize: 16, bold: true, color: '#7c3aed', alignment: 'center' as const, margin: [0, 4, 0, 0] as [number, number, number, number] },
+      { text: value, fontSize: 16, bold: true, color: '#009944', alignment: 'center' as const, margin: [0, 4, 0, 0] as [number, number, number, number] },
     ],
     margin: [4, 0, 4, 0] as [number, number, number, number],
   }

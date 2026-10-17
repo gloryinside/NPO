@@ -151,30 +151,32 @@ interface AdminSidebarProps {
 function NavGroupSection({ group, items }: NavGroup) {
   const pathname = usePathname();
   return (
-    <div className="mt-3">
-      <div className="px-4 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted-foreground)]">
+    <div className="mt-4 first:mt-2">
+      <div className="px-2.5 pb-1 text-xs font-medium text-[var(--muted-2)]">
         {group}
       </div>
-      <div>
+      <ul className="space-y-0.5">
         {items.map((item) => {
           const isActive = pathname === item.href;
+          // 현재 위치는 슬레이트 면 + 굵은 글씨(JobYLW 규칙: 그린은 행동·결과 신호 전용)
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={[
-                "block px-4 py-1.5 text-sm no-underline transition-colors duration-150",
-                "border-l-2",
-                isActive
-                  ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] font-medium text-[var(--accent)]"
-                  : "border-transparent font-normal text-[var(--text)] hover:bg-[var(--surface)] hover:text-[var(--text)]",
-              ].join(" ")}
-            >
-              {item.label}
-            </Link>
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+                className={[
+                  "flex items-center rounded-lg px-2.5 py-1.5 text-sm no-underline transition-colors",
+                  isActive
+                    ? "bg-[var(--surface-2)] font-semibold text-[var(--text)]"
+                    : "font-normal text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
+                ].join(" ")}
+              >
+                {item.label}
+              </Link>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }
@@ -186,11 +188,12 @@ function NotificationLink() {
   return (
     <Link
       href="/admin/notifications"
+      aria-current={isActive ? "page" : undefined}
       className={[
-        "mb-1 flex items-center rounded-md px-4 py-1.5 text-sm no-underline transition-colors duration-150",
+        "flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm no-underline transition-colors",
         isActive
-          ? "bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] font-medium text-[var(--accent)]"
-          : "font-normal text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--text)]",
+          ? "bg-[var(--surface-2)] font-semibold text-[var(--text)]"
+          : "font-medium text-[var(--text)] hover:bg-[var(--surface-2)]",
       ].join(" ")}
     >
       알림
@@ -201,39 +204,39 @@ function NotificationLink() {
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface-2)]">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]">
       {/* Brand area */}
-      <div className="border-b border-[var(--border)] p-4">
+      <div className="px-5 pb-4 pt-5">
         <LogoWithText variant="header" size="md" />
-        <div className="mt-1 text-xs text-[var(--muted-foreground)]">관리자</div>
+        <p className="eyebrow mt-2">Admin Console</p>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2">
+      <nav aria-label="관리자 메뉴" className="flex-1 overflow-y-auto px-3 pb-4">
         <NotificationLink />
         {NAV.map((group) => (
           <NavGroupSection key={group.group} {...group} />
         ))}
       </nav>
 
-      {/* Theme toggle */}
-      <div className="border-t border-[var(--border)] px-4 py-3">
-        <ThemeToggle persistToServer={false} />
-      </div>
-
       {/* User area */}
-      <div className="border-t border-[var(--border)] p-4">
-        <div className="mb-2 truncate text-xs text-[var(--muted-foreground)]">
-          {user.email}
+      <div className="border-t border-[var(--border)] px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate text-xs font-medium text-[var(--text)]">
+              {user.email}
+            </div>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="mt-0.5 cursor-pointer bg-transparent p-0 text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--text)]"
+              >
+                로그아웃
+              </button>
+            </form>
+          </div>
+          <ThemeToggle persistToServer={false} />
         </div>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="cursor-pointer bg-transparent p-0 text-[0.8125rem] text-[var(--muted-foreground)] hover:text-[var(--text)] transition-colors duration-150"
-          >
-            로그아웃
-          </button>
-        </form>
       </div>
     </aside>
   );

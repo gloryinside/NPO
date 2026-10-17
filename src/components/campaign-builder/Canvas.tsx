@@ -1,4 +1,5 @@
 'use client';
+import { useId } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -40,6 +41,8 @@ export function Canvas({
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
 }) {
+  // dnd-kit 자동 id는 서버·클라이언트 카운터가 달라 hydration 불일치 → 고정 id
+  const dndId = useId();
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
@@ -66,7 +69,7 @@ export function Canvas({
   }
 
   return (
-    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext id={dndId} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext
         items={blocks.map((b) => b.id)}
         strategy={verticalListSortingStrategy}

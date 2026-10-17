@@ -28,7 +28,7 @@ function escapeXml(raw: string): string {
 export function buildFallbackOgSvg(opts: FallbackOgOptions = {}): string {
   const headline = escapeXml(opts.headline ?? '함께 후원해요')
   const subhead = escapeXml(opts.subhead ?? '')
-  const [from, to] = opts.gradient ?? ['#1e3a8a', '#7c3aed']
+  const [from, to] = opts.gradient ?? ['#20313a', '#0e202a']
 
   const subheadBlock = subhead
     ? `<text x="600" y="400" font-family="sans-serif" font-size="36" font-weight="600" fill="rgba(255,255,255,0.92)" text-anchor="middle">${subhead}</text>`

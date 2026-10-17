@@ -72,22 +72,25 @@ describe('getDashboardActions', () => {
       { count: null },
       { count: null },
       { count: null },
+      { count: null },
     ]);
     const out = await getDashboardActions(sb, 'o1', 'm1');
     expect(out).toEqual({
       failedPayments: 0,
       missingRrnReceipts: 0,
       recentAdminChanges: 0,
+      pendingBillingPromises: 0,
     });
   });
 
-  it('queries 3 different tables (payments x2 + promise_amount_changes)', async () => {
-    const sb = makeSupabase([{ count: 0 }, { count: 0 }, { count: 0 }]);
+  it('queries payments x2 + promise_amount_changes + promises(결제수단 등록 대기)', async () => {
+    const sb = makeSupabase([{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }]);
     await getDashboardActions(sb, 'o1', 'm1');
     const fromMock = (sb as unknown as { from: ReturnType<typeof vi.fn> }).from;
-    expect(fromMock).toHaveBeenCalledTimes(3);
+    expect(fromMock).toHaveBeenCalledTimes(4);
     const tableNames = fromMock.mock.calls.map((c) => c[0]);
     expect(tableNames.filter((n) => n === 'payments')).toHaveLength(2);
     expect(tableNames.filter((n) => n === 'promise_amount_changes')).toHaveLength(1);
+    expect(tableNames.filter((n) => n === 'promises')).toHaveLength(1);
   });
 });

@@ -12,7 +12,7 @@ import { rateLimit } from '@/lib/rate-limit';
 function buildReq(body: unknown): Request {
   return new Request('http://localhost/api/donor/theme', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', host: 'localhost' },
     body: JSON.stringify(body),
   });
 }
@@ -96,7 +96,7 @@ describe('POST /api/donor/theme', () => {
     });
     const req = new Request('http://localhost/api/donor/theme', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', host: 'localhost' },
       body: 'not-json',
     });
     const res = await POST(req);

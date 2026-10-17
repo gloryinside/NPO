@@ -8,6 +8,7 @@ import { CancelConfirmModal } from "@/components/donor/cancel-confirm-modal";
 import { EmptyState } from "@/components/donor/ui/EmptyState";
 import { InlineLoading } from "@/components/donor/ui/PageLoading";
 import { useDonorT } from "@/lib/i18n/use-donor-t";
+import { toast } from "sonner";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 
 type CampaignRef =
@@ -98,6 +99,18 @@ export default function DonorPromisesPage() {
   const [actioning, setActioning] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<AmountDialogState>({ open: false });
   const [billingKeyTarget, setBillingKeyTarget] = useState<string | null>(null);
+
+  // 토스 결제창 카드 변경에서 돌아왔을 때 결과 안내 후 주소 정리
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const card = url.searchParams.get("card");
+    if (!card) return;
+    if (card === "updated") toast.success("결제수단이 변경되었습니다. 기존 카드의 자동결제 등록은 삭제됩니다.");
+    else toast.error("결제수단을 변경하지 못했습니다. 기존 카드는 그대로 유지됩니다.");
+    url.searchParams.delete("card");
+    url.searchParams.delete("reason");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   // G-D41: 과거 약정(해지/완료) 표시 토글
   const [showEnded, setShowEnded] = useState(false);
@@ -143,9 +156,9 @@ export default function DonorPromisesPage() {
       if (!res.ok) {
         const data = await res.json();
         if (data.code === "BILLING_KEY_MISSING") {
-          alert(t("donor.promises.error.billing_key_missing"));
+          toast.error(t("donor.promises.error.billing_key_missing"));
         } else {
-          alert(data.error ?? t("donor.promises.error.generic"));
+          toast.error(data.error ?? t("donor.promises.error.generic"));
         }
         return;
       }
@@ -167,7 +180,7 @@ export default function DonorPromisesPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        alert((data && data.error) ?? t("donor.promises.error.generic"));
+        toast.error((data && data.error) ?? t("donor.promises.error.generic"));
         return;
       }
       setAmountDialog({ open: false });
@@ -294,14 +307,14 @@ export default function DonorPromisesPage() {
 
         {promises.length === 0 ? (
           <EmptyState
-            icon="📋"
+            illustration="promises"
             title={t("donor.promises.empty.title")}
             description={t("donor.promises.empty.description")}
             cta={{ href: "/", label: t("donor.promises.empty.cta") }}
           />
         ) : livePromises.length === 0 && !showEnded ? (
           <EmptyState
-            icon="📭"
+            illustration="campaigns"
             title={t("donor.promises.no_live.title")}
             description={t("donor.promises.no_live.description", { count: endedPromises.length })}
             cta={{ href: "/", label: t("donor.promises.no_live.cta") }}
@@ -531,7 +544,7 @@ function PayDayField({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? t("donor.promises.pay_day_failed"));
+        toast.error(data.error ?? t("donor.promises.pay_day_failed"));
         return;
       }
       setEditing(false);

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 export interface AdminCheerRow {
   id: string
@@ -29,6 +30,8 @@ export function CheerModerationList({ rows }: Props) {
   const router = useRouter()
   const [pending, setPending] = useState<string | null>(null)
   const [, startTransition] = useTransition()
+  const [hidingId, setHidingId] = useState<string | null>(null)
+  const [hideReason, setHideReason] = useState('')
 
   async function patch(
     row: AdminCheerRow,
@@ -42,7 +45,7 @@ export function CheerModerationList({ rows }: Props) {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        alert('처리 실패')
+        toast.error('처리 실패')
         return
       }
       startTransition(() => router.refresh())
@@ -53,11 +56,25 @@ export function CheerModerationList({ rows }: Props) {
 
   async function toggleHidden(row: AdminCheerRow) {
     const next = !row.hidden
-    const reason =
-      next && typeof window !== 'undefined'
-        ? (window.prompt('숨김 사유(선택, 500자 이내):') ?? '')
-        : ''
-    await patch(row, { hidden: next, reason: reason || undefined })
+    if (next) {
+      // 숨김 처리 시 사유 입력 인라인 폼 표시
+      setHideReason('')
+      setHidingId(row.id)
+      return
+    }
+    await patch(row, { hidden: next, reason: undefined })
+  }
+
+  async function confirmHide(row: AdminCheerRow) {
+    const reason = hideReason.trim()
+    setHidingId(null)
+    setHideReason('')
+    await patch(row, { hidden: true, reason: reason || undefined })
+  }
+
+  function cancelHide() {
+    setHidingId(null)
+    setHideReason('')
   }
 
   async function approve(row: AdminCheerRow) {
@@ -67,7 +84,7 @@ export function CheerModerationList({ rows }: Props) {
   async function toggleFeatured(row: AdminCheerRow) {
     const next = !row.featuredAt
     if (next && (row.hidden || !row.published)) {
-      alert('공개된 응원만 대표 응원으로 선정할 수 있습니다.')
+      toast.error('공개된 응원만 대표 응원으로 선정할 수 있습니다.')
       return
     }
     await patch(row, { featured: next })
@@ -157,7 +174,7 @@ export function CheerModerationList({ rows }: Props) {
             <button
               type="button"
               onClick={() => toggleHidden(r)}
-              disabled={pending === r.id}
+              disabled={pending === r.id || hidingId === r.id}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50 ${
                 r.hidden
                   ? 'border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]'
@@ -171,6 +188,42 @@ export function CheerModerationList({ rows }: Props) {
                   : '숨김 처리'}
             </button>
           </div>
+          {hidingId === r.id && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void confirmHide(r)
+              }}
+              className="mt-2 flex flex-wrap items-center justify-end gap-2"
+            >
+              <input
+                type="text"
+                value={hideReason}
+                onChange={(e) => setHideReason(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') cancelHide()
+                }}
+                maxLength={500}
+                placeholder="숨김 사유(선택, 500자 이내)"
+                title="숨김 사유"
+                autoFocus
+                className="min-w-[240px] flex-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text)] outline-none"
+              />
+              <button
+                type="submit"
+                className="rounded-md border border-[rgba(239,68,68,0.4)] bg-[rgba(239,68,68,0.08)] px-3 py-1 text-xs font-medium text-[var(--negative)] transition-opacity hover:opacity-80"
+              >
+                숨김 확정
+              </button>
+              <button
+                type="button"
+                onClick={cancelHide}
+                className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-xs font-medium text-[var(--text)] transition-opacity hover:opacity-80"
+              >
+                취소
+              </button>
+            </form>
+          )}
         </li>
       ))}
     </ul>

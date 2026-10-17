@@ -19,6 +19,7 @@ import { DataTable, type DataTableColumn } from "@/components/common/data-table"
 import { DetailDrawer } from "@/components/common/detail-drawer";
 import { FilterBar, FilterDropdown } from "@/components/common/filter-bar";
 import { formatKRW } from "@/lib/format";
+import { toast } from "sonner";
 
 type Props = {
   payments: PaymentWithRelations[];
@@ -483,7 +484,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(data?.error ?? "변경 실패");
+        toast.error(data?.error ?? "변경 실패");
         return;
       }
       setSelected(new Set());
@@ -611,6 +612,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
         rows={filteredPayments}
         rowKey={(p) => p.id}
         emptyMessage="납입 내역이 없습니다."
+        emptyIllustration="payments"
         selectable
         selectedIds={selected}
         onSelectionChange={setSelected}

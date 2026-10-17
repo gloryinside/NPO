@@ -42,7 +42,7 @@ export const TIER_COLORS: Record<MemberTier, string> = {
   silver: '#94a3b8',
   gold: '#eab308',
   platinum: '#0891b2',
-  diamond: '#7c3aed',
+  diamond: '#009944',
 };
 
 /**

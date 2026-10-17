@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function DonorNotFound() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
@@ -5,7 +7,13 @@ export default function DonorNotFound() {
         className="w-full max-w-md rounded-2xl border p-8 text-center"
         style={{ borderColor: "var(--border)", background: "var(--surface)" }}
       >
-        <p className="text-5xl mb-4">🔍</p>
+        <Image
+          src="/img/error/404.webp"
+          alt=""
+          width={480}
+          height={320}
+          className="art-adapt mx-auto mb-4 h-52 w-auto"
+        />
         <h2 className="text-lg font-semibold" style={{ color: "var(--text)" }}>
           페이지를 찾을 수 없습니다
         </h2>
@@ -17,7 +25,7 @@ export default function DonorNotFound() {
         </p>
         <a
           href="/donor"
-          className="mt-6 inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
+          className="mt-6 inline-flex rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-glow"
           style={{ background: "var(--accent)", textDecoration: "none" }}
         >
           마이페이지로

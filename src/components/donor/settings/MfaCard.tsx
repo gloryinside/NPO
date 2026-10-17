@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useDonorT } from "@/lib/i18n/use-donor-t";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface MfaState {
   loading: boolean;
@@ -26,6 +27,7 @@ type EnrollStep =
  */
 export function MfaCard() {
   const t = useDonorT();
+  const confirm = useConfirm();
   const [state, setState] = useState<MfaState>({
     loading: true,
     isOtp: false,
@@ -130,9 +132,11 @@ export function MfaCard() {
 
   async function regenerateBackup() {
     if (
-      !confirm(
-        t("donor.mfa.backup.confirm_regen"),
-      )
+      !(await confirm({
+        title: t("donor.mfa.backup.confirm_regen"),
+        confirmText: t("donor.mfa.backup.regenerate"),
+        tone: "danger",
+      }))
     ) {
       return;
     }
@@ -181,7 +185,13 @@ export function MfaCard() {
   }
 
   async function handleUnenroll(factorId: string) {
-    if (!confirm(t("donor.mfa.confirm_disable"))) return;
+    if (
+      !(await confirm({
+        title: t("donor.mfa.confirm_disable"),
+        confirmText: t("donor.mfa.disable"),
+        tone: "danger",
+      }))
+    ) return;
     setWorking(true);
     setError(null);
     try {

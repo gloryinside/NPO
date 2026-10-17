@@ -7,8 +7,8 @@ describe('buildFallbackOgSvg (G-123)', () => {
     expect(svg).toContain('width="1200"')
     expect(svg).toContain('height="630"')
     expect(svg).toContain('함께 후원해요')
-    expect(svg).toContain('#1e3a8a')
-    expect(svg).toContain('#7c3aed')
+    expect(svg).toContain('#20313a')
+    expect(svg).toContain('#0e202a')
   })
 
   it('headline/subhead 커스텀', () => {

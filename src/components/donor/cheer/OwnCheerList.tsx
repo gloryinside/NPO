@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 export interface OwnCheerItem {
   id: string
@@ -39,13 +41,18 @@ function statusLabel(m: OwnCheerItem): { label: string; color: string } | null {
 
 export function OwnCheerList({ items }: { items: OwnCheerItem[] }) {
   const router = useRouter()
+  const confirm = useConfirm()
   const [pending, setPending] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
   async function remove(id: string) {
     if (
-      typeof window !== 'undefined' &&
-      !window.confirm('응원을 삭제하시겠습니까?\n삭제된 응원은 공개 벽에서 사라집니다.')
+      !(await confirm({
+        title: '응원을 삭제하시겠습니까?',
+        description: '삭제된 응원은 공개 벽에서 사라집니다.',
+        confirmText: '삭제',
+        tone: 'danger',
+      }))
     ) {
       return
     }
@@ -55,7 +62,7 @@ export function OwnCheerList({ items }: { items: OwnCheerItem[] }) {
         method: 'DELETE',
       })
       if (!res.ok) {
-        alert('삭제 실패')
+        toast.error('삭제 실패')
         return
       }
       startTransition(() => router.refresh())

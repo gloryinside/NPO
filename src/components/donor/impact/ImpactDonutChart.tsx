@@ -5,7 +5,7 @@ interface Props {
   data: Array<{ title: string; amount: number }>
 }
 
-const COLORS = ['#7c3aed', '#38bdf8', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#14b8a6', '#64748b']
+const COLORS = ['#009944', '#334155', '#0284c7', '#d97706', '#94a3b8', '#0d9488', '#dc2626', '#64748b']
 
 function formatKRW(n: number): string {
   if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`

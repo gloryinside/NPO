@@ -4,17 +4,20 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOnline } from "@/components/donor/ui/useOnline";
 import { getPgErrorMessage } from "@/lib/payments/pg-error-messages";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 /**
  * G-D06 / G-D29: 실패·미납 결제 재시도 버튼 + 쿨다운 카운트다운
  *
  * - 429 응답에 `retryAfterMs` 가 포함되면 남은 시간 표시 + 버튼 비활성
- * - ok:true&success:true → 성공 alert + 페이지 새로고침
- * - ok:true&success:false → Toss가 실패 응답. 사유 포함 alert
+ * - ok:true&success:true → 성공 토스트 + 페이지 새로고침
+ * - ok:true&success:false → Toss가 실패 응답. 사유 포함 확인창
  */
 export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
   const router = useRouter();
   const online = useOnline();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [, setTick] = useState(0);
@@ -33,7 +36,7 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
 
   async function handleClick() {
     if (busy || onCooldown) return;
-    if (!confirm("이 결제를 다시 시도하시겠습니까?")) return;
+    if (!(await confirm({ title: "이 결제를 다시 시도하시겠습니까?", confirmText: "재시도" }))) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/donor/payments/${paymentId}/retry`, {
@@ -49,7 +52,7 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
       };
       if (res.status === 429 && typeof data.retryAfterMs === "number") {
         setCooldownUntil(Date.now() + data.retryAfterMs);
-        alert(
+        toast.error(
           data.error ??
             "재시도 횟수 제한에 도달했습니다. 잠시 후 다시 시도해주세요."
         );
@@ -58,26 +61,30 @@ export function PaymentRetryButton({ paymentId }: { paymentId: string }) {
       // G-D46: 빌링키 없을 때 약정 페이지로 직접 안내
       if (res.status === 400 && data.code === "BILLING_KEY_MISSING") {
         if (
-          confirm(
-            "결제 수단이 등록되지 않아 재시도할 수 없습니다.\n지금 카드를 등록하시겠습니까?"
-          )
+          await confirm({
+            title: "지금 카드를 등록하시겠습니까?",
+            description: "결제 수단이 등록되지 않아 재시도할 수 없습니다.",
+            confirmText: "카드 등록",
+          })
         ) {
           router.push("/donor/promises");
         }
         return;
       }
       if (!res.ok) {
-        alert(data.error ?? "재시도에 실패했습니다.");
+        toast.error(data.error ?? "재시도에 실패했습니다.");
         return;
       }
       if (data.success) {
-        alert("결제가 성공적으로 재처리되었습니다.");
+        toast.success("결제가 성공적으로 재처리되었습니다.");
       } else {
         const { message, action } = getPgErrorMessage(data.code);
         if (
-          confirm(
-            `재시도가 실패했습니다.\n${message} ${action}\n\n카드를 변경하시겠습니까?`
-          )
+          await confirm({
+            title: "카드를 변경하시겠습니까?",
+            description: `재시도가 실패했습니다. ${message} ${action}`,
+            confirmText: "카드 변경",
+          })
         ) {
           router.push("/donor/promises");
           return;

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CampaignFormDialog } from "@/components/admin/campaign-form-dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Campaign } from "@/types/campaign";
 
 type Props = {
@@ -48,6 +49,7 @@ function StatusBadge({ status }: { status: Campaign["status"] }) {
 
 export function CampaignList({ campaigns: initialCampaigns }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Campaign | undefined>(undefined);
@@ -83,7 +85,15 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
   }, [router]);
 
   const handleArchive = async (campaign: Campaign) => {
-    if (!confirm(`"${campaign.title}" 캠페인을 보관하시겠습니까?`)) return;
+    if (
+      !(await confirm({
+        title: "캠페인을 보관할까요?",
+        description: `"${campaign.title}" 캠페인을 보관하시겠습니까?`,
+        confirmText: "보관",
+        tone: "danger",
+      }))
+    )
+      return;
     try {
       await fetch(`/api/admin/campaigns/${campaign.id}`, { method: "DELETE" });
       await refresh();

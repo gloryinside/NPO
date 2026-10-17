@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const TYPES = ["notice", "faq"] as const;
 type PostType = typeof TYPES[number];
@@ -31,6 +32,7 @@ function formatDate(iso: string) {
 }
 
 export default function AdminBoardPage() {
+  const confirm = useConfirm();
   const [tab, setTab] = useState<PostType>("notice");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,15 @@ export default function AdminBoardPage() {
   }
 
   async function deletePost(id: string) {
-    if (!confirm("삭제하시겠습니까?")) return;
+    if (
+      !(await confirm({
+        title: "게시글을 삭제할까요?",
+        description: "삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+        confirmText: "삭제",
+        tone: "danger",
+      }))
+    )
+      return;
     await fetch(`/api/admin/board/${id}`, { method: "DELETE" });
     startTransition(() => { load(tab); });
   }

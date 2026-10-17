@@ -48,10 +48,20 @@ function isActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
+// JobYLW GNB 문법 — 현재 위치는 슬레이트 면, 그린은 행동 신호(CTA)에만
+function gnbLinkClass(active: boolean): string {
+  return [
+    "inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors",
+    active
+      ? "bg-[var(--surface-2)] text-[var(--text)]"
+      : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
+  ].join(" ");
+}
+
 export function DonorNav() {
   const pathname = usePathname();
   return (
-    <nav className="ml-6 flex items-center gap-3">
+    <nav className="ml-4 flex items-center gap-1">
       {ITEMS.map((item) => {
         const active = isActive(pathname, item.href);
 
@@ -61,18 +71,14 @@ export function DonorNav() {
             <div key={item.href} className="relative group">
               <Link
                 href={item.href}
-                className={[
-                  "text-sm no-underline pb-0.5 transition-colors duration-150",
-                  groupActive
-                    ? "font-medium text-[var(--accent)] border-b-2 border-[var(--accent)]"
-                    : "font-normal text-[var(--muted-foreground)] border-b-2 border-transparent hover:text-[var(--text)]",
-                ].join(" ")}
+                aria-current={groupActive ? "page" : undefined}
+                className={gnbLinkClass(groupActive)}
               >
                 {item.label} ▾
               </Link>
               {/* 드롭다운 */}
               <div className="absolute left-0 top-full z-50 hidden group-hover:block pt-1">
-                <ul className="min-w-[8rem] rounded-xl border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+                <ul className="min-w-[11rem] rounded-xl border border-[var(--border)] bg-[var(--surface)] py-1 shadow-card">
                   {item.children.map((child) => {
                     const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
                     return (
@@ -80,10 +86,10 @@ export function DonorNav() {
                         <Link
                           href={child.href}
                           className={[
-                            "block px-4 py-2 text-xs no-underline transition-colors",
+                            "block whitespace-nowrap px-3.5 py-2 text-sm no-underline transition-colors hover:bg-[var(--surface-2)]",
                             childActive
-                              ? "font-medium text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
-                              : "text-[var(--text)] hover:bg-[var(--surface-2)]",
+                              ? "font-semibold text-[var(--text)]"
+                              : "text-[var(--muted-foreground)] hover:text-[var(--text)]",
                           ].join(" ")}
                         >
                           {child.label}
@@ -101,12 +107,8 @@ export function DonorNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={[
-              "text-sm no-underline pb-0.5 border-b-2 transition-colors duration-150",
-              active
-                ? "font-medium text-[var(--accent)] border-[var(--accent)]"
-                : "font-normal text-[var(--muted-foreground)] border-transparent hover:text-[var(--text)]",
-            ].join(" ")}
+            aria-current={active ? "page" : undefined}
+            className={gnbLinkClass(active)}
           >
             {item.label}
           </Link>

@@ -9,22 +9,10 @@ export default async function AdminLayout({
 }) {
   const user = await requireAdminUser();
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        background: "var(--bg)",
-      }}
-    >
+    <div className="app-canvas flex h-screen">
       <AdminSidebar user={user} />
-      <main
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "2rem",
-        }}
-      >
-        {children}
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1280px] px-6 py-8 lg:px-10">{children}</div>
       </main>
       <Toaster position="bottom-right" />
     </div>

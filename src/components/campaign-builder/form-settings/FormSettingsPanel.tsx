@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 export function FormSettingsPanel({
   campaignId,
@@ -32,7 +33,8 @@ export function FormSettingsPanel({
       body: JSON.stringify(s),
     });
     setSaving(false);
-    alert(res.ok ? '저장됐습니다' : '저장 실패');
+    if (res.ok) toast.success('저장됐습니다');
+    else toast.error('저장 실패');
   }
 
   return (

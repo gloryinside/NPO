@@ -5,6 +5,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import type { PaymentWithRelations } from "@/types/payment";
 
 type Props = {
@@ -58,6 +60,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
   const [isPending, startTransition] = useTransition();
   const [processing, setProcessing] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const confirm = useConfirm();
 
   const totalAmount = payments.reduce((s, p) => s + Number(p.amount ?? 0), 0);
 
@@ -71,7 +74,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
 
   const markPaid = useCallback(
     async (id: string) => {
-      if (!confirm("해당 건을 수기로 납부완료 처리하시겠습니까?")) return;
+      if (!(await confirm({ title: "해당 건을 수기로 납부완료 처리하시겠습니까?", confirmText: "납부완료 처리" }))) return;
       setProcessing(id);
       try {
         const res = await fetch(`/api/admin/payments/${id}`, {
@@ -81,7 +84,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
         });
         if (!res.ok) {
           const d = await res.json();
-          alert(d.error ?? "처리 실패");
+          toast.error(d.error ?? "처리 실패");
           return;
         }
         router.refresh();
@@ -89,32 +92,50 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
         setProcessing(null);
       }
     },
-    [router]
+    [router, confirm]
   );
 
   const retryNow = useCallback(
     async (id: string) => {
-      if (!confirm("이 건을 지금 즉시 재청구하시겠습니까?")) return;
+      if (
+        !(await confirm({
+          title: "이 건을 지금 즉시 재청구하시겠습니까?",
+          description: "등록된 결제수단으로 즉시 결제가 시도됩니다.",
+          confirmText: "재청구",
+          tone: "danger",
+        }))
+      )
+        return;
       setProcessing(id);
       try {
         const res = await fetch(`/api/admin/payments/${id}/retry`, { method: "POST" });
         const d = await res.json().catch(() => ({}));
         if (!res.ok) {
-          alert(d?.error ?? "재시도 실패");
+          toast.error(d?.error ?? "재시도 실패");
           return;
         }
-        alert(d.success ? `재청구 성공` : `재청구 실패: ${d.message ?? "알 수 없음"}`);
+        if (d.success) toast.success(`재청구 성공`);
+        else toast.error(`재청구 실패: ${d.message ?? "알 수 없음"}`);
         router.refresh();
       } finally {
         setProcessing(null);
       }
     },
-    [router],
+    [router, confirm],
   );
 
   const cancelRetrySchedule = useCallback(
     async (id: string) => {
-      if (!confirm("이 건의 자동 재시도 예약을 취소하시겠습니까? (미납 상태로 되돌립니다)")) return;
+      if (
+        !(await confirm({
+          title: "이 건의 자동 재시도 예약을 취소하시겠습니까?",
+          description: "미납 상태로 되돌립니다.",
+          confirmText: "예약 취소",
+          cancelText: "닫기",
+          tone: "danger",
+        }))
+      )
+        return;
       setProcessing(id);
       try {
         const res = await fetch(`/api/admin/payments/${id}`, {
@@ -124,7 +145,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
         });
         if (!res.ok) {
           const d = await res.json();
-          alert(d.error ?? "처리 실패");
+          toast.error(d.error ?? "처리 실패");
           return;
         }
         router.refresh();
@@ -132,12 +153,12 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
         setProcessing(null);
       }
     },
-    [router],
+    [router, confirm],
   );
 
   async function markSelectedPaid() {
     if (selected.size === 0) return;
-    if (!confirm(`선택한 ${selected.size}건을 납부완료 처리하시겠습니까?`)) return;
+    if (!(await confirm({ title: `선택한 ${selected.size}건을 납부완료 처리하시겠습니까?`, confirmText: "납부완료 처리" }))) return;
     const ids = Array.from(selected);
     for (const id of ids) {
       await fetch(`/api/admin/payments/${id}`, {
@@ -254,7 +275,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
                     key={p.id}
                     style={{
                       borderTop: idx > 0 ? "1px solid var(--border)" : undefined,
-                      background: isSelected ? "rgba(124,58,237,0.06)" : undefined,
+                      background: isSelected ? "rgba(0,153,68,0.06)" : undefined,
                     }}
                   >
                     <td className="px-4 py-3">

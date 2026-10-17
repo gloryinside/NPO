@@ -3,10 +3,11 @@ import { useState } from 'react';
 import type { ThemeConfig } from '@/lib/theme/config';
 
 const ACCENT_PRESETS = [
+  { label: '영림원 그린', value: '#009944' },
+  { label: '딥네이비', value: '#20313a' },
   { label: '보라', value: '#7c3aed' },
   { label: '파랑', value: '#2563eb' },
   { label: '빨강', value: '#dc2626' },
-  { label: '초록', value: '#16a34a' },
   { label: '주황', value: '#ea580c' },
   { label: '분홍', value: '#db2777' },
 ];
@@ -77,7 +78,7 @@ export function ThemeSettingsForm({ initialData }: { initialData: ThemeConfig })
           type="text"
           value={accent}
           onChange={(e) => setAccent(e.target.value)}
-          placeholder="#7c3aed"
+          placeholder="#009944"
           className="w-36 rounded px-3 py-1.5 text-sm"
           style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
         />

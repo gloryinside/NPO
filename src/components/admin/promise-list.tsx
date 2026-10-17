@@ -961,6 +961,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
         rows={filteredPromises}
         rowKey={(p) => p.id}
         emptyMessage="약정 내역이 없습니다."
+        emptyIllustration="promises"
         onRowClick={(p) => setDetailTarget(p)}
         rowActions={(p) => <ActionMenu promise={p} onAction={openAction} />}
       />
