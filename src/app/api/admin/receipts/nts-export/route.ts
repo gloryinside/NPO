@@ -1,40 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import iconv from "iconv-lite";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { kstParts } from "@/lib/billing/kst";
+import { logAudit } from "@/lib/audit";
+import { buildXlsx } from "@/lib/export/xlsx";
+import { buildNtsDataset, NTS_COLUMNS, type NtsSourceRow } from "@/lib/receipt/nts-dataset";
 
 /**
- * GET /api/admin/receipts/nts-export?year=YYYY
+ * GET /api/admin/receipts/nts-export?year=2026[&format=json]
  *
- * 국세청 연말정산 간소화 기부금 전산매체 파일 생성
- * 고정길이 텍스트 파일 (EUC-KR 기준 명세, UTF-8 인코딩으로 반환)
- *
- * 레코드 구조:
- *  H (헤더): 1건 — 제출기관 정보
- *  D (데이터): N건 — 기부자별 기부금 내역
- *  T (트레일러): 1건 — 합계
- *
- * ⚠️ 실제 국세청 제출 전 관할 세무서/홈택스 기술명세 최종 확인 필요.
- *   - 귀속연도별 명세 변경 가능성 (매년 확인)
- *   - 기부자 관계(배우자/부양가족) 필드 추가 여부
- *   - 지정/비지정 기부금 구분 코드
- *   - 사업자번호/주민번호 체크섬 검증
- *   - 현재 구현은 2024년 기준 100바이트 H/D/T 레코드로 최소 필드만 포함.
+ * 국세청 제출용 기부자별 발급명세(홈택스 전자기부금영수증 일괄발급 업로드 대비) — lib/receipt/nts-dataset 참고.
+ *  - format=json : 미리보기(건수·합계·제외 사유·기관 정보 누락). 주민번호는 내려주지 않는다.
+ *  - 기본        : XLSX 다운로드. 서버에서 감사 로그·제출 이력(nts_export_logs)을 남긴다.
+ *  - 취소·재발급으로 대체된 영수증은 제외. 주민번호 없는 기부자는 제외 사유와 함께 보고(조용히 빼지 않음).
+ *  - 기관 필수 기재사항이 비면 다운로드를 막는다(422).
  */
 export async function GET(req: NextRequest) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const url = new URL(req.url);
   const yearParam = url.searchParams.get("year");
-  const year = yearParam ? Number(yearParam) : new Date().getFullYear() - 1;
-
+  const year = yearParam ? Number(yearParam) : kstParts().year - 1;
   if (!Number.isInteger(year) || year < 2000 || year > 2999) {
-    return NextResponse.json(
-      { error: "year 파라미터가 유효하지 않습니다." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "year 파라미터가 유효하지 않습니다." }, { status: 400 });
   }
+  const preview = url.searchParams.get("format") === "json";
 
   let tenant;
   try {
@@ -44,206 +35,116 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
-
-  // 1) 기관 정보
   const { data: org } = await supabase
     .from("orgs")
-    .select("name, business_no, address")
+    .select("name, business_no, address, representative_name, donee_type, donee_legal_basis, donee_code, donation_type_code")
     .eq("id", tenant.id)
     .single();
+  if (!org) return NextResponse.json({ error: "기관 정보를 찾을 수 없습니다." }, { status: 404 });
 
-  if (!org) {
-    return NextResponse.json(
-      { error: "기관 정보를 찾을 수 없습니다." },
-      { status: 404 }
-    );
-  }
-
-  // 2) 해당 연도 발급된 receipts 조회 (member 정보 join)
-  const { data: receiptsRaw, error: receiptsErr } = await supabase
-    .from("receipts")
-    .select(
-      `id, receipt_code, year, total_amount, issued_at,
-       members!inner(id, name, id_number_encrypted, phone)`
-    )
-    .eq("org_id", tenant.id)
-    .eq("year", year)
-    .order("issued_at", { ascending: true });
-
-  if (receiptsErr) {
-    return NextResponse.json({ error: receiptsErr.message }, { status: 500 });
-  }
-
-  type ReceiptRow = {
-    id: string;
-    receipt_code: string;
-    year: number;
-    total_amount: number;
-    issued_at: string | null;
-    members: {
-      id: string;
-      name: string;
-      id_number_encrypted: string | null;
-      phone: string | null;
-    } | null;
-  };
-
-  const receipts = (receiptsRaw as unknown as ReceiptRow[]) ?? [];
-
-  // 주민번호 복호화 키
   const encKey = process.env.RECEIPTS_ENCRYPTION_KEY;
   if (!encKey) {
-    return NextResponse.json(
-      { error: "주민번호 복호화 키(RECEIPTS_ENCRYPTION_KEY)가 설정되지 않았습니다." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "주민번호 복호화 키(RECEIPTS_ENCRYPTION_KEY)가 설정되지 않았습니다." }, { status: 500 });
   }
 
-  // 3) 전산파일 생성
-  const lines: string[] = [];
+  // 유효 영수증만(취소·대체 제외) — 1000행 제한을 넘도록 페이지 단위로
+  type ReceiptRow = {
+    receipt_code: string;
+    issued_at: string | null;
+    total_amount: number;
+    resident_no_encrypted: string | null;
+    members: { id: string; name: string; id_number_encrypted: string | null } | null;
+  };
+  const receipts: ReceiptRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("receipts")
+      .select("receipt_code, issued_at, total_amount, resident_no_encrypted, members!inner(id, name, id_number_encrypted)")
+      .eq("org_id", tenant.id)
+      .eq("year", year)
+      .or("status.is.null,status.eq.issued")
+      .order("issued_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    receipts.push(...((data ?? []) as unknown as ReceiptRow[]));
+    if ((data?.length ?? 0) < 1000) break;
+  }
 
-  // ── 헤더 레코드 (H) ──────────────────────────────────────────────────────
-  // 사업자번호(10), 기관명(40), 귀속연도(4), 레코드구분(1), 제출일자(8), 공백(37)
-  const businessNo = (org.business_no ?? "").replace(/-/g, "").padEnd(10);
-  const orgName = padEndKr(org.name ?? "", 40);
-  const submitDate = toDateStr(new Date());
-  const header = [
-    "H",
-    businessNo,
-    orgName,
-    String(year),
-    submitDate,
-    " ".repeat(37),
-  ].join("");
-  lines.push(header);
-
-  // ── 데이터 레코드 (D) ──────────────────────────────────────────────────────
-  let totalDonation = 0;
-  let dataCount = 0;
-
+  // 주민번호: 후원자 정보 우선, 없으면 예전 결제 시점 영수증에 남은 값
+  const source: NtsSourceRow[] = [];
   for (const r of receipts) {
-    const member = r.members;
-    if (!member) continue;
-
-    // 암호화된 주민번호 복호화 (없으면 건너뜀 — 국세청 제출 불가)
-    if (!member.id_number_encrypted) continue;
-    const { data: decrypted, error: decErr } = await supabase.rpc(
-      "decrypt_id_number",
-      { ciphertext: member.id_number_encrypted, passphrase: encKey }
-    );
-    if (decErr) {
-      console.error(
-        `[nts-export] decrypt_id_number failed for member ${member.id}:`,
-        decErr.message
-      );
-      continue;
+    const cipher = r.members?.id_number_encrypted ?? r.resident_no_encrypted;
+    let donorId: string | null = null;
+    if (cipher) {
+      const { data: plain, error } = await supabase.rpc("decrypt_id_number", { ciphertext: cipher, passphrase: encKey });
+      if (error) console.error(`[nts-export] 복호화 실패 receipt=${r.receipt_code}`); // 번호 자체는 로그에 남기지 않는다
+      donorId = (plain as string | null) ?? null;
     }
-    const idNumber = ((decrypted as string | null) ?? "").replace(/-/g, "");
-    if (!idNumber || idNumber.length !== 13) continue;
-
-    const donorName = padEndKr(member.name ?? "", 20);
-    const amount = Number(r.total_amount ?? 0);
-    totalDonation += amount;
-    dataCount++;
-
-    // 레코드구분(1), 사업자번호(10), 기부자주민번호(13), 기부자명(20),
-    // 기부금액(15, 우측정렬), 귀속연도(4), 영수증번호(20), 공백(17)
-    const dataLine = [
-      "D",
-      businessNo,
-      idNumber,
-      donorName,
-      String(amount).padStart(15, "0"),
-      String(year),
-      r.receipt_code.padEnd(20),
-      " ".repeat(17),
-    ].join("");
-    lines.push(dataLine);
+    source.push({
+      receiptCode: r.receipt_code,
+      issuedAt: r.issued_at,
+      donorName: r.members?.name ?? "",
+      donorId,
+      totalAmount: Number(r.total_amount ?? 0),
+    });
   }
 
-  // ── 트레일러 레코드 (T) ───────────────────────────────────────────────────
-  // 레코드구분(1), 사업자번호(10), 총건수(10), 총금액(20), 공백(59)
-  const trailer = [
-    "T",
-    businessNo,
-    String(dataCount).padStart(10, "0"),
-    String(totalDonation).padStart(20, "0"),
-    " ".repeat(59),
-  ].join("");
-  lines.push(trailer);
+  const ds = buildNtsDataset(org, year, source);
+  const blocking = ds.orgIssues.filter((i) => i.blocking);
 
-  // 4) 포맷 검증 — 모든 레코드는 정확히 100 바이트(EUC-KR) 여야 한다.
-  const EXPECTED_LINE_LENGTH = 100;
-  const formatErrors: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const len = eucKrByteLength(lines[i]);
-    if (len !== EXPECTED_LINE_LENGTH) {
-      const type = lines[i][0];
-      formatErrors.push(
-        `레코드 ${i + 1} (타입=${type}) 길이 불일치: 기대=${EXPECTED_LINE_LENGTH}바이트, 실제=${len}바이트`
-      );
-    }
+  if (preview) {
+    return NextResponse.json({
+      year,
+      rowCount: ds.rows.length,
+      totalAmount: ds.totalAmount,
+      excluded: ds.excluded,
+      merged: ds.merged,
+      orgIssues: ds.orgIssues,
+      columns: NTS_COLUMNS.map((c) => c.header),
+    });
   }
-  if (formatErrors.length > 0) {
-    console.error("[nts-export] format validation failed:", formatErrors);
+
+  if (blocking.length) {
     return NextResponse.json(
-      {
-        error: "전산매체 파일 포맷 검증 실패",
-        details: formatErrors,
-      },
-      { status: 500 }
+      { error: "기관 정보에 필수 기재사항이 없습니다. 기관 설정에서 입력해 주세요.", issues: blocking },
+      { status: 422 },
     );
   }
 
-  // EUC-KR 인코딩으로 최종 출력 (국세청 명세 준수)
-  const text = lines.join("\r\n");
-  const eucKrBuffer = iconv.encode(text, "euc-kr");
-  const filename = `nts_donation_${year}_${submitDate}.txt`;
+  const o = { name: org.name ?? "", bizNo: (org.business_no ?? "").replace(/\D/g, ""), doneeCode: org.donee_code ?? "", typeCode: org.donation_type_code ?? "" };
+  const xlsx = await buildXlsx(
+    `${year}년 기부금 발급명세`,
+    NTS_COLUMNS.map((c) => c.header),
+    ds.rows.map((r) => NTS_COLUMNS.map((c) => c.value(r, o))),
+  );
 
-  return new NextResponse(new Uint8Array(eucKrBuffer), {
+  // 감사·제출 이력은 서버에서(예전엔 클라이언트가 빈 fileUrl로 보내 400 → 기록이 한 번도 남지 않았다)
+  await supabase.from("nts_export_logs").insert({
+    org_id: tenant.id,
+    year,
+    created_by: adminUser.id,
+    file_url: "download",
+    member_count: ds.rows.length,
+    total_amount: ds.totalAmount,
+  });
+  await logAudit({
+    orgId: tenant.id,
+    actorId: adminUser.id,
+    actorEmail: adminUser.email ?? null,
+    action: "receipt.nts_export",
+    resourceType: "receipt",
+    resourceId: null,
+    summary: `${year}년 국세청 제출 자료 ${ds.rows.length}건 내려받기(제외 ${ds.excluded.length}건)`,
+  });
+
+  const body = xlsx.buffer.slice(xlsx.byteOffset, xlsx.byteOffset + xlsx.byteLength) as ArrayBuffer;
+  return new NextResponse(body, {
     status: 200,
     headers: {
-      "Content-Type": "text/plain; charset=euc-kr",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="nts_donation_${year}.xlsx"`,
       "Cache-Control": "no-store",
-      "X-NTS-Year": String(year),
-      "X-NTS-Count": String(dataCount),
-      "X-NTS-Total": String(totalDonation),
     },
   });
-}
-
-// ── 헬퍼 ──────────────────────────────────────────────────────────────────
-
-/** YYYYMMDD 형태 날짜 문자열 */
-function toDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}${m}${dd}`;
-}
-
-/**
- * 국세청 전산매체 명세에 맞춰 EUC-KR 바이트 기준 우측 공백 패딩.
- * 한글 한 글자 = 2바이트(EUC-KR). 길이 초과 시 바이트 단위 절단.
- */
-function padEndKr(str: string, byteLen: number): string {
-  const encoded = iconv.encode(str, "euc-kr");
-  if (encoded.length >= byteLen) {
-    // 정확히 byteLen 바이트로 절단. 한글 중간에 잘리면 마지막 바이트를 공백으로 치환.
-    const truncated = encoded.subarray(0, byteLen);
-    // 한글이 중간에 잘렸는지 확인: 마지막 바이트가 EUC-KR 고위 영역(0xA1-0xFE)이면
-    // 짝이 안 맞을 수 있으므로 재디코딩 후 재인코딩.
-    const reDecoded = iconv.decode(truncated, "euc-kr");
-    const reEncoded = iconv.encode(reDecoded, "euc-kr");
-    if (reEncoded.length === byteLen) return reDecoded;
-    // 1바이트 부족하면 공백으로 패딩
-    return reDecoded + " ".repeat(byteLen - reEncoded.length);
-  }
-  return str + " ".repeat(byteLen - encoded.length);
-}
-
-/** EUC-KR 바이트 길이 계산. */
-function eucKrByteLength(str: string): number {
-  return iconv.encode(str, "euc-kr").length;
 }

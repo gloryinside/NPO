@@ -167,14 +167,15 @@ export async function confirmDonation(
     }
   }
 
-  // 기부금 영수증 신청 + RRN이 있으면 receipts 행 생성 (fire-and-forget)
+  // 기부금 영수증 신청 + RRN이 있으면 후원자 정보로 옮긴다 (fire-and-forget).
+  // 영수증은 연 1장(연말 일괄·관리자 발급) — 결제마다 영수증을 만들면 연말 일괄이 그 후원자를 건너뛰었다.
   const updatedRow = updated as unknown as {
     receipt_opt_in?: boolean;
     rrn_pending_encrypted?: string | null;
     member_id?: string;
   };
   if (updatedRow.receipt_opt_in && updatedRow.rrn_pending_encrypted) {
-    void createReceiptForPayment(supabase, confirmedPayment, updatedRow.member_id ?? null, updatedRow.rrn_pending_encrypted);
+    void moveRrnToMember(supabase, confirmedPayment, updatedRow.member_id ?? null, updatedRow.rrn_pending_encrypted);
   }
 
   return confirmedPayment;
@@ -350,7 +351,7 @@ async function notifyExternalChannels(
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function createReceiptForPayment(
+async function moveRrnToMember(
   supabase: SupabaseClient,
   payment: ConfirmedPayment,
   memberId: string | null,
@@ -358,49 +359,24 @@ async function createReceiptForPayment(
 ): Promise<void> {
   try {
     if (!memberId) return;
-
-    const year = new Date(payment.approved_at ?? Date.now()).getFullYear();
-
-    // receipt_code: ORG 내 당해년도 순번
-    const { count } = await supabase
-      .from("receipts")
-      .select("*", { count: "exact", head: true })
+    // 같은 키(RECEIPTS_ENCRYPTION_KEY)·같은 알고리즘이라 암호문을 그대로 옮긴다 — 평문을 만들지 않는다
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase
+      .from("members")
+      .update({ id_number_encrypted: rrnEncrypted, rrn_consent_at: nowIso, updated_at: nowIso })
+      .eq("id", memberId)
       .eq("org_id", payment.org_id);
-    const seq = (count ?? 0) + 1;
-    const receiptCode = `RC-${year}-${String(seq).padStart(5, "0")}`;
-
-    const { data: receipt, error: receiptError } = await supabase
-      .from("receipts")
-      .insert({
-        org_id: payment.org_id,
-        receipt_code: receiptCode,
-        member_id: memberId,
-        year,
-        total_amount: payment.amount,
-        resident_no_encrypted: rrnEncrypted,
-        rrn_retention_expires_at: new Date(
-          Date.UTC(year + 5, 0, 1) // 5년 후 1월 1일 UTC
-        ).toISOString(),
-      })
-      .select("id")
-      .single();
-
-    if (receiptError || !receipt) {
-      console.error("[receipt] createReceiptForPayment insert failed:", receiptError?.message);
+    if (error) {
+      console.error("[receipt] moveRrnToMember failed:", error.message);
       return;
     }
-
-    // payments.receipt_id 연결 + rrn_pending_encrypted 제거
     await supabase
       .from("payments")
-      .update({
-        receipt_id: receipt.id,
-        rrn_pending_encrypted: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", payment.id);
+      .update({ rrn_pending_encrypted: null, updated_at: nowIso })
+      .eq("id", payment.id)
+      .eq("org_id", payment.org_id);
   } catch (err) {
-    console.error("[receipt] createReceiptForPayment failed:", err);
+    console.error("[receipt] moveRrnToMember failed:", err);
   }
 }
 

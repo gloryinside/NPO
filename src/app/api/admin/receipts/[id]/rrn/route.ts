@@ -97,7 +97,7 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
     orgId: tenant.id,
     actorId: admin.id,
     actorEmail: admin.email ?? null,
-    action: "receipt.nts_export",
+    action: "receipt.rrn_view", // 주민번호 원문 열람(예전엔 국세청 내보내기로 잘못 기록)
     resourceType: "receipt",
     resourceId: receiptId,
     summary: `영수증 RRN 복호화 조회 (관리자: ${admin.email ?? admin.id})`,

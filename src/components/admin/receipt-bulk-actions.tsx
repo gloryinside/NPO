@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 type ReceiptRow = {
@@ -35,7 +36,10 @@ export function ReceiptBulkActions({
   year: number;
   rows: ReceiptRow[];
 }) {
+  const router = useRouter();
   const [issuing, setIssuing] = useState<Set<string>>(new Set());
+  const [bulkState, setBulkState] = useState<"idle" | "confirm" | "running">("idle");
+  const [notice, setNotice] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [issued, setIssued] = useState<Map<string, { code: string; pdfUrl: string | null }>>(
     () => {
       const m = new Map<string, { code: string; pdfUrl: string | null }>();
@@ -47,7 +51,6 @@ export function ReceiptBulkActions({
       return m;
     }
   );
-  const [ntsLoading, setNtsLoading] = useState(false);
 
   async function issueOne(memberId: string) {
     setIssuing((prev) => new Set(prev).add(memberId));
@@ -72,7 +75,7 @@ export function ReceiptBulkActions({
         });
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(`발급 실패: ${(data as { error?: string }).error ?? res.statusText}`);
+        setNotice({ type: "error", text: `발급 실패: ${(data as { error?: string }).error ?? res.statusText}` });
       }
     } finally {
       setIssuing((prev) => {
@@ -83,64 +86,95 @@ export function ReceiptBulkActions({
     }
   }
 
+  // 서버 데이터(rows, router.refresh 후 갱신)와 이 화면에서 방금 발급한 것(issued)을 합쳐 본다
+  const issuedInfoOf = (r: ReceiptRow) =>
+    issued.get(r.memberId) ??
+    (r.receiptIssued && r.receiptCode ? { code: r.receiptCode, pdfUrl: r.receiptPdfUrl } : undefined);
+  const pending = rows.filter((r) => !issuedInfoOf(r) && r.idNumberSet);
+
+  // 서버에서 발급만 한다(PDF를 브라우저로 받지 않음). 200명씩 나눠 보내고, 기관 정보 누락이면 즉시 중단.
   async function issueAll() {
-    const pending = rows.filter(
-      (r) => !issued.has(r.memberId) && r.idNumberSet
-    );
-    if (pending.length === 0) {
-      alert("발급 가능한 미발급 대상이 없습니다.");
-      return;
-    }
-    if (!confirm(`${pending.length}명에게 일괄 발급하시겠습니까?\n(주민번호 미등록 후원자는 제외됩니다)`)) return;
-
-    for (const r of pending) {
-      await issueOne(r.memberId);
-    }
-  }
-
-  async function downloadNts() {
-    setNtsLoading(true);
+    setBulkState("running");
+    setNotice(null);
+    const total = { issued: 0, skipped: 0, failed: 0 };
     try {
-      const res = await fetch(`/api/admin/receipts/nts-export?year=${year}`);
-      if (res.ok) {
-        const text = await res.text();
-        const count = res.headers.get("X-NTS-Count") ?? "?";
-        const total = res.headers.get("X-NTS-Total") ?? "?";
-        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = res.headers.get("Content-Disposition")?.split('filename="')[1]?.replace('"', "") ?? `nts_donation_${year}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-        alert(`국세청 간소화 자료 생성 완료\n건수: ${count}건 / 합계: ${Number(total).toLocaleString("ko-KR")}원`);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(`파일 생성 실패: ${(data as { error?: string }).error ?? res.statusText}`);
+      for (let i = 0; i < pending.length; i += 200) {
+        const res = await fetch("/api/admin/receipts/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ year, memberIds: pending.slice(i, i + 200).map((r) => r.memberId) }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          issued?: number; skipped?: number; failed?: number; error?: string; blocked?: string[];
+        };
+        total.issued += data.issued ?? 0;
+        total.skipped += data.skipped ?? 0;
+        total.failed += data.failed ?? 0;
+        if (!res.ok) {
+          const reasons = data.blocked?.length ? ` (${data.blocked.join(" · ")})` : "";
+          setNotice({ type: "error", text: `${data.error ?? "일괄 발급 실패"}${reasons}` });
+          return;
+        }
       }
+      setNotice({
+        type: total.failed ? "error" : "ok",
+        text: `발급 ${total.issued}건 · 이미 발급/대상 아님 ${total.skipped}건${total.failed ? ` · 실패 ${total.failed}건(서버 로그 확인)` : ""}`,
+      });
     } finally {
-      setNtsLoading(false);
+      setBulkState("idle");
+      router.refresh();
     }
   }
+
+
+
 
   return (
     <div>
       {/* 액션 버튼 */}
       <div className="flex gap-3 mb-6">
-        <Button
-          onClick={issueAll}
-          className="bg-[var(--accent)] text-white"
+        {bulkState === "confirm" ? (
+          <>
+            <Button onClick={issueAll} className="bg-[var(--accent)] text-white">
+              {pending.length}명에게 발급
+            </Button>
+            <Button
+              onClick={() => setBulkState("idle")}
+              className="border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]"
+            >
+              취소
+            </Button>
+          </>
+        ) : (
+          <Button
+            onClick={() => (pending.length ? setBulkState("confirm") : setNotice({ type: "error", text: "발급 가능한 미발급 대상이 없습니다(주민번호 미등록 후원자는 제외)." }))}
+            disabled={bulkState === "running"}
+            className="bg-[var(--accent)] text-white"
+          >
+            {bulkState === "running" ? "발급 중…" : "미발급 일괄 발급"}
+          </Button>
+        )}
+        {/* 간소화 자료는 제외 대상·기관 기재사항을 먼저 확인하는 "간소화파일" 탭에서 내려받는다(XLSX) */}
+        <a
+          href={`/admin/receipts?tab=nts&year=${year}`}
+          className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)]"
         >
-          미발급 일괄 발급
-        </Button>
-        <Button
-          onClick={downloadNts}
-          disabled={ntsLoading}
-          className="border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]"
-        >
-          {ntsLoading ? "생성 중..." : "국세청 간소화 자료 다운로드"}
-        </Button>
+          국세청 간소화 자료 →
+        </a>
       </div>
+
+      {notice && (
+        <p
+          role={notice.type === "error" ? "alert" : "status"}
+          className={`mb-4 rounded-xl border px-3 py-2 text-sm ${
+            notice.type === "error"
+              ? "border-[var(--negative)] bg-[var(--negative-soft)] text-[var(--negative)]"
+              : "border-[var(--positive)] bg-[var(--positive-soft)] text-[var(--positive)]"
+          }`}
+        >
+          {notice.text}
+        </p>
+      )}
 
       {/* 목록 테이블 */}
       {rows.length === 0 ? (
@@ -169,7 +203,7 @@ export function ReceiptBulkActions({
             </thead>
             <tbody>
               {rows.map((r, idx) => {
-                const issuedInfo = issued.get(r.memberId);
+                const issuedInfo = issuedInfoOf(r);
                 const isIssuedNow = !!issuedInfo;
                 const isIssuingNow = issuing.has(r.memberId);
 

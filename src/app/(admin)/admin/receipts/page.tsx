@@ -5,6 +5,47 @@ import { formatKRW } from "@/lib/format";
 import { ReceiptBulkActions } from "@/components/admin/receipt-bulk-actions";
 import { ReceiptLedgerTable } from "@/components/admin/receipt-ledger-table";
 import { NtsExportPanel } from "@/components/admin/nts-export-panel";
+import { collectYearDonations } from "@/lib/receipt/issue";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/** 후원자 이름·주민번호 등록 여부 (member_id 목록은 URL 길이 때문에 200개씩) */
+async function loadMembers(supabase: SupabaseClient, orgId: string, ids: string[]) {
+  const out = new Map<string, { name: string; idSet: boolean }>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await supabase
+      .from("members")
+      .select("id, name, id_number_encrypted")
+      .eq("org_id", orgId)
+      .in("id", ids.slice(i, i + 200));
+    for (const m of (data ?? []) as Array<{ id: string; name: string; id_number_encrypted: string | null }>) {
+      out.set(m.id, { name: m.name, idSet: !!m.id_number_encrypted });
+    }
+  }
+  return out;
+}
+
+/** 해당 연도 유효 영수증(취소·대체 제외) — 기부자별 1장 */
+async function loadValidReceipts(supabase: SupabaseClient, orgId: string, year: number) {
+  const out = new Map<string, { code: string; pdfUrl: string | null; issuedAt: string | null; total: number }>();
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from("receipts")
+      .select("member_id, receipt_code, pdf_url, issued_at, total_amount")
+      .eq("org_id", orgId)
+      .eq("year", year)
+      .or("status.is.null,status.eq.issued")
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    const page = (data ?? []) as Array<{
+      member_id: string; receipt_code: string; pdf_url: string | null; issued_at: string | null; total_amount: number | null;
+    }>;
+    for (const r of page) {
+      out.set(r.member_id, { code: r.receipt_code, pdfUrl: r.pdf_url, issuedAt: r.issued_at, total: Number(r.total_amount ?? 0) });
+    }
+    if (page.length < 1000) break;
+  }
+  return out;
+}
 
 type SearchParams = Promise<{ year?: string; tab?: string }>;
 
@@ -65,75 +106,25 @@ export default async function AdminReceiptsPage({
     </form>
   );
 
-  const yearStart = `${year}-01-01`;
-  const yearEnd = `${year + 1}-01-01`;
-
   // ── 발급관리 탭 ──
   if (tab === "manage") {
-    const { data: paymentsRaw } = await supabase
-      .from("payments")
-      .select("member_id, amount, members!inner(id, name, id_number_encrypted)")
-      .eq("org_id", tenant.id)
-      .eq("pay_status", "paid")
-      .gte("pay_date", yearStart)
-      .lt("pay_date", yearEnd);
-
-    type PayRow = {
-      member_id: string;
-      amount: number | null;
-      members: { id: string; name: string; id_number_encrypted: string | null } | null;
-    };
-    const pays = (paymentsRaw as unknown as PayRow[]) ?? [];
-    const memberMap = new Map<
-      string,
-      { name: string; idSet: boolean; count: number; total: number }
-    >();
-    for (const p of pays) {
-      if (!p.member_id || !p.members) continue;
-      const cur = memberMap.get(p.member_id) ?? {
-        name: p.members.name,
-        idSet: !!p.members.id_number_encrypted,
-        count: 0,
-        total: 0,
-      };
-      cur.count += 1;
-      cur.total += Number(p.amount ?? 0);
-      memberMap.set(p.member_id, cur);
-    }
-    const memberIds = Array.from(memberMap.keys());
-    const issuedMap = new Map<
-      string,
-      { code: string; pdfUrl: string | null; issuedAt: string | null }
-    >();
-    if (memberIds.length > 0) {
-      const { data: issued } = await supabase
-        .from("receipts")
-        .select("member_id, receipt_code, pdf_url, issued_at")
-        .eq("org_id", tenant.id)
-        .eq("year", year)
-        .in("member_id", memberIds);
-      for (const r of issued ?? []) {
-        const row = r as {
-          member_id: string;
-          receipt_code: string;
-          pdf_url: string | null;
-          issued_at: string | null;
-        };
-        issuedMap.set(row.member_id, {
-          code: row.receipt_code,
-          pdfUrl: row.pdf_url,
-          issuedAt: row.issued_at,
-        });
-      }
-    }
-    const rows = Array.from(memberMap.entries()).map(([memberId, info]) => {
-      const issued = issuedMap.get(memberId);
+    // 발급 로직과 같은 기준: KST 연도 결제 완료분의 환불 차감 순액, 전체 페이지(1000행 제한 없음)
+    const donations = await collectYearDonations(supabase, tenant.id, year, { requireOptIn: false });
+    const memberIds = Array.from(donations.keys());
+    const [membersById, validReceipts] = await Promise.all([
+      loadMembers(supabase, tenant.id, memberIds),
+      loadValidReceipts(supabase, tenant.id, year),
+    ]);
+    const rows = memberIds.map((memberId) => {
+      const d = donations.get(memberId)!;
+      const m = membersById.get(memberId);
+      const issued = validReceipts.get(memberId);
       return {
         memberId,
-        memberName: info.name,
-        idNumberSet: info.idSet,
-        payCount: info.count,
-        totalAmount: info.total,
+        memberName: m?.name ?? "(알 수 없음)",
+        idNumberSet: !!m?.idSet,
+        payCount: d.payments.length,
+        totalAmount: d.total,
         receiptIssued: !!issued,
         receiptCode: issued?.code ?? null,
         receiptPdfUrl: issued?.pdfUrl ?? null,
@@ -225,35 +216,27 @@ export default async function AdminReceiptsPage({
   }
 
   // ── 간소화파일 탭 ──
-  const { data: issuedRaw } = await supabase
-    .from("receipts")
-    .select("member_id, total_amount, members!inner(id, id_number_encrypted)")
-    .eq("org_id", tenant.id)
-    .eq("year", year);
-
-  type IssuedRaw = {
-    member_id: string;
-    total_amount: number;
-    members: { id: string; id_number_encrypted: string | null } | null;
-  };
-  const issuedRows = (issuedRaw as unknown as IssuedRaw[]) ?? [];
-  const eligibleRows = issuedRows.filter((r) => !!r.members?.id_number_encrypted);
+  // 사람 단위로 센다(예전: 결제 건수 − 영수증 수를 "미발급 명"으로 표시). 취소·대체된 영수증은 제외.
+  const [ntsDonations, ntsReceipts] = await Promise.all([
+    collectYearDonations(supabase, tenant.id, year, { requireOptIn: false }),
+    loadValidReceipts(supabase, tenant.id, year),
+  ]);
+  const ntsMembers = await loadMembers(supabase, tenant.id, Array.from(ntsReceipts.keys()));
+  const issuedRows = Array.from(ntsReceipts.entries()).map(([memberId, r]) => ({
+    memberId,
+    total: r.total,
+    idSet: !!ntsMembers.get(memberId)?.idSet,
+  }));
+  const eligibleRows = issuedRows.filter((r) => r.idSet);
   const noIdCount = issuedRows.length - eligibleRows.length;
-
-  const { count: totalEligible } = await supabase
-    .from("payments")
-    .select("member_id", { count: "exact", head: true })
-    .eq("org_id", tenant.id)
-    .eq("pay_status", "paid")
-    .gte("pay_date", yearStart)
-    .lt("pay_date", yearEnd);
+  const pendingDonors = Array.from(ntsDonations.keys()).filter((id) => !ntsReceipts.has(id)).length;
 
   const summary = {
     issuedCount: issuedRows.length,
-    pendingCount: Math.max((totalEligible ?? 0) - issuedRows.length, 0),
+    pendingCount: pendingDonors,
     noIdCount,
     eligibleCount: eligibleRows.length,
-    totalAmount: eligibleRows.reduce((s, r) => s + Number(r.total_amount ?? 0), 0),
+    totalAmount: eligibleRows.reduce((s, r) => s + r.total, 0),
   };
 
   const { data: logsRaw } = await supabase

@@ -51,6 +51,7 @@ export default async function DonorTaxSummaryPage({
     .select("id, receipt_code, year, total_amount, issued_at, pdf_url")
     .eq("org_id", member.org_id)
     .eq("member_id", member.id)
+    .or("status.is.null,status.eq.issued") // 취소·재발급으로 대체된 영수증 제외
     .eq("year", year)
     .order("issued_at", { ascending: true });
 
@@ -61,7 +62,8 @@ export default async function DonorTaxSummaryPage({
     .from("receipts")
     .select("year")
     .eq("org_id", member.org_id)
-    .eq("member_id", member.id);
+    .eq("member_id", member.id)
+    .or("status.is.null,status.eq.issued"); // 취소·재발급으로 대체된 영수증 제외
   const years = Array.from(
     new Set((allYearsData ?? []).map((r: { year: number }) => r.year))
   ).sort((a, b) => b - a);
@@ -102,7 +104,7 @@ export default async function DonorTaxSummaryPage({
 
       {rows.length === 0 ? (
         <EmptyState
-          icon="📋"
+          illustration="receipts"
           title={`${year}년 영수증이 없습니다.`}
           description="발급된 영수증은 연말 기준으로 표시됩니다."
         />

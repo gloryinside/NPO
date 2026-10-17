@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DONATION_TYPE_CODES } from "@/lib/receipt/validation";
 
 type OrgProfile = {
   name: string;
@@ -16,6 +17,11 @@ type OrgProfile = {
   bank_name: string | null;
   bank_account: string | null;
   account_holder: string | null;
+  representative_name?: string | null;
+  donee_type?: string | null;
+  donee_legal_basis?: string | null;
+  donee_code?: string | null;
+  donation_type_code?: string | null;
 };
 
 export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
@@ -31,6 +37,11 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
     bank_name: initialData.bank_name ?? "",
     bank_account: initialData.bank_account ?? "",
     account_holder: initialData.account_holder ?? "",
+    representative_name: initialData.representative_name ?? "",
+    donee_type: initialData.donee_type ?? "",
+    donee_legal_basis: initialData.donee_legal_basis ?? "",
+    donee_code: initialData.donee_code ?? "",
+    donation_type_code: initialData.donation_type_code ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -40,7 +51,7 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
 
   const field =
     (key: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
     };
 
@@ -64,6 +75,11 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
           bank_name: form.bank_name || null,
           bank_account: form.bank_account || null,
           account_holder: form.account_holder || null,
+          representative_name: form.representative_name || null,
+          donee_type: form.donee_type || null,
+          donee_legal_basis: form.donee_legal_basis || null,
+          donee_code: form.donee_code || null,
+          donation_type_code: form.donation_type_code || null,
         }),
       });
       const data = await res.json();
@@ -121,6 +137,46 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
           기부금 영수증 PDF에 표시됩니다.
         </p>
       </div>
+
+      {/* 기부금영수증 법정 기재사항 — 비어 있으면 영수증을 발급할 수 없다 */}
+      <fieldset className="space-y-3 rounded-2xl border border-[var(--border)] p-4">
+        <legend className="px-1 text-sm font-semibold text-[var(--text)]">기부금영수증 기재사항</legend>
+        <div>
+          <label style={labelStyle}>대표자 성명 *</label>
+          <Input value={form.representative_name} onChange={field("representative_name")} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>기부금 단체 구분</label>
+          <Input value={form.donee_type} onChange={field("donee_type")} placeholder="예: 사회복지법인, 공익법인" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>지정 근거 법령</label>
+          <Input value={form.donee_legal_basis} onChange={field("donee_legal_basis")} placeholder="예: 법인세법 제24조제3항제1호" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>국세청 기부금단체코드</label>
+          <Input value={form.donee_code} onChange={field("donee_code")} placeholder="알파벳 3자리 (홈택스 기부금단체코드표)" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>기부금 유형 코드 *</label>
+          <select
+            value={form.donation_type_code}
+            onChange={field("donation_type_code")}
+            className="h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+          >
+            <option value="">선택하세요</option>
+            {Object.entries(DONATION_TYPE_CODES).map(([code, label]) => (
+              <option key={code} value={code}>{code} · {label}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            기관이 받는 기부금의 세법상 유형입니다. 영수증과 연말정산 간소화 자료에 들어갑니다(소득세법 시행규칙 별지 제45호서식).
+          </p>
+        </div>
+        <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+          단체명·사업자등록번호·소재지·대표자는 영수증 필수 기재사항입니다. 비어 있으면 영수증 발급이 중단됩니다.
+        </p>
+      </fieldset>
 
       <div>
         <label style={labelStyle}>슬로건</label>

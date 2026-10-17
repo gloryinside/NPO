@@ -18,6 +18,7 @@ export async function GET() {
     .select("id, receipt_code, year, total_amount, pdf_url, issued_at")
     .eq("org_id", session.member.org_id)
     .eq("member_id", session.member.id)
+    .or("status.is.null,status.eq.issued") // 취소·재발급으로 대체된 영수증 제외
     .order("year", { ascending: false });
 
   if (error) {

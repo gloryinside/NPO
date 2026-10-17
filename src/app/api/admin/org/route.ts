@@ -1,3 +1,4 @@
+import { checkBizNo, DONATION_TYPE_CODES } from "@/lib/receipt/validation";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
@@ -26,6 +27,12 @@ const EDITABLE_FIELDS = [
   "bank_name",
   "bank_account",
   "account_holder",
+  // 기부금영수증 법정 기재사항
+  "representative_name",
+  "donee_type",
+  "donee_legal_basis",
+  "donee_code",
+  "donation_type_code",
 ] as const;
 
 type EditableField = (typeof EDITABLE_FIELDS)[number];
@@ -38,7 +45,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("orgs")
     .select(
-      "id, slug, name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats"
+      "id, slug, name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats, representative_name, donee_type, donee_legal_basis, donee_code, donation_type_code"
     )
     .eq("id", tenant.id)
     .single();
@@ -84,13 +91,31 @@ export async function PATCH(req: NextRequest) {
       typeof update.business_no === "string"
         ? update.business_no.replace(/-/g, "").trim()
         : "";
-    if (!/^\d{10}$/.test(raw)) {
+    if (!/^\d{10}$/.test(raw) || !checkBizNo(raw)) {
       return NextResponse.json(
-        { error: "사업자등록번호는 10자리 숫자여야 합니다." },
+        { error: "사업자등록번호(고유번호) 10자리를 확인해 주세요. 검증번호가 맞지 않습니다." },
         { status: 400 }
       );
     }
     update.business_no = raw;
+  }
+
+  // 국세청 기부금단체코드 — 알파벳 대문자 3자리
+  if ("donee_code" in update && update.donee_code) {
+    const code = String(update.donee_code).trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(code)) {
+      return NextResponse.json({ error: "기부금단체코드는 알파벳 3자리입니다(예: 국세청 기부금단체코드표)." }, { status: 400 });
+    }
+    update.donee_code = code;
+  }
+
+  // 기부금 유형 코드 — 별지 제45호서식 코드만
+  if ("donation_type_code" in update) {
+    const t = update.donation_type_code ? String(update.donation_type_code).trim() : null;
+    if (t && !(t in DONATION_TYPE_CODES)) {
+      return NextResponse.json({ error: "기부금 유형 코드가 올바르지 않습니다(10·20·40·41·42·43)." }, { status: 400 });
+    }
+    update.donation_type_code = t;
   }
 
   const supabase = createSupabaseAdminClient();
@@ -99,7 +124,7 @@ export async function PATCH(req: NextRequest) {
     .update({ ...update, updated_at: new Date().toISOString() })
     .eq("id", tenant.id)
     .select(
-      "id, slug, name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats"
+      "id, slug, name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats, representative_name, donee_type, donee_legal_basis, donee_code, donation_type_code"
     )
     .single();
 

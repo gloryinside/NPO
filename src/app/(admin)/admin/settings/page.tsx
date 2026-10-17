@@ -45,7 +45,7 @@ export default async function SettingsPage() {
     supabase
       .from("orgs")
       .select(
-        "name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats, bank_name, bank_account, account_holder, theme_config"
+        "name, business_no, logo_url, hero_image_url, tagline, about, contact_email, contact_phone, address, show_stats, bank_name, bank_account, account_holder, theme_config, representative_name, donee_type, donee_legal_basis, donee_code, donation_type_code"
       )
       .eq("id", tenantId)
       .single(),
@@ -92,6 +92,11 @@ export default async function SettingsPage() {
     bank_name: (orgData?.bank_name as string | null) ?? null,
     bank_account: (orgData?.bank_account as string | null) ?? null,
     account_holder: (orgData?.account_holder as string | null) ?? null,
+    representative_name: (orgData?.representative_name as string | null) ?? null,
+    donee_type: (orgData?.donee_type as string | null) ?? null,
+    donation_type_code: (orgData?.donation_type_code as string | null) ?? null,
+    donee_legal_basis: (orgData?.donee_legal_basis as string | null) ?? null,
+    donee_code: (orgData?.donee_code as string | null) ?? null,
   };
 
   return (

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { DONATION_TYPE_CODES } from "./validation";
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 
 /**
@@ -28,6 +29,12 @@ export type ReceiptData = {
     address: string | null;
     contactPhone: string | null;
     contactEmail: string | null;
+    /** 법정 기재사항 — 없으면 '-' */
+    representativeName?: string | null;
+    doneeType?: string | null;
+    doneeLegalBasis?: string | null;
+    /** 별지 제45호서식 기부금 코드(10/40/41…) */
+    donationTypeCode?: string | null;
   };
   member: {
     name: string;
@@ -41,6 +48,8 @@ export type ReceiptData = {
     amount: number;
   }>;
   issuedAt: string; // ISO date string
+  /** 진위 확인 주소(QR) — 없으면 생략 */
+  verifyUrl?: string | null;
 };
 
 type PdfOutputDocument = {
@@ -137,8 +146,12 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
           widths: ["25%", "75%"],
           body: [
             ["단체명", data.org.name],
-            ["사업자번호", data.org.businessNo ?? "-"],
-            ["주소", data.org.address ?? "-"],
+            ["사업자등록번호(고유번호)", data.org.businessNo ?? "-"],
+            ["대표자", data.org.representativeName ?? "-"],
+            ["소재지", data.org.address ?? "-"],
+            ["단체 구분", data.org.doneeType ?? "-"],
+            ["지정 근거", data.org.doneeLegalBasis ?? "-"],
+            ["기부금 유형", data.org.donationTypeCode ? `${data.org.donationTypeCode} ${DONATION_TYPE_CODES[data.org.donationTypeCode] ?? ""}`.trim() : "-"],
             ["연락처", data.org.contactPhone ?? "-"],
           ],
         },
@@ -194,11 +207,29 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
         layout: "lightHorizontalLines",
       },
       {
-        text: "\n본 영수증은 소득세법에 따른 기부금 공제 증빙용입니다.",
+        text: "\n위와 같이 기부금을 기부받았음을 증명합니다. 본 영수증은 소득세법·법인세법에 따른 기부금 공제 증빙용입니다.",
         fontSize: 9,
         color: "#666666",
         margin: [0, 30, 0, 0],
       },
+      ...(data.verifyUrl
+        ? [
+            {
+              columns: [
+                { qr: data.verifyUrl, fit: 72, width: 80 },
+                {
+                  width: "*",
+                  stack: [
+                    { text: "영수증 진위 확인", bold: true, fontSize: 9 },
+                    { text: data.verifyUrl, fontSize: 8, color: "#475569" },
+                  ],
+                  margin: [8, 8, 0, 0] as [number, number, number, number],
+                },
+              ],
+              margin: [0, 16, 0, 0] as [number, number, number, number],
+            },
+          ]
+        : []),
     ],
   };
 

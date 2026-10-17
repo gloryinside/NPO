@@ -36,6 +36,7 @@ export default async function DonorReceiptsPage() {
     .select("id, receipt_code, year, total_amount, pdf_url, issued_at")
     .eq("org_id", member.org_id)
     .eq("member_id", member.id)
+    .or("status.is.null,status.eq.issued") // 취소·재발급으로 대체된 영수증 제외
     .order("year", { ascending: false });
 
   const receipts = (data as unknown as ReceiptRow[]) ?? [];
@@ -91,7 +92,7 @@ export default async function DonorReceiptsPage() {
 
       {receipts.length === 0 ? (
         <EmptyState
-          icon="🧾"
+          illustration="receipts"
           title={t("donor.receipts.empty.title")}
           description={t("donor.receipts.empty.body")}
         />

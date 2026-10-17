@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getTenant } from "@/lib/tenant/context";
 import { VerifyResult } from "@/components/receipt/verify-result";
 import type { Metadata } from "next";
 
@@ -20,16 +21,24 @@ export default async function ReceiptVerifyPage({
 }: {
   params: Promise<RouteParams>;
 }) {
+  // [code] = 영수증 PDF의 QR에 찍힌 무작위 확인 토큰(verify_token).
+  // 예전엔 순차 영수증 번호로 조회해 번호를 바꿔 가며 금액·이름을 열람할 수 있었고,
+  // 기관 간 번호가 겹치면 조회가 깨졌다. 이 기관(서브도메인)의 영수증만 확인한다.
   const { code } = await params;
   const supabase = createSupabaseAdminClient();
+  const tenant = await getTenant();
 
-  const { data } = await supabase
-    .from("receipts")
-    .select(
-      "receipt_code, year, total_amount, issued_at, status, members(name)",
-    )
-    .eq("receipt_code", code)
-    .maybeSingle();
+  const data =
+    tenant && /^[A-Za-z0-9_-]{20,64}$/.test(code)
+      ? (
+          await supabase
+            .from("receipts")
+            .select("receipt_code, year, total_amount, issued_at, status, members(name)")
+            .eq("org_id", tenant.id)
+            .eq("verify_token", code)
+            .maybeSingle()
+        ).data
+      : null;
 
   const row = data as
     | {
