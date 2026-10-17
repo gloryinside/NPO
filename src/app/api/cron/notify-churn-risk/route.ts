@@ -1,4 +1,4 @@
-import { cronSecretMatches } from "@/lib/cron/runner";
+import { cronAuthError } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { fetchChurnRiskMembers } from '@/lib/stats/churn-risk'
@@ -18,10 +18,8 @@ import { getOrgSettings } from '@/lib/org/settings'
  * 재발송 방지는 이메일 발신 로그 테이블 없이 단순히 주 1회 cron 스케줄로 대체.
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || !cronSecretMatches(req, cronSecret)) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  }
+  const authError = cronAuthError(req);
+  if (authError) return authError;
 
   const supabase = createSupabaseAdminClient()
   const { data: orgs, error } = await supabase

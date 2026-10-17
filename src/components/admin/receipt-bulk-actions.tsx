@@ -55,7 +55,11 @@ export function ReceiptBulkActions({
   async function issueOne(memberId: string) {
     setIssuing((prev) => new Set(prev).add(memberId));
     try {
-      const res = await fetch(`/api/admin/receipts/${memberId}?year=${year}`);
+      const res = await fetch(`/api/admin/receipts/${memberId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year }),
+      });
       if (res.ok) {
         // 파일 다운로드
         const blob = await res.blob();

@@ -143,3 +143,11 @@ GET /api/admin/dashboard?from&to ─▶ tenant_daily_stats where org_id = tenant
 - 예전: 라우트마다 "개수 + 1" / "최근 행 번호 + 1" / 난수. 동시 요청·회원 삭제·다른 형식 번호가 섞이면 같은 번호 → 유니크 위반 → 첫 후원 결제·가입 실패(개발 DB에서 후원자 로그인 `member_create_failed`로 재현).
 - 지금: `code_counters`(기관·종류·연도) + `next_code_seq()` 한 문장 증가. 앱은 `src/lib/codes-seq.ts`의 `nextCode` / `reserveCodes`(대량 가져오기는 한 번에 예약)만 쓴다.
 - 미적용: `src/lib/donations/service.ts`(작성 중인 미추적 파일)는 아직 난수 번호 — 난수 0이면 예외, 기존 회원 upsert 시 회원번호를 덮어씀.
+
+## 보안 검토 반영 (2026-10-17)
+- **관리자 권한 이전(운영 배포 절차 변경)**: 20261016000002는 더 이상 자동 승격하지 않는다(user_metadata는 본인이 바꿀 수 있어 근거가 안 됨).
+  배포 순서: 마이그레이션 → `select * from admin_claim_candidates;` 검토 → 실제 관리자만 `select grant_admin_claims(array[...]::uuid[]);` → 코드 배포.
+- **관리자 초대**: 미확인 기존 계정은 초대 시 그대로 돌아오므로, 이 요청이 새로 만든 계정에만 권한을 주고 실패 정리(삭제)도 그때만. CSRF 검사 추가(초대·삭제).
+- **영수증 발급 CSRF**: `GET /api/admin/receipts/[id]`는 기존 PDF 내려받기만, 발급·재발급은 `POST`(CSRF 검사). 재발급 라우트도 CSRF 검사.
+- **크론**: 비밀은 `Authorization: Bearer` / `x-cron-secret` 헤더로만(URL `?token=` 제거), CRON_SECRET 없으면 환경과 무관하게 거부.
+- **토스 웹훅 차지백**: CHARGEBACK·DISPUTE_CREATED는 토스 웹훅 목록에 없고 API로 확인할 수 없어 본문을 믿지 않고 무시(기록만). 차지백 등록 경로는 현재 없음 — 필요하면 관리자 수동 등록 화면을 만든다.

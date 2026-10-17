@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { checkCsrf } from "@/lib/security/csrf";
 
 /**
  * GET /api/admin/users
@@ -45,6 +46,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   await requireAdminUser();
 
   let tenant;
@@ -66,6 +69,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "유효한 이메일을 입력해주세요." }, { status: 400 });
 
   const supabase = createSupabaseAdminClient();
+  const requestStartedAt = Date.now();
 
   // inviteUserByEmail: 이메일로 초대 링크 발송.
   // [보안] 권한은 사용자가 바꿀 수 없는 app_metadata에 부여한다(초대 data는 user_metadata로만 들어감)
@@ -77,11 +81,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // [보안] 아직 초대를 수락하지 않은(미확인) 기존 계정은 오류 없이 그 계정이 돌아온다.
+  // 다른 기관의 대기 중 관리자·미확인 후원자 계정의 권한을 덮어쓰거나, 실패 시 지워 버리지 않도록
+  // 이 요청이 새로 만든 계정에만 권한을 주고, 정리(삭제)도 그 경우에만 한다.
+  const createdAt = Date.parse(data.user.created_at ?? "");
+  const createdByThisRequest = Number.isFinite(createdAt) && createdAt >= requestStartedAt - 5_000;
+  const existingRole = (data.user.app_metadata as Record<string, unknown> | undefined)?.role;
+  if (!createdByThisRequest || existingRole) {
+    return NextResponse.json(
+      { error: "이미 가입했거나 초대 대기 중인 이메일입니다. 해당 계정 소유자와 확인해 주세요." },
+      { status: 409 },
+    );
+  }
+
   const { error: grantErr } = await supabase.auth.admin.updateUserById(data.user.id, {
     app_metadata: adminAppMetadata(tenant.id),
   });
   if (grantErr) {
-    // 권한 없는 초대 계정이 남지 않게 정리
+    // 이 요청이 만든 권한 없는 초대 계정만 정리
     await supabase.auth.admin.deleteUser(data.user.id);
     return NextResponse.json({ error: grantErr.message }, { status: 500 });
   }
@@ -99,6 +116,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   await requireAdminUser();
 
   let tenant;

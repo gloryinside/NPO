@@ -1,4 +1,4 @@
-import { cronSecretMatches } from "@/lib/cron/runner";
+import { cronAuthError } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
@@ -12,10 +12,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
  * /donate/fail 에서 cancelDonation이 실패한 경우의 안전망.
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || !cronSecretMatches(req, cronSecret)) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+  const authError = cronAuthError(req);
+  if (authError) return authError;
 
   const supabase = createSupabaseAdminClient();
   const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();

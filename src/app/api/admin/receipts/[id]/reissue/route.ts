@@ -3,6 +3,7 @@ import { requireAdminApi } from '@/lib/auth/api-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/audit'
 import { collectYearDonations, issueReceipt, loadOrgForReceipt } from '@/lib/receipt/issue'
+import { checkCsrf } from '@/lib/security/csrf'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -15,6 +16,8 @@ type RouteContext = { params: Promise<{ id: string }> }
  * 예전 구현은 기록만 남기고 클라이언트가 보낸 임의 newPdfUrl을 저장했다 — 더는 받지 않는다.
  */
 export async function POST(req: NextRequest, { params }: RouteContext) {
+  const csrf = checkCsrf(req)
+  if (csrf) return csrf
   const guard = await requireAdminApi()
   if (!guard.ok) return guard.response
   const { tenant, user } = guard.ctx

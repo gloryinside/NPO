@@ -181,25 +181,11 @@ export async function POST(req: NextRequest) {
   }
   // PARTIAL_CANCELED는 환불 모듈(lib/payments/refund)이 금액을 관리 — 여기서 상태를 바꾸지 않는다
 
+  // CHARGEBACK·DISPUTE_CREATED는 토스 웹훅 이벤트 목록에 없고, 사건을 토스 API로 확인할 방법도 없다.
+  // 본문만 믿고 기록하면 결제 orderId를 아는 누구나 가짜 차지백·위험 표시를 만들 수 있어 받지 않는다.
   if (eventType === "CHARGEBACK" || eventType === "DISPUTE_CREATED") {
-    // 결제 소유 기관을 위에서 토스로 확인한 뒤에만 기록, 사건 번호로 1회만
-    const caseId = typeof data.caseId === "string" ? data.caseId : typeof data.disputeId === "string" ? data.disputeId : null;
-    await supabase.from("chargebacks").upsert(
-      {
-        org_id: payment.org_id,
-        payment_id: payment.id,
-        member_id: payment.member_id ?? null,
-        amount: Number((data.amount as number | undefined) ?? payment.amount ?? 0),
-        reason_code: typeof data.reasonCode === "string" ? data.reasonCode : null,
-        reason_text: typeof data.reasonText === "string" ? data.reasonText : typeof data.message === "string" ? data.message : null,
-        toss_case_id: caseId,
-        evidence_json: data,
-      },
-      { onConflict: "org_id,toss_case_id", ignoreDuplicates: true },
-    );
-    if (payment.member_id) {
-      await supabase.from("members").update({ chargeback_risk: true }).eq("id", payment.member_id).eq("org_id", payment.org_id);
-    }
+    await markEvent(supabase, eventRowId, `ignored_unverifiable_event: ${eventType}`);
+    return NextResponse.json({ ok: true, ignored: true });
   }
 
   await markEvent(supabase, eventRowId, null);

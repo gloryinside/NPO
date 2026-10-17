@@ -1,4 +1,4 @@
-import { cronSecretMatches } from "@/lib/cron/runner";
+import { cronAuthError } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send-email'
@@ -19,10 +19,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * 모두 status = 'closed'로 전환. 후원자/관리자 알림은 별도(다음 스프린트).
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || !cronSecretMatches(req, cronSecret)) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  }
+  const authError = cronAuthError(req);
+  if (authError) return authError;
 
   const supabase = createSupabaseAdminClient()
   const nowIso = new Date().toISOString()

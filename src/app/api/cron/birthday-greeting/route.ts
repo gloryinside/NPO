@@ -1,4 +1,4 @@
-import { cronSecretMatches } from "@/lib/cron/runner";
+import { cronAuthError } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { notifyBirthdayGreeting } from '@/lib/notifications/send';
@@ -10,14 +10,8 @@ import { resolveBirthdayMatches, extractMonthDay } from '@/lib/notifications/bir
  * 전화번호 없으면 skip (알림톡/SMS 기반).
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-        if (!cronSecretMatches(req, cronSecret)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'CRON_SECRET required' }, { status: 401 });
-  }
+  const authError = cronAuthError(req);
+  if (authError) return authError;
 
   const supabase = createSupabaseAdminClient();
   const matches = resolveBirthdayMatches(new Date());

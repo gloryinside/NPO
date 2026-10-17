@@ -6,19 +6,20 @@
 --   후원자도 Supabase 계정으로 가입하므로, 아무 후원자나 임의 기관의 관리자가 될 수 있었다.
 -- 해결: raw_app_meta_data(app_metadata)만 신뢰 — 서비스 롤만 쓸 수 있다.
 --
--- 적용 순서: 이 마이그레이션(백필 포함) → 새 앱 코드 배포.
---   코드를 먼저 배포하면 백필 전이라 모든 관리자가 로그인할 수 없다.
+-- 적용 순서: 이 마이그레이션 → 운영자가 관리자 목록 검토·부여(아래 1) → 새 앱 코드 배포.
+--   부여 전에 코드를 배포하면 모든 관리자가 로그인할 수 없다.
+--
+-- (2026-10-17 개정) 처음엔 user_metadata.role='admin'인 계정을 자동으로 승격했으나,
+--   user_metadata는 본인이 바꿀 수 있어 "후원자 레코드가 없는" 계정이 스스로 올린 권한도 진짜 관리자가 됐다.
+--   DB에는 누가 진짜 관리자인지 증명할 기록이 없으므로 자동 승격하지 않는다.
+--   (개발 DB는 개정 전 버전으로 이미 적용됨 — 승격된 계정은 통합 테스트 계정이었고 정리 완료)
 
--- 1) 기존 관리자 백필 — user_metadata의 role/org_id를 app_metadata로 복사.
---    단, 후원자 계정(members.supabase_uid로 연결된 계정)은 제외한다.
---    이미 스스로 권한을 올린 후원자 계정을 백필이 "진짜 관리자"로 만들지 않게 하기 위함.
-update auth.users u
-set raw_app_meta_data = coalesce(u.raw_app_meta_data, '{}'::jsonb)
-  || jsonb_build_object('role', 'admin', 'org_id', u.raw_user_meta_data->>'org_id')
-where (u.raw_user_meta_data->>'role') = 'admin'
-  and (u.raw_user_meta_data->>'org_id') ~ '^[0-9a-fA-F-]{36}$'
-  and exists (select 1 from public.orgs o where o.id = (u.raw_user_meta_data->>'org_id')::uuid)
-  and not exists (select 1 from public.members m where m.supabase_uid = u.id);
+-- 1) 관리자 후보 검토 → 명시적 부여
+--    후보 = user_metadata엔 admin이지만 app_metadata엔 아직 아닌 계정. 운영자가 실제 관리자인지 확인한 뒤:
+--      select * from admin_claim_candidates;                 -- 검토
+--      select grant_admin_claims(array['<user uuid>', ...]::uuid[]);  -- 확인된 계정만 부여
+--    (또는 scripts/create-admin.mjs <email> <org_slug> — app_metadata에 직접 기록)
+--    검토 뷰·부여 함수는 20261017000003_admin_claims_review.sql에 있다.
 
 -- 2) RLS 판정 함수 — app_metadata만 본다
 create or replace function is_org_admin(target_org uuid)
@@ -36,12 +37,3 @@ as $$
       and (raw_app_meta_data->>'org_id')::uuid = target_org
   );
 $$;
-
--- 3) 적용 후 수동 검토용 — user_metadata엔 admin인데 app_metadata로 옮겨지지 않은 계정.
---    후원자 계정이 스스로 권한을 올린 흔적일 수 있다. 결과가 있으면 하나씩 확인할 것.
---
---   select u.id, u.email, u.created_at, u.raw_user_meta_data->>'org_id' as claimed_org,
---          exists (select 1 from public.members m where m.supabase_uid = u.id) as is_donor
---   from auth.users u
---   where (u.raw_user_meta_data->>'role') = 'admin'
---     and coalesce(u.raw_app_meta_data->>'role', '') <> 'admin';

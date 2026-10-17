@@ -1,4 +1,4 @@
-import { cronSecretMatches } from "@/lib/cron/runner";
+import { cronAuthError } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send-email'
@@ -17,10 +17,8 @@ import { logNotification } from '@/lib/email/notification-log'
  * 현재는 campaign_closed_thanks만 재시도 대상 (church_risk_weekly는 주간 cron이 알아서 처리).
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || !cronSecretMatches(req, cronSecret)) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  }
+  const authError = cronAuthError(req);
+  if (authError) return authError;
 
   const supabase = createSupabaseAdminClient()
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400_000).toISOString()

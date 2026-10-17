@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
+import { checkCsrf } from "@/lib/security/csrf";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { notifyReceiptIssued } from "@/lib/notifications/send";
 import { kstParts } from "@/lib/billing/kst";
@@ -10,54 +11,97 @@ import { collectYearDonations, issueReceipt, loadOrgForReceipt, RECEIPT_BUCKET }
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/admin/receipts/[id]?year=2026[&reissue=1]   ([id] = member.id)
+ * /api/admin/receipts/[id]   ([id] = member.id)
  *
- * 해당 연도(KST) 기부금 영수증 PDF를 내려준다. 발급 규칙은 lib/receipt/issue 공통:
- *  - 이미 유효한 영수증이 있으면 새로 만들지 않고 그 PDF를 돌려준다(예전엔 호출마다 중복 발급).
- *  - reissue=1 이면 새 번호로 재발급하고 이전 영수증은 취소 처리한다.
- *  - 기관 법정 기재사항이 비면 422와 누락 항목을 돌려준다.
+ * GET  ?year=2026            — 이미 발급된 유효 영수증 PDF 내려받기만(상태 변경 없음)
+ * POST { year, reissue? }    — 발급(멱등: 유효본이 있으면 그것) / reissue=true면 새 번호로 재발급·이전본 취소
+ *
+ * 예전엔 GET이 발급·재발급까지 해서, 다른 사이트의 링크·이미지 태그로도 관리자 브라우저가 발급을 일으킬 수 있었다(CSRF).
+ * 발급 규칙은 lib/receipt/issue 공통. 기관 법정 기재사항이 비면 422와 누락 항목.
  */
-export async function GET(req: NextRequest, { params }: RouteContext) {
-  const adminUser = await requireAdminUser();
-  const { id: memberId } = await params;
+type Ctx = { tenantId: string; memberId: string; year: number };
 
+async function resolve(params: RouteContext["params"], yearRaw: unknown) {
   let tenant;
   try {
     tenant = await requireTenant();
   } catch {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+    return { error: NextResponse.json({ error: "Tenant not found" }, { status: 400 }) };
   }
-
-  const url = new URL(req.url);
-  const yearParam = url.searchParams.get("year");
-  const year = yearParam ? Number(yearParam) : kstParts().year;
+  const { id: memberId } = await params;
+  const year = yearRaw === undefined || yearRaw === null || yearRaw === "" ? kstParts().year : Number(yearRaw);
   if (!Number.isInteger(year) || year < 2000 || year > 2999) {
-    return NextResponse.json({ error: "year 파라미터가 유효하지 않습니다." }, { status: 400 });
+    return { error: NextResponse.json({ error: "year가 유효하지 않습니다." }, { status: 400 }) };
   }
-  const reissue = url.searchParams.get("reissue") === "1";
+  return { ctx: { tenantId: tenant.id, memberId, year } satisfies Ctx };
+}
+
+async function downloadExisting(supabase: ReturnType<typeof createSupabaseAdminClient>, c: Ctx, receiptCode: string) {
+  const { data: file, error } = await supabase.storage
+    .from(RECEIPT_BUCKET)
+    .download(`${c.tenantId}/${c.year}/${receiptCode}.pdf`);
+  if (error || !file) {
+    return NextResponse.json(
+      { error: "발급된 영수증 파일을 찾을 수 없습니다. 재발급으로 다시 만들 수 있습니다." },
+      { status: 404 },
+    );
+  }
+  return pdfResponse(Buffer.from(await file.arrayBuffer()), receiptCode);
+}
+
+export async function GET(req: NextRequest, { params }: RouteContext) {
+  await requireAdminUser();
+  const r = await resolve(params, new URL(req.url).searchParams.get("year"));
+  if ("error" in r) return r.error;
+  const c = r.ctx;
 
   const supabase = createSupabaseAdminClient();
-  const org = await loadOrgForReceipt(supabase, tenant.id);
+  const { data: receipt } = await supabase
+    .from("receipts")
+    .select("receipt_code")
+    .eq("org_id", c.tenantId)
+    .eq("member_id", c.memberId)
+    .eq("year", c.year)
+    .or("status.is.null,status.eq.issued")
+    .order("issued_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!receipt) return NextResponse.json({ error: "발급된 영수증이 없습니다." }, { status: 404 });
+  return downloadExisting(supabase, c, receipt.receipt_code as string);
+}
+
+export async function POST(req: NextRequest, { params }: RouteContext) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
+  const adminUser = await requireAdminUser();
+  const body = (await req.json().catch(() => ({}))) as { year?: unknown; reissue?: unknown };
+  const r = await resolve(params, body.year);
+  if ("error" in r) return r.error;
+  const c = r.ctx;
+  const reissue = body.reissue === true;
+
+  const supabase = createSupabaseAdminClient();
+  const org = await loadOrgForReceipt(supabase, c.tenantId);
   if (!org) return NextResponse.json({ error: "기관 정보를 찾을 수 없습니다." }, { status: 404 });
 
   const { data: member } = await supabase
     .from("members")
     .select("id, name, phone, email")
-    .eq("id", memberId)
-    .eq("org_id", tenant.id)
+    .eq("id", c.memberId)
+    .eq("org_id", c.tenantId)
     .maybeSingle();
   if (!member) return NextResponse.json({ error: "후원자를 찾을 수 없습니다." }, { status: 404 });
 
   // 관리자 단건 발급은 영수증 신청 여부와 무관(후원자가 따로 요청한 경우)
-  const donations = await collectYearDonations(supabase, tenant.id, year, {
-    memberIds: [memberId],
+  const donations = await collectYearDonations(supabase, c.tenantId, c.year, {
+    memberIds: [c.memberId],
     requireOptIn: false,
   });
   const result = await issueReceipt(supabase, {
     org,
-    memberId,
-    year,
-    donations: donations.get(memberId),
+    memberId: c.memberId,
+    year: c.year,
+    donations: donations.get(c.memberId),
     issuedBy: adminUser.id,
     reissue,
   });
@@ -72,25 +116,15 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "해당 연도에 공제 대상 납입 내역이 없습니다." }, { status: 400 });
     case "failed":
       return NextResponse.json({ error: result.error }, { status: 500 });
-    case "existing": {
-      const { data: file, error } = await supabase.storage
-        .from(RECEIPT_BUCKET)
-        .download(`${tenant.id}/${year}/${result.receiptCode}.pdf`);
-      if (error || !file) {
-        return NextResponse.json(
-          { error: "발급된 영수증 파일을 찾을 수 없습니다. 재발급(reissue=1)으로 다시 만들 수 있습니다." },
-          { status: 404 },
-        );
-      }
-      return pdfResponse(Buffer.from(await file.arrayBuffer()), result.receiptCode);
-    }
+    case "existing":
+      return downloadExisting(supabase, c, result.receiptCode);
     case "issued":
       notifyReceiptIssued({
-        orgId: tenant.id,
+        orgId: c.tenantId,
         phone: member.phone ?? null,
         email: member.email ?? null,
         name: member.name,
-        year,
+        year: c.year,
         pdfUrl: result.pdfUrl,
         orgName: org.name ?? "",
         receiptCode: result.receiptCode,

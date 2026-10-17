@@ -1,4 +1,4 @@
-import { cronSecretMatches } from "@/lib/cron/runner";
+import { cronAuthError } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { nextCode } from "@/lib/codes-seq";
@@ -15,25 +15,12 @@ import { kstParts, kstToday } from "@/lib/billing/kst";
  * creates an `unpaid` payment row if one does not already exist for
  * this promise + month (catch-up), then charges billing-key rows via charge-service.
  *
- * Security: requires X-Cron-Secret header matching CRON_SECRET env var.
- * Vercel sets this automatically when configured via vercel.json `headers`.
- * In manual test, pass the header explicitly.
+ * Security: CRON_SECRET 필수(없으면 거부). Vercel Cron은 `Authorization: Bearer <CRON_SECRET>`을 자동으로 보낸다.
+ * 수동 실행은 같은 헤더나 `x-cron-secret` 헤더로. URL 쿼리 토큰은 받지 않는다.
  */
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-        if (!cronSecretMatches(req, cronSecret)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  } else {
-    // No secret configured — only allow in non-production
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { error: "CRON_SECRET is required in production" },
-        { status: 401 }
-      );
-    }
-  }
+  const authError = cronAuthError(req);
+  if (authError) return authError;
 
   const supabase = createSupabaseAdminClient();
 

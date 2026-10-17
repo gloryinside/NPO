@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ReceiptIssueButton } from "@/components/admin/receipt-issue-button";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -296,13 +297,11 @@ export default async function MemberDetailPage({
               </button>
             }
           />
-          <a
-            href={`/api/admin/receipts/${member.id}?year=${new Date().getFullYear()}`}
-            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)] border-[var(--border)] text-[var(--text)] bg-[var(--surface)]"
-            download
-          >
-            영수증 발급
-          </a>
+          <ReceiptIssueButton
+            memberId={member.id}
+            year={new Date().getFullYear()}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--muted)] border-[var(--border)] text-[var(--text)] bg-[var(--surface)] disabled:opacity-50"
+          />
         </div>
       </div>
 
