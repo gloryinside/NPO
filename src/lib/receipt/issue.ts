@@ -103,6 +103,25 @@ export function verifyUrl(org: { slug: string | null }, token: string): string |
   return `https://${org.slug}.${base}/verify/receipt/${token}`
 }
 
+/** 서식 ❶ 주소 칸 — "(우편번호) 기본 주소 상세 주소" */
+export function donorAddress(m: { postal_code?: string | null; address_line1?: string | null; address_line2?: string | null }): string | null {
+  const line = [m.address_line1, m.address_line2].map((v) => v?.trim()).filter(Boolean).join(' ')
+  if (!line) return null
+  return m.postal_code?.trim() ? `(${m.postal_code.trim()}) ${line}` : line
+}
+
+/** 후원자 주민등록번호 복호화 — 키·값이 없거나 실패하면 null(영수증의 해당 칸은 빈칸) */
+async function decryptMemberIdNumber(supabase: SupabaseClient, cipher: unknown): Promise<string | null> {
+  const key = process.env.RECEIPTS_ENCRYPTION_KEY
+  if (!cipher || !key) return null
+  const { data, error } = await supabase.rpc('decrypt_id_number', { ciphertext: cipher, passphrase: key })
+  if (error) {
+    console.error('[receipt] 주민등록번호 복호화 실패') // 번호 자체는 남기지 않는다
+    return null
+  }
+  return (data as string | null) ?? null
+}
+
 export type IssueResult =
   | { kind: 'issued'; receiptId: string; receiptCode: string; pdf: Buffer; pdfUrl: string | null; total: number }
   | { kind: 'existing'; receiptId: string; receiptCode: string; pdfUrl: string | null }
@@ -144,11 +163,12 @@ export async function issueReceipt(
 
   const { data: member } = await supabase
     .from('members')
-    .select('name, phone, email, birth_date')
+    .select('name, id_number_encrypted, postal_code, address_line1, address_line2')
     .eq('id', memberId)
     .eq('org_id', org.id)
     .maybeSingle()
   if (!member) return { kind: 'failed', error: 'member_not_found' }
+  const idNumber = await decryptMemberIdNumber(supabase, member.id_number_encrypted)
 
   const { data: seq, error: seqErr } = await supabase.rpc('next_receipt_seq', { p_org: org.id, p_year: year })
   if (seqErr || typeof seq !== 'number') return { kind: 'failed', error: `번호 발급 실패: ${seqErr?.message ?? 'no_seq'}` }
@@ -164,14 +184,11 @@ export async function issueReceipt(
       name: org.name ?? '',
       businessNo: org.business_no ?? null,
       address: org.address ?? null,
-      contactPhone: org.contact_phone,
-      contactEmail: org.contact_email,
       representativeName: org.representative_name ?? null,
-      doneeType: org.donee_type ?? null,
       doneeLegalBasis: org.donee_legal_basis ?? null,
       donationTypeCode: org.donation_type_code ?? null,
     },
-    member: { name: member.name, phone: member.phone ?? null, birthDate: member.birth_date ?? null },
+    member: { name: member.name, idNumber, address: donorAddress(member) },
     totalAmount: donations.total,
     payments: donations.payments,
     issuedAt,
