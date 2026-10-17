@@ -96,7 +96,7 @@ export default function NewInquiryPage() {
           disabled={submitting || !subject.trim() || !body.trim()}
           className="w-full rounded-lg bg-[var(--accent)] py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
         >
-          {submitting ? "제출 중..." : "문의 제출"}
+          {submitting ? "제출 중…" : "문의 제출"}
         </button>
       </div>
     </div>

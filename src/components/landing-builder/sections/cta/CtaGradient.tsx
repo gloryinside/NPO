@@ -17,7 +17,7 @@ export function CtaGradient({ data }: { data: CtaGradientData }) {
         )}
         <MotionFadeUp delay={0.2}>
           <a href={buttonUrl || '#campaigns'}
-            className="inline-flex items-center rounded-full px-12 py-4 text-lg font-bold text-[var(--accent)] bg-white hover:-translate-y-0.5 transition-all"
+            className="inline-flex items-center rounded-full px-12 py-4 text-lg font-bold text-[var(--accent)] bg-white hover:-translate-y-0.5 transition-[color,background-color,border-color,box-shadow,transform,opacity]"
             style={{ boxShadow: 'var(--shadow-hero)' }}>
             {buttonText} →
           </a>

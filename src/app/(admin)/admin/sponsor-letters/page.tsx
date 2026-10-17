@@ -49,7 +49,7 @@ export default async function SponsorLettersPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="편지·번역 큐"
+        title="결연 편지 처리"
         description="결연 편지의 접수→번역→검수→전달 워크플로."
       />
 

@@ -176,3 +176,35 @@ async function markFailed(
     })
     .eq("id", id);
 }
+
+/**
+ * 결제 상태가 바뀐 뒤 ERP로 보낼 전표용 이벤트를 큐에 넣는다(정기결제 청구·환불 등).
+ * ERP 연동 실패가 결제 처리를 깨면 안 되므로 예외를 던지지 않고 기록만 한다.
+ */
+export async function queueErpPaymentEvent(
+  supabase: SupabaseClient,
+  orgId: string,
+  paymentId: string,
+  event: "payment.paid" | "payment.refunded" | "payment.failed",
+): Promise<void> {
+  try {
+    const { buildErpPaymentPayload } = await import("./payload-builder");
+    const payload = await buildErpPaymentPayload(supabase, orgId, paymentId, event);
+    if (payload) await enqueueErpEvent(supabase, orgId, event, payload as unknown as Record<string, unknown>);
+  } catch (err) {
+    console.error(`[erp] ${event} 큐 적재 실패 payment=${paymentId}:`, err);
+  }
+}
+
+/** 기부금영수증 발급 — ERP가 기부금 수입과 영수증 번호를 대조할 수 있게 */
+export async function queueErpReceiptEvent(
+  supabase: SupabaseClient,
+  orgId: string,
+  receipt: { receiptCode: string; memberId: string; year: number; totalAmount: number; issuedAt: string },
+): Promise<void> {
+  try {
+    await enqueueErpEvent(supabase, orgId, "receipt.issued", { event: "receipt.issued", ...receipt });
+  } catch (err) {
+    console.error(`[erp] receipt.issued 큐 적재 실패 ${receipt.receiptCode}:`, err);
+  }
+}

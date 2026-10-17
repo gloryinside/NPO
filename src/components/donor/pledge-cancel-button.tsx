@@ -39,7 +39,7 @@ export function PledgeCancelButton({ pledgeId }: { pledgeId: string }) {
         <CancelConfirmModal
           title="정기후원 해지"
           message="정기후원을 해지하시겠습니까? 다음 회차부터 자동결제가 중단됩니다."
-          confirmLabel="해지하기"
+          confirmLabel="정기후원 해지"
           onConfirm={handleCancel}
           onClose={() => setShowModal(false)}
         />

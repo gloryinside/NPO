@@ -83,7 +83,7 @@ export default async function AuditLogsPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-          감사 로그
+          작업 기록
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--muted-foreground)" }}>
           관리자 주요 조작 이력 (최근 200건)

@@ -433,7 +433,7 @@ export function MemberEditForm({ member }: Props) {
             disabled={saving}
             className="bg-[var(--accent)] text-white disabled:opacity-60"
           >
-            {saving ? "저장 중..." : "저장"}
+            {saving ? "저장 중…" : "저장"}
           </Button>
         </div>
       </form>

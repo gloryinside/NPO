@@ -47,7 +47,7 @@ export default async function ErpReconcilePage() {
   return (
     <div>
       <PageHeader
-        title="ERP 수입결의"
+        title="입금 내역 ERP 반영"
         description="납입 건의 수입상태를 검토하고 일괄 확정합니다."
       />
       <ReconcileClient initialRows={rows} isSuper={isSuper} />

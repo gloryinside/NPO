@@ -196,7 +196,7 @@ export function DonorSignupForm() {
             disabled={loading}
             className="w-full bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-glow disabled:opacity-50"
           >
-            {loading ? "가입 중..." : "회원가입"}
+            {loading ? "가입 중…" : "회원가입"}
           </Button>
         </form>
 

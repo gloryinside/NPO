@@ -93,7 +93,7 @@ export default async function AdminCompliancePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">컴플라이언스</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">개인정보 보호</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           개인정보보호법·GDPR 관점의 주요 체크리스트입니다.
         </p>

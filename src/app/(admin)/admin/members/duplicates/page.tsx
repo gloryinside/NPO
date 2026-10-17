@@ -20,7 +20,7 @@ export default async function AdminMemberDuplicatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">중복 회원 후보</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">중복 후원자 합치기</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           같은 이메일, 전화번호 또는 이름+생년월일을 공유하는 회원 그룹입니다.
           실제 중복 여부는 내역 확인 후 관리자가 수동 조정합니다.

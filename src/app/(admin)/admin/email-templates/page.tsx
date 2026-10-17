@@ -29,7 +29,7 @@ export default async function EmailTemplatesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--text)] mb-1">이메일 템플릿</h1>
+      <h1 className="text-2xl font-bold text-[var(--text)] mb-1">이메일 문구</h1>
       <p className="text-sm text-[var(--muted-foreground)] mb-8">
         시나리오별 이메일 내용을 커스터마이징하세요.
       </p>

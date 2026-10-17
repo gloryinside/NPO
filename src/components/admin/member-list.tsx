@@ -256,7 +256,7 @@ function AddMemberDialog({
               disabled={saving}
               className="bg-[var(--accent)] text-white disabled:opacity-60"
             >
-              {saving ? "등록 중..." : "등록"}
+              {saving ? "등록 중…" : "등록"}
             </Button>
           </div>
         </form>
@@ -344,6 +344,7 @@ export function MemberList({
     {
       key: "member_code",
       header: "회원코드",
+      sortValue: (m) => m.member_code,
       width: "140px",
       render: (m) => (
         <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
@@ -354,8 +355,9 @@ export function MemberList({
     {
       key: "name",
       header: "이름",
+      sortValue: (m) => m.name,
       render: (m) => (
-        <span className="font-medium text-[var(--text)]">{m.name}</span>
+        <span className="whitespace-nowrap font-medium text-[var(--text)]">{m.name}</span>
       ),
     },
     {
@@ -376,6 +378,7 @@ export function MemberList({
     {
       key: "status",
       header: "상태",
+      sortValue: (m) => m.status,
       width: "80px",
       render: (m) => <StatusBadge status={m.status} />,
     },
@@ -393,6 +396,7 @@ export function MemberList({
     {
       key: "created_at",
       header: "등록일",
+      sortValue: (m) => m.created_at,
       width: "110px",
       render: (m) => (
         <span className="text-[var(--muted-foreground)]">
@@ -500,7 +504,10 @@ export function MemberList({
         columns={columns}
         rows={members}
         rowKey={(m) => m.id}
-        emptyMessage="등록된 후원자가 없습니다."
+        emptyMessage="아직 등록된 후원자가 없습니다."
+        emptyHint="오른쪽 위 ‘후원자 등록’으로 한 명씩, ‘CSV 가져오기’로 엑셀 명단을 한꺼번에 넣을 수 있어요. 온라인 후원이 들어오면 자동으로 추가됩니다."
+        rowLabel={(m) => `${m.name} 후원자 요약 열기`}
+        caption="후원자 목록"
         emptyIllustration="donors"
         onRowClick={(m) => setDetailTarget(m)}
         rowActions={(m) => (
@@ -528,7 +535,7 @@ export function MemberList({
                 href={`/admin/members/${detailTarget.id}`}
                 className="inline-flex items-center justify-center rounded-md bg-[var(--accent)] px-4 py-1.5 text-[13px] font-medium text-white hover:opacity-90"
               >
-                회원 프로필 열기 →
+                회원 프로필 열기
               </a>
             </div>
           )

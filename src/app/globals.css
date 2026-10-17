@@ -182,6 +182,19 @@ html, body {
   :where(a, button, input, select, textarea, summary, [role="button"]) {
     touch-action: manipulation;
   }
+  /* 표: 한글이 글자 단위로 끊겨 좁은 칸이 세로로 깨지지 않게 단어 단위로 줄바꿈(긴 URL·이메일은 그래도 줄바꿈) */
+  /* 금액·건수 열의 자릿수가 세로로 맞도록 */
+  :where(table) {
+    font-variant-numeric: tabular-nums;
+  }
+  :where(th, td) {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+  /* 표 안의 코드(RCP-2025-…, M-2026…, PMT-…)는 하이픈에서 끊지 않는다 */
+  :where(td, th) :where(.font-mono), :where(td.font-mono) {
+    white-space: nowrap;
+  }
 }
 
 /* ===== 다크 테마 오버라이드 =====

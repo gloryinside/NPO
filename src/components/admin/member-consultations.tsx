@@ -132,7 +132,7 @@ export function MemberConsultations({ memberId }: { memberId: string }) {
           <div className="flex justify-end">
             <Button type="submit" disabled={saving || !subject.trim()}
               className="bg-[var(--accent)] text-white disabled:opacity-60">
-              {saving ? "저장 중..." : "저장"}
+              {saving ? "저장 중…" : "저장"}
             </Button>
           </div>
         </form>

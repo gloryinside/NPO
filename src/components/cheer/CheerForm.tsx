@@ -146,7 +146,7 @@ export function CheerForm({ campaignId, loggedIn }: Props) {
             disabled={submitting || body.trim().length === 0}
             className="rounded-md px-4 py-1.5 text-sm font-semibold text-white bg-[var(--accent)] hover:opacity-90 disabled:opacity-50"
           >
-            {submitting ? '등록 중...' : successMark ? '✓ 등록됨' : '응원 남기기'}
+            {submitting ? '등록 중…' : successMark ? '✓ 등록됨' : '응원 남기기'}
           </button>
         </div>
       </div>

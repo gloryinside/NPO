@@ -196,7 +196,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-            미납 관리
+            결제 실패·미납
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted-foreground)" }}>
             미납·실패 건을 확인하고 수기 납부 처리하세요.
@@ -341,7 +341,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
                                 background: "var(--accent-soft)",
                               }}
                             >
-                              {isProcessing ? "처리중..." : "지금 재시도"}
+                              {isProcessing ? "처리중…" : "지금 재시도"}
                             </button>
                             {p.next_retry_at && (
                               <button
@@ -370,7 +370,7 @@ export function UnpaidList({ payments, total, initialQ }: Props) {
                             background: "rgba(34,197,94,0.08)",
                           }}
                         >
-                          {isProcessing ? "처리중..." : "납부완료"}
+                          {isProcessing ? "처리중…" : "납부완료"}
                         </button>
                       </div>
                     </td>

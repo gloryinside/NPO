@@ -210,7 +210,7 @@ export function TossSettingsForm({ initialData }: Props) {
           disabled={loading}
           className="w-full bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90"
         >
-          {loading ? "저장 중..." : "저장"}
+          {loading ? "저장 중…" : "저장"}
         </Button>
 
         {successMessage && (

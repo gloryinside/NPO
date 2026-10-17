@@ -61,7 +61,7 @@ export default async function AdminChargebacksPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">카드 분쟁</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">카드 결제 이의 제기</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Toss 에서 전달된 카드 분쟁(chargeback) 케이스 이력. 회원에 자동으로 위험 플래그가 부여됩니다.
         </p>

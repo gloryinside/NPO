@@ -79,7 +79,7 @@ export default function AdminInquiryDetailPage() {
     startTransition(() => { load(); });
   }
 
-  if (loading) return <div className="text-[var(--muted-foreground)] p-8">로딩 중...</div>;
+  if (loading) return <div className="text-[var(--muted-foreground)] p-8">로딩 중…</div>;
   if (!inquiry) return <div className="text-[var(--muted-foreground)] p-8">찾을 수 없습니다.</div>;
 
   const replies = inquiry.inquiry_replies ?? [];
@@ -153,7 +153,7 @@ export default function AdminInquiryDetailPage() {
           <textarea
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            placeholder="후원자에게 보낼 답변을 입력하세요..."
+            placeholder="후원자에게 보낼 답변을 입력하세요…"
             rows={5}
             className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none resize-none border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] placeholder:text-[var(--muted-foreground)]"
           />
@@ -165,7 +165,7 @@ export default function AdminInquiryDetailPage() {
               disabled={submitting || !replyText.trim()}
               className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-[var(--accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
-              {submitting ? "전송 중..." : "답변 등록"}
+              {submitting ? "전송 중…" : "답변 등록"}
             </button>
             <button
               type="button"

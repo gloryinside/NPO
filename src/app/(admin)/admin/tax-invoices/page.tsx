@@ -55,7 +55,7 @@ export default async function TaxInvoicesPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="세금계산서 큐"
+        title="세금계산서 발행 목록"
         description="법인 후원자(tax_invoice_required=true)의 결제에 대해 발행 대기·완료를 추적합니다."
       />
 

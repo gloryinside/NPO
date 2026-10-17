@@ -47,7 +47,7 @@ export default async function ExpenseVouchersPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="지출 결의 (품의서)"
+      <PageHeader title="지출 결의"
         description="품의 → 검토 → 승인 → 지급 결재 흐름. 4-eyes 원칙 (단계별 다른 admin 필요)." />
 
       <div className="flex gap-2 text-sm">

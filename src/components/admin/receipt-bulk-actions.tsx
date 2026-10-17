@@ -163,7 +163,7 @@ export function ReceiptBulkActions({
           href={`/admin/receipts?tab=nts&year=${year}`}
           className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)]"
         >
-          국세청 간소화 자료 →
+          국세청 간소화 자료로 이동
         </a>
       </div>
 
@@ -224,7 +224,7 @@ export function ReceiptBulkActions({
                         {r.memberName}
                       </div>
                       {isIssuedNow && issuedInfo.code && (
-                        <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                        <div className="mt-0.5 whitespace-nowrap font-mono text-[11px]" style={{ color: "var(--muted-foreground)" }}>
                           {issuedInfo.code}
                         </div>
                       )}
@@ -300,7 +300,7 @@ export function ReceiptBulkActions({
                             cursor: r.idNumberSet ? "pointer" : "not-allowed",
                           }}
                         >
-                          {isIssuingNow ? "발급 중..." : isIssuedNow ? "재발급" : "발급"}
+                          {isIssuingNow ? "발급 중…" : isIssuedNow ? "재발급" : "발급"}
                         </button>
                       </div>
                     </td>

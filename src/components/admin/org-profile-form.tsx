@@ -321,7 +321,7 @@ export function OrgProfileForm({ initialData }: { initialData: OrgProfile }) {
             opacity: saving ? 0.6 : 1,
           }}
         >
-          {saving ? "저장 중..." : "저장"}
+          {saving ? "저장 중…" : "저장"}
         </Button>
       </div>
     </form>

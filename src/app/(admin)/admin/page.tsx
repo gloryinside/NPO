@@ -5,6 +5,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyArt } from "@/components/donor/ui/EmptyState";
+import { GettingStarted } from "@/components/admin/getting-started";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -98,7 +100,7 @@ export default async function AdminDashboardPage() {
       .in("pay_status", ["unpaid", "failed"])
       .gte("pay_date", firstDay)
       .lt("pay_date", nextFirstDay),
-    // 최근 납입 5건
+    // 최근 들어온 후원 5건
     supabase
       .from("payments")
       .select("id, amount, pay_date, members(id, name), campaigns(id, title)")
@@ -196,15 +198,16 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
+      {tenantId && <GettingStarted orgId={tenantId} />}
       <PageHeader
         title="대시보드"
-        description="안녕하세요. NPO 후원관리 대시보드입니다."
+        description="오늘 처리할 일과 이번 달 모금 현황입니다."
         stats={
           <>
             <StatCard label="총 후원자 수" value={`${totalMembers.toLocaleString('ko-KR')}명`} />
-            <StatCard label="이번 달 납입금액" value={formatKRW(monthAmount)} />
+            <StatCard label="이번 달 후원금" value={formatKRW(monthAmount)} />
             <StatCard label="활성 캠페인" value={`${activeCampaigns}건`} />
-            <StatCard label="미납/실패" value={`${unpaidCount}건`} tone={unpaidCount > 0 ? 'negative' : 'default'} />
+            <StatCard label="결제 실패" value={`${unpaidCount}건`} tone={unpaidCount > 0 ? 'negative' : 'default'} />
           </>
         }
       />
@@ -215,7 +218,7 @@ export default async function AdminDashboardPage() {
         <Card className="bg-[var(--surface)] border-[var(--border)]">
           <CardHeader>
             <CardTitle className="text-sm text-[var(--muted-foreground)]">
-              월별 납입 추이 (최근 6개월)
+              최근 6개월 후원금
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -255,36 +258,26 @@ export default async function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <TodoItem
-              label="수입대기 처리"
-              count={pendingIncomeCount}
-              href="/admin/payments"
-            />
-            <TodoItem
-              label="미납/실패 확인"
-              count={unpaidCount}
-              href="/admin/payments?status=failed"
-            />
-            <TodoItem
-              label="환불 승인 대기"
-              count={pendingRefundCount}
-              href="/admin/refund-approvals"
-            />
-            <TodoItem
-              label="이메일 반송 미처리"
-              count={emailBounceCount}
-              href="/admin/email-bounces"
-            />
-            <TodoItem
-              label="미처리 문의"
-              count={openInquiryCount}
-              href="/admin/inquiries"
-            />
-            <TodoItem
-              label="카드 미등록 약정"
-              count={pendingBillingCount}
-              href="/admin/promises?status=pending_billing"
-            />
+            {(() => {
+              // 처리할 것이 있는 항목만 — 전부 0건인 줄을 나열하지 않는다
+              const todos = [
+                { label: "수입 확정 기다리는 결제", count: pendingIncomeCount, href: "/admin/payments" },
+                { label: "결제 실패 확인", count: unpaidCount, href: "/admin/payments?status=failed" },
+                { label: "환불 승인 대기", count: pendingRefundCount, href: "/admin/refund-approvals" },
+                { label: "이메일 반송 미처리", count: emailBounceCount, href: "/admin/email-bounces" },
+                { label: "미처리 문의", count: openInquiryCount, href: "/admin/inquiries" },
+                { label: "카드 등록 안 된 정기후원", count: pendingBillingCount, href: "/admin/promises?status=pending_billing" },
+              ].filter((t) => t.count > 0);
+              return todos.length > 0 ? (
+                todos.map((t) => <TodoItem key={t.label} {...t} />)
+              ) : (
+                <div className="flex flex-col items-center py-6 text-center">
+                  <EmptyArt name="allclear" className="mb-3 h-28" />
+                  <p className="text-sm font-semibold text-[var(--text)]">지금 처리할 일이 없어요</p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">미납·환불·문의·반송이 생기면 여기에 모입니다.</p>
+                </div>
+              );
+            })()}
             {failReasonMap.size > 0 && (
               <div className="mt-2">
                 <p className="text-xs text-[var(--muted-foreground)] mb-2">결제 오류 유형:</p>
@@ -307,7 +300,7 @@ export default async function AdminDashboardPage() {
       {/* 최근 납입 */}
       {recentPayments.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-[var(--text)]">최근 납입 5건</h2>
+          <h2 className="mb-3 text-lg font-semibold text-[var(--text)]">최근 들어온 후원 5건</h2>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]">
             <ul>
               {recentPayments.map((p, idx) => (
@@ -359,13 +352,7 @@ function TodoItem({
       style={{ textDecoration: "none" }}
     >
       <span>{label}</span>
-      <Badge
-        className={`border-0 font-medium ${
-          count > 0
-            ? "bg-[var(--negative-soft)] text-[var(--negative)]"
-            : "bg-[var(--positive-soft)] text-[var(--positive)]"
-        }`}
-      >
+      <Badge className="border-0 bg-[var(--negative-soft)] font-medium text-[var(--negative)]">
         {count}건
       </Badge>
     </a>

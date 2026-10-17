@@ -79,7 +79,7 @@ export default async function AdminDataHealthPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">데이터 품질</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">데이터 점검</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           후원자 및 결제 데이터의 이상·보수 대상 지표입니다.
         </p>

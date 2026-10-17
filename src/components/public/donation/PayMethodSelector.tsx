@@ -35,7 +35,7 @@ export default function PayMethodSelector({ methods, value, onChange, disabledMe
             disabled={disabled}
             title={disabled ? '현재 결제수단은 지원되지 않습니다' : undefined}
             className={[
-              'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium min-h-[44px] transition-all',
+              'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium min-h-[44px] transition-[color,background-color,border-color,box-shadow,transform,opacity]',
               disabled
                 ? 'opacity-40 cursor-not-allowed bg-[var(--surface-2)] text-[var(--muted-foreground)] border border-[var(--border)]'
                 : selected

@@ -57,7 +57,7 @@ export default async function MatchingRequestsPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="매칭 신청"
+        title="기업 매칭 신청"
         description="직원 매칭 신청을 검토하고, 매칭 결제 완료 시 payments와 연결합니다."
       />
 

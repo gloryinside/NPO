@@ -507,7 +507,7 @@ export function CampaignFormDialog({
               disabled={loading}
               style={{ background: "var(--accent)", color: "#fff" }}
             >
-              {loading ? "저장 중..." : isEdit ? "수정" : "생성"}
+              {loading ? "저장 중…" : isEdit ? "수정" : "생성"}
             </Button>
           </div>
         </form>

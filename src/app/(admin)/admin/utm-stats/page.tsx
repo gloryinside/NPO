@@ -52,7 +52,7 @@ export default async function UtmStatsPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="UTM 분석" description={`${from} ~ ${to} 기간의 채널/캠페인 효과`} />
+      <PageHeader title="유입 경로 분석" description={`${from} ~ ${to} 기간의 채널/캠페인 효과`} />
 
       <form className="flex items-end gap-3 text-sm" action="/admin/utm-stats">
         <label className="flex flex-col gap-1">

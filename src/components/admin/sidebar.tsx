@@ -1,243 +1,300 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import {
+  ChartColumn,
+  ChevronDown,
+  House,
+  Megaphone,
+  Menu,
+  Search,
+  Settings,
+  Star,
+  Users,
+  Wallet,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { logout } from "@/app/(admin)/admin/actions";
 import { NotificationBadge } from "./notification-badge";
 import { LogoWithText } from "@/components/brand/logo-with-text";
 import { ThemeToggle } from "@/components/brand/theme-toggle";
+import { ADMIN_NAV, ALL_NAV_ITEMS, activeNavHref, hubOfHref, type AdminNavHub, type AdminNavItem } from "@/lib/admin/nav";
+import { useNavFavorites } from "./nav-favorites";
+import { NavCommandPalette } from "./nav-command-palette";
 
-interface NavItem {
-  label: string;
-  href: string;
-}
+/**
+ * 관리자 사이드바 — 6개 허브 아코디언(지금 있는 허브만 펼침) + 즐겨찾기 + 메뉴 검색(⌘K).
+ * 허브 안에서는 주요 메뉴만 보이고 나머지는 "더 보기". 모바일(md 미만)은 상단 바 + 서랍.
+ * 현재 위치는 슬레이트 면 + 굵은 글씨(JobYLW 규칙: 그린은 행동·결과 신호 전용).
+ */
+const HUB_ICON: Record<AdminNavHub["icon"], LucideIcon> = {
+  home: House,
+  users: Users,
+  wallet: Wallet,
+  megaphone: Megaphone,
+  chart: ChartColumn,
+  settings: Settings,
+};
 
-interface NavGroup {
-  group: string;
-  items: NavItem[];
-}
-
-const NAV: NavGroup[] = [
-  {
-    group: "보고서",
-    items: [
-      { label: "대시보드", href: "/admin" },
-      { label: "통계 개요", href: "/admin/stats" },
-      { label: "후원자 라이프사이클", href: "/admin/stats/lifecycle" },
-      { label: "LTV / 코호트", href: "/admin/stats/ltv" },
-      { label: "기부금영수증", href: "/admin/receipts" },
-      { label: "데이터 품질", href: "/admin/reports/data-health" },
-      { label: "마케팅 지출 분석", href: "/admin/marketing-spend" },
-    ],
-  },
-  {
-    group: "후원관리",
-    items: [
-      { label: "후원자 관리", href: "/admin/members" },
-      { label: "후원자 중복 관리", href: "/admin/members/duplicates" },
-      { label: "회원 태그", href: "/admin/member-tags" },
-      { label: "CRM (봉사자·잠재후원자)", href: "/admin/crm" },
-      { label: "자원봉사 활동", href: "/admin/volunteer-activities" },
-      { label: "약정 관리", href: "/admin/promises" },
-      { label: "약정 변경 추이", href: "/admin/promises/changes" },
-      { label: "납입 관리", href: "/admin/payments" },
-      { label: "물품기부", href: "/admin/in-kind" },
-    ],
-  },
-  {
-    group: "결연·수혜자",
-    items: [
-      { label: "수혜자 관리", href: "/admin/beneficiaries" },
-      { label: "결연 매칭", href: "/admin/sponsorships" },
-      { label: "편지·번역 큐", href: "/admin/sponsor-letters" },
-    ],
-  },
-  {
-    group: "사업관리",
-    items: [
-      { label: "사업/프로그램", href: "/admin/programs" },
-      { label: "행사·이벤트", href: "/admin/events" },
-      { label: "기념품 발송", href: "/admin/gift-shipments" },
-      { label: "기념품 룰 설정", href: "/admin/gift-rules" },
-    ],
-  },
-  {
-    group: "채널·우편",
-    items: [
-      { label: "모금 채널", href: "/admin/donation-channels" },
-      { label: "채널별 통계", href: "/admin/channel-stats" },
-      { label: "DM 우편 캠페인", href: "/admin/mail-campaigns" },
-    ],
-  },
-  {
-    group: "ERP",
-    items: [
-      { label: "수입결의(은행 대사)", href: "/admin/erp/reconcile" },
-      { label: "수입결의 전표", href: "/admin/revenue-journals" },
-      { label: "계정과목", href: "/admin/chart-of-accounts" },
-      { label: "은행계좌", href: "/admin/bank-accounts" },
-      { label: "가상계좌 매핑", href: "/admin/virtual-account-mappings" },
-      { label: "회계 마감", href: "/admin/closed-periods" },
-      { label: "세금계산서 큐", href: "/admin/tax-invoices" },
-      { label: "지출 결의(품의)", href: "/admin/expense-vouchers" },
-      { label: "결산 보고서", href: "/admin/fiscal-reports" },
-      { label: "정산 차이 감지", href: "/admin/settlement-discrepancies" },
-      { label: "CMS EFT 청구", href: "/admin/cms-claim-files" },
-      { label: "UTM 분석", href: "/admin/utm-stats" },
-    ],
-  },
-  {
-    group: "기업·설문",
-    items: [
-      { label: "기업 매칭 프로그램", href: "/admin/matching-programs" },
-      { label: "매칭 신청 관리", href: "/admin/matching-requests" },
-      { label: "설문/NPS", href: "/admin/surveys" },
-    ],
-  },
-  {
-    group: "자동화·조직",
-    items: [
-      { label: "자동화 룰", href: "/admin/automation-rules" },
-      { label: "조직 단위(지부)", href: "/admin/org-units" },
-    ],
-  },
-  {
-    group: "결제관리",
-    items: [
-      { label: "미납 관리", href: "/admin/unpaid" },
-      { label: "이탈 위험 후원자", href: "/admin/at-risk" },
-      { label: "정기 스케줄", href: "/admin/schedules" },
-      { label: "CMS 출금 오류", href: "/admin/cms-errors" },
-      { label: "환불 승인", href: "/admin/refund-approvals" },
-      { label: "카드 분쟁(Chargeback)", href: "/admin/chargebacks" },
-      { label: "은행 입금 대사", href: "/admin/bank-reconciliation" },
-    ],
-  },
-  {
-    group: "캠페인",
-    items: [
-      { label: "캠페인 목록", href: "/admin/campaigns" },
-      { label: "랜딩페이지 편집", href: "/admin/landing" },
-      { label: "응원 메시지 검수", href: "/admin/cheer" },
-    ],
-  },
-  {
-    group: "고객지원",
-    items: [
-      { label: "문의 관리", href: "/admin/inquiries" },
-      { label: "게시판 (공지/FAQ)", href: "/admin/board" },
-      { label: "수동 메시지 발송", href: "/admin/communications" },
-    ],
-  },
-  {
-    group: "설정",
-    items: [
-      { label: "기관 설정", href: "/admin/settings" },
-      { label: "사용자 관리", href: "/admin/users" },
-      { label: "감사 로그", href: "/admin/audit-logs" },
-      { label: "알림 센터", href: "/admin/notifications" },
-      { label: "이메일 템플릿", href: "/admin/email-templates" },
-      { label: "이메일 반송", href: "/admin/email-bounces" },
-      { label: "컴플라이언스", href: "/admin/compliance" },
-    ],
-  },
-];
-
-interface AdminSidebarProps {
-  user: User;
-}
-
-function NavGroupSection({ group, items }: NavGroup) {
-  const pathname = usePathname();
+function NavLink({
+  item,
+  active,
+  favorite,
+  onToggleFavorite,
+}: {
+  item: AdminNavItem;
+  active: boolean;
+  favorite: boolean;
+  onToggleFavorite: () => void;
+}) {
   return (
-    <div className="mt-4 first:mt-2">
-      <div className="px-2.5 pb-1 text-xs font-medium text-[var(--muted-2)]">
-        {group}
-      </div>
-      <ul className="space-y-0.5">
-        {items.map((item) => {
-          const isActive = pathname === item.href;
-          // 현재 위치는 슬레이트 면 + 굵은 글씨(JobYLW 규칙: 그린은 행동·결과 신호 전용)
+    <li className="group/nav relative">
+      <Link
+        href={item.href}
+        title={item.desc}
+        aria-current={active ? "page" : undefined}
+        className={[
+          "flex items-center justify-between rounded-lg py-1.5 pl-9 pr-8 text-sm no-underline transition-colors",
+          active
+            ? "bg-[var(--surface-2)] font-semibold text-[var(--text)]"
+            : "text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
+        ].join(" ")}
+      >
+        <span className="truncate">{item.label}</span>
+        {item.href === "/admin/notifications" && <NotificationBadge />}
+      </Link>
+      <button
+        type="button"
+        onClick={onToggleFavorite}
+        aria-label={favorite ? `${item.label} 즐겨찾기 해제` : `${item.label} 즐겨찾기`}
+        aria-pressed={favorite}
+        className={[
+          "absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 transition-opacity",
+          favorite
+            ? "text-[var(--warning)] opacity-100"
+            : "text-[var(--muted-2)] opacity-0 hover:text-[var(--text)] focus-visible:opacity-100 group-hover/nav:opacity-100 pointer-coarse:opacity-100",
+        ].join(" ")}
+      >
+        <Star className="size-3.5" fill={favorite ? "currentColor" : "none"} aria-hidden />
+      </button>
+    </li>
+  );
+}
+
+function NavBody({ onOpenSearch }: { onOpenSearch: () => void }) {
+  const pathname = usePathname();
+  const activeHref = activeNavHref(pathname);
+  const currentHub = hubOfHref(activeHref) ?? "home";
+  const { favorites, toggle, isFavorite } = useNavFavorites();
+
+  // 지금 있는 허브는 항상 펼침. 다른 허브는 눌러서 펼친 것만(다른 허브로 이동하면 정리)
+  const [opened, setOpened] = useState<Set<string>>(() => new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set()); // "더 보기"를 연 허브
+  const [prevHub, setPrevHub] = useState(currentHub);
+  if (prevHub !== currentHub) {
+    setPrevHub(currentHub);
+    setOpened(new Set());
+  }
+
+  const toggleSet = (set: Set<string>, id: string) => {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  };
+
+  const favItems = favorites
+    .map((h) => ALL_NAV_ITEMS.find((i) => i.href === h))
+    .filter((i): i is (typeof ALL_NAV_ITEMS)[number] => !!i);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onOpenSearch}
+        className="mb-3 flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--text)]"
+      >
+        <Search className="size-4" aria-hidden />
+        <span className="flex-1 text-left">무엇을 할까요? 메뉴 찾기</span>
+        <kbd className="rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 text-[10px] font-medium">⌘K</kbd>
+      </button>
+
+      {favItems.length > 0 && (
+        <div className="mb-3">
+          <p className="px-2.5 pb-1 text-xs font-medium text-[var(--muted-2)]">즐겨찾기</p>
+          <ul className="space-y-0.5">
+            {favItems.map((it) => (
+              <NavLink
+                key={it.href}
+                item={it}
+                active={it.href === activeHref}
+                favorite
+                onToggleFavorite={() => toggle(it.href)}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <ul className="space-y-1">
+        {ADMIN_NAV.map((hub) => {
+          const Icon = HUB_ICON[hub.icon];
+          const isCurrent = hub.id === currentHub;
+          const isOpen = isCurrent || opened.has(hub.id);
+          const showAll = expanded.has(hub.id);
+          // 주요 메뉴 + (지금 보고 있는 메뉴가 "더 보기" 안이면 그것도) 보여 준다
+          const visible = showAll ? hub.items : hub.items.filter((it) => it.primary || it.href === activeHref);
+          const hiddenCount = hub.items.length - visible.length;
+          const panelId = `nav-hub-${hub.id}`;
           return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                aria-current={isActive ? "page" : undefined}
+            <li key={hub.id}>
+              <button
+                type="button"
+                onClick={() => !isCurrent && setOpened((s) => toggleSet(s, hub.id))}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
                 className={[
-                  "flex items-center rounded-lg px-2.5 py-1.5 text-sm no-underline transition-colors",
-                  isActive
-                    ? "bg-[var(--surface-2)] font-semibold text-[var(--text)]"
-                    : "font-normal text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
+                  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                  isCurrent ? "font-semibold text-[var(--text)]" : "font-medium text-[var(--muted-foreground)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
                 ].join(" ")}
               >
-                {item.label}
-              </Link>
+                <Icon className={`size-4 ${isCurrent ? "text-[var(--accent)]" : ""}`} aria-hidden />
+                <span className="flex-1 text-left">{hub.label}</span>
+                {!isCurrent && (
+                  <ChevronDown className={`size-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden />
+                )}
+              </button>
+              {isOpen && (
+                <div id={panelId}>
+                  <ul className="mt-0.5 space-y-0.5">
+                    {visible.map((it) => (
+                      <NavLink
+                        key={it.href}
+                        item={it}
+                        active={it.href === activeHref}
+                        favorite={isFavorite(it.href)}
+                        onToggleFavorite={() => toggle(it.href)}
+                      />
+                    ))}
+                  </ul>
+                  {(hiddenCount > 0 || showAll) && hub.items.some((it) => !it.primary) && (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((s) => toggleSet(s, hub.id))}
+                      className="mt-0.5 w-full rounded-lg py-1 pl-9 text-left text-xs text-[var(--muted-2)] hover:text-[var(--text)]"
+                    >
+                      {showAll ? "접기" : `더 보기 ${hiddenCount}`}
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
+    </>
+  );
+}
+
+function UserArea({ user }: { user: User }) {
+  return (
+    <div className="border-t border-[var(--border)] px-4 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-xs font-medium text-[var(--text)]">{user.email}</div>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="mt-0.5 cursor-pointer bg-transparent p-0 text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--text)]"
+            >
+              로그아웃
+            </button>
+          </form>
+        </div>
+        <ThemeToggle persistToServer={false} />
+      </div>
     </div>
   );
 }
 
-function NotificationLink() {
+export function AdminSidebar({ user }: { user: User }) {
   const pathname = usePathname();
-  const isActive = pathname === "/admin/notifications";
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // 다른 화면으로 가면 모바일 서랍을 닫는다(그리는 중 비교 — 효과로 닫으면 한 번 더 그린다)
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (pathname !== prevPath) {
+    setPrevPath(pathname);
+    setDrawerOpen(false);
+  }
+
+  const openSearch = () => {
+    setDrawerOpen(false);
+    setSearchOpen(true);
+  };
 
   return (
-    <Link
-      href="/admin/notifications"
-      aria-current={isActive ? "page" : undefined}
-      className={[
-        "flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm no-underline transition-colors",
-        isActive
-          ? "bg-[var(--surface-2)] font-semibold text-[var(--text)]"
-          : "font-medium text-[var(--text)] hover:bg-[var(--surface-2)]",
-      ].join(" ")}
-    >
-      알림
-      <NotificationBadge />
-    </Link>
-  );
-}
-
-export function AdminSidebar({ user }: AdminSidebarProps) {
-  return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]">
-      {/* Brand area */}
-      <div className="px-5 pb-4 pt-5">
-        <LogoWithText variant="header" size="md" />
-        <p className="eyebrow mt-2">Admin Console</p>
-      </div>
-
-      {/* Navigation */}
-      <nav aria-label="관리자 메뉴" className="flex-1 overflow-y-auto px-3 pb-4">
-        <NotificationLink />
-        {NAV.map((group) => (
-          <NavGroupSection key={group.group} {...group} />
-        ))}
-      </nav>
-
-      {/* User area */}
-      <div className="border-t border-[var(--border)] px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="truncate text-xs font-medium text-[var(--text)]">
-              {user.email}
-            </div>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="mt-0.5 cursor-pointer bg-transparent p-0 text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--text)]"
-              >
-                로그아웃
-              </button>
-            </form>
-          </div>
-          <ThemeToggle persistToServer={false} />
+    <>
+      {/* 모바일 상단 바 */}
+      <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 md:hidden">
+        <LogoWithText variant="header" size="sm" />
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={openSearch} aria-label="메뉴 검색" className="rounded-lg p-2 text-[var(--muted-foreground)] hover:bg-[var(--surface-2)]">
+            <Search className="size-5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="메뉴 열기"
+            aria-expanded={drawerOpen}
+            aria-controls="admin-drawer"
+            className="rounded-lg p-2 text-[var(--muted-foreground)] hover:bg-[var(--surface-2)]"
+          >
+            <Menu className="size-5" aria-hidden />
+          </button>
         </div>
       </div>
-    </aside>
+
+      {/* 모바일 서랍 */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" onKeyDown={(e) => e.key === "Escape" && setDrawerOpen(false)}>
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} aria-hidden />
+          <aside
+            id="admin-drawer"
+            aria-label="관리자 메뉴"
+            className="animate-rise absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-[var(--surface)] shadow-[var(--shadow-hero)]"
+          >
+            <div className="flex items-center justify-between px-4 py-3">
+              <LogoWithText variant="header" size="sm" />
+              <button type="button" onClick={() => setDrawerOpen(false)} aria-label="메뉴 닫기" autoFocus className="rounded-lg p-2 text-[var(--muted-foreground)] hover:bg-[var(--surface-2)]">
+                <X className="size-5" aria-hidden />
+              </button>
+            </div>
+            <nav aria-label="관리자 메뉴" className="flex-1 overflow-y-auto px-3 pb-4">
+              <NavBody onOpenSearch={openSearch} />
+            </nav>
+            <UserArea user={user} />
+          </aside>
+        </div>
+      )}
+
+      {/* 데스크톱 사이드바 */}
+      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] md:flex">
+        <div className="px-5 pb-4 pt-5">
+          <LogoWithText variant="header" size="md" />
+          <p className="mt-1.5 text-xs font-medium text-[var(--muted-foreground)]">후원 관리</p>
+        </div>
+        <nav aria-label="관리자 메뉴" className="flex-1 overflow-y-auto px-3 pb-4">
+          <NavBody onOpenSearch={openSearch} />
+        </nav>
+        <UserArea user={user} />
+      </aside>
+
+      <NavCommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
   );
 }

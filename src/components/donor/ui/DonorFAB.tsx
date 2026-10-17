@@ -34,7 +34,7 @@ export function DonorFAB() {
       aria-label="새 후원 시작하기"
       aria-hidden={hidden ? "true" : "false"}
       tabIndex={hidden ? -1 : 0}
-      className="fixed right-4 z-40 inline-flex items-center gap-1.5 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-200 sm:hidden"
+      className="fixed right-4 z-40 inline-flex items-center gap-1.5 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 sm:hidden"
       style={{
         background: "var(--accent)",
         bottom: 72, // 하단 네비바 56px + 여백 16px

@@ -50,7 +50,7 @@ export default function AmountSelector({
               key={preset}
               onClick={() => handlePresetClick(preset)}
               className={[
-                'flex flex-col items-center justify-center gap-0.5 rounded-xl py-3 px-2 min-h-[44px] transition-all text-[var(--text)]',
+                'flex flex-col items-center justify-center gap-0.5 rounded-xl py-3 px-2 min-h-[44px] transition-[color,background-color,border-color,box-shadow,transform,opacity] text-[var(--text)]',
                 selected
                   ? 'border-2 border-[var(--accent)] bg-[var(--accent-soft)]'
                   : 'border border-[var(--border)] bg-[var(--surface-2)]',

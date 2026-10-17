@@ -113,7 +113,7 @@ export default function AdminBoardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text)]">게시판 관리</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">공지·자주 묻는 질문</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             공지사항과 FAQ를 관리합니다.
           </p>
@@ -147,7 +147,7 @@ export default function AdminBoardPage() {
 
       {/* 글 목록 */}
       {loading ? (
-        <p className="text-sm text-[var(--muted-foreground)]">로딩 중...</p>
+        <p className="text-sm text-[var(--muted-foreground)]">로딩 중…</p>
       ) : posts.length === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center border-[var(--border)] text-[var(--muted-foreground)] text-sm">
           등록된 {TYPE_LABEL[tab]}이 없습니다.
@@ -271,7 +271,7 @@ export default function AdminBoardPage() {
               disabled={saving || !title.trim() || !body.trim()}
               className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
-              {saving ? "저장 중..." : "저장"}
+              {saving ? "저장 중…" : "저장"}
             </button>
             <button
               type="button"

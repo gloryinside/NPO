@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { Modal } from '@/components/ui/layer';
+import { Button } from '@/components/ui/button';
 
 interface CancelConfirmModalProps {
   title: string;
@@ -11,7 +13,9 @@ interface CancelConfirmModalProps {
 }
 
 /**
- * G-D39: 커스텀 모달에 focus trap / Escape / backdrop 닫기 추가.
+ * 되돌릴 수 없는 취소·해지의 마지막 확인.
+ * 포커스 가두기·Esc·바깥 클릭 닫기·포커스 복귀는 공용 Modal(base-ui Dialog)이 맡는다.
+ * 호출하는 쪽이 띄울 때만 마운트하므로 항상 열린 상태로 그린다.
  */
 export function CancelConfirmModal({
   title,
@@ -21,9 +25,6 @@ export function CancelConfirmModal({
   onClose,
 }: CancelConfirmModalProps) {
   const [loading, setLoading] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const firstFocusableRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocused = useRef<HTMLElement | null>(null);
 
   async function handleConfirm() {
     setLoading(true);
@@ -34,101 +35,29 @@ export function CancelConfirmModal({
     }
   }
 
-  // Focus trap + 초기 포커스 + Escape + 이전 포커스 복원
-  useEffect(() => {
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    firstFocusableRef.current?.focus();
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        if (!loading) onClose();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const container = dialogRef.current;
-      if (!container) return;
-      const focusables = container.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      previouslyFocused.current?.focus?.();
-    };
-  }, [loading, onClose]);
+  // 요청이 진행 중일 때는 Esc·바깥 클릭으로 닫히지 않게 한다 — 결과를 못 보고 창이 사라지지 않도록.
+  function handleClose() {
+    if (!loading) onClose();
+  }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="cancel-confirm-title"
-      aria-describedby="cancel-confirm-desc"
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.5)' }}
-      onClick={(e) => {
-        // backdrop 클릭 시 닫기 (진행 중이 아니면)
-        if (e.target === e.currentTarget && !loading) onClose();
-      }}
+    <Modal
+      open
+      onClose={handleClose}
+      title={title}
+      size="sm"
+      footer={
+        <>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
+            그대로 두기
+          </Button>
+          <Button variant="destructive" onClick={handleConfirm} loading={loading}>
+            {confirmLabel}
+          </Button>
+        </>
+      }
     >
-      <div
-        ref={dialogRef}
-        className="mx-4 w-full max-w-sm rounded-xl p-6"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-      >
-        <h3
-          id="cancel-confirm-title"
-          className="text-lg font-bold mb-2"
-          style={{ color: 'var(--text)' }}
-        >
-          {title}
-        </h3>
-        <p
-          id="cancel-confirm-desc"
-          className="text-sm mb-5"
-          style={{ color: 'var(--muted-foreground)' }}
-        >
-          {message}
-        </p>
-        <div className="flex gap-2">
-          <button
-            ref={firstFocusableRef}
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 rounded-lg py-2.5 text-sm"
-            style={{
-              background: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-            }}
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={loading}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: 'var(--negative)' }}
-          >
-            {loading ? '처리 중…' : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+      <p className="text-[var(--muted-foreground)]">{message}</p>
+    </Modal>
   );
 }

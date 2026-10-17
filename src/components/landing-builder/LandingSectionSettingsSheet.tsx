@@ -23,6 +23,8 @@ import type {
   RichtextSectionData,
 } from '@/types/landing'
 import { ImageUploadField } from './ImageUploadField'
+import { Sheet } from '@/components/ui/layer'
+import { Button } from '@/components/ui/button'
 import type {
   HeroMinimalData, HeroSplitImageData, HeroFullscreenImageData,
   HeroFullscreenVideoData, HeroGalleryData, HeroStatsOverlayData,
@@ -92,8 +94,6 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
   const [display, setDisplay] = useState<SectionDisplay>(parseDisplay(raw?.style))
   const [schedule, setSchedule] = useState<Schedule>(parseSchedule(raw?.schedule))
 
-  if (!open) return null
-
   function handleSave() {
     const merged = normalizeDisplayFields({ ...(data as Record<string, unknown>), style: display, schedule })
     onSave(section.id, merged as LandingSection['data'])
@@ -107,276 +107,243 @@ export function LandingSectionSettingsSheet({ section, open, onClose, onSave, on
   const catalogLabel = SECTION_LABELS[section.type] ?? section.type
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* 오버레이 */}
-      <button
-        type="button"
-        aria-label="닫기"
-        className="flex-1 bg-black/40"
-        onClick={onClose}
-      />
-
-      {/* 시트 패널 */}
-      <div
-        className="w-full max-w-md border-l flex flex-col overflow-hidden"
-        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-      >
-        {/* 헤더 */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <div>
-            <p className="text-xs text-[var(--muted-foreground)]">섹션 편집</p>
-            <h3 className="text-base font-semibold text-[var(--text)] mt-0.5">{catalogLabel}</h3>
-          </div>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      width="sm:max-w-md"
+      title={`${catalogLabel} 섹션 편집`}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose}>
+            취소
+          </Button>
+          <Button type="button" onClick={handleSave}>
+            저장
+          </Button>
+        </>
+      }
+    >
+      {/* 디자인 바꾸기 버튼 */}
+      {onRequestVariantChange && (
+        <div className="mb-5">
           <button
             type="button"
-            onClick={onClose}
-            className="text-[var(--muted-foreground)] hover:text-[var(--text)] text-lg"
+            onClick={onRequestVariantChange}
+            className="w-full rounded-md border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--muted-foreground)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
           >
-            ✕
+            🎨 디자인 바꾸기 (현재: {section.variant})
           </button>
         </div>
+      )}
 
-        {/* Variant 전환 버튼 */}
-        {onRequestVariantChange && (
-          <div className="px-5 pt-3">
-            <button
-              type="button"
-              onClick={onRequestVariantChange}
-              className="w-full rounded-md border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--muted-foreground)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
-            >
-              🎨 Variant 전환 (현재: {section.variant})
-            </button>
-          </div>
+      {/* 폼 */}
+      <div className="space-y-5">
+        {section.type === 'hero' && section.variant === 'hero-minimal' && (
+          <HeroMinimalForm data={data as HeroMinimalData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'hero' && section.variant === 'hero-split-image' && (
+          <HeroSplitImageForm data={data as HeroSplitImageData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'hero' && section.variant === 'hero-fullscreen-image' && (
+          <HeroFullscreenImageForm data={data as HeroFullscreenImageData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'hero' && section.variant === 'hero-fullscreen-video' && (
+          <HeroFullscreenVideoForm data={data as HeroFullscreenVideoData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'hero' && section.variant === 'hero-gallery' && (
+          <HeroGalleryForm data={data as HeroGalleryData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'hero' && section.variant === 'hero-stats-overlay' && (
+          <HeroStatsOverlayForm data={data as HeroStatsOverlayData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {/* hero legacy fallback (v1 데이터에 variant 없을 때) */}
+        {section.type === 'hero' && !section.variant.startsWith('hero-') && (
+          <HeroForm data={data as HeroSectionData} onChange={d => setData(d)} />
         )}
 
-        {/* 폼 */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {section.type === 'hero' && section.variant === 'hero-minimal' && (
-            <HeroMinimalForm data={data as HeroMinimalData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'hero' && section.variant === 'hero-split-image' && (
-            <HeroSplitImageForm data={data as HeroSplitImageData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'hero' && section.variant === 'hero-fullscreen-image' && (
-            <HeroFullscreenImageForm data={data as HeroFullscreenImageData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'hero' && section.variant === 'hero-fullscreen-video' && (
-            <HeroFullscreenVideoForm data={data as HeroFullscreenVideoData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'hero' && section.variant === 'hero-gallery' && (
-            <HeroGalleryForm data={data as HeroGalleryData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'hero' && section.variant === 'hero-stats-overlay' && (
-            <HeroStatsOverlayForm data={data as HeroStatsOverlayData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {/* hero legacy fallback (v1 데이터에 variant 없을 때) */}
-          {section.type === 'hero' && !section.variant.startsWith('hero-') && (
-            <HeroForm data={data as HeroSectionData} onChange={d => setData(d)} />
-          )}
+        {section.type === 'stats' && section.variant === 'stats-big' && (
+          <StatsBigForm data={data as StatsBigData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'stats' && section.variant !== 'stats-big' && (
+          <StatsForm data={data as StatsSectionData} onChange={d => setData(d)} />
+        )}
+        {/* Phase C: impact variants */}
+        {section.type === 'impact' && section.variant === 'impact-alternating' && (
+          <ImpactAlternatingForm data={data as ImpactAlternatingData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'impact' && section.variant === 'impact-zigzag' && (
+          <ImpactZigzagForm data={data as ImpactZigzagData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'impact' && section.variant === 'impact-cards' && (
+          <ImpactCardsForm data={data as ImpactCardsData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'impact' && section.variant === 'impact-storytelling' && (
+          <ImpactStorytellingForm data={data as ImpactStorytellingData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'impact' && section.variant === 'impact-before-after' && (
+          <ImpactBeforeAfterForm data={data as ImpactBeforeAfterData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {/* impact legacy fallback */}
+        {section.type === 'impact' && !section.variant.startsWith('impact-') && (
+          <ImpactForm data={data as ImpactSectionData} onChange={d => setData(d)} />
+        )}
+        {section.type === 'campaigns' && (
+          <CampaignsForm data={data as CampaignsSectionData} onChange={patch} variant={section.variant} />
+        )}
+        {/* Phase D: donation-tiers */}
+        {section.type === 'donation-tiers' && section.variant === 'tiers-recommended' && (
+          <TiersRecommendedForm data={data as TiersRecommendedData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'donation-tiers' && section.variant === 'tiers-pricing-table' && (
+          <TiersRecommendedForm data={data as TiersPricingTableData} onChange={d => setData(d as LandingSection['data'])} showBenefits />
+        )}
+        {section.type === 'donation-tiers' && section.variant === 'tiers-comparison' && (
+          <TiersComparisonForm data={data as DonationTiersSectionData} onChange={d => setData(d)} />
+        )}
+        {section.type === 'donation-tiers' && section.variant !== 'tiers-recommended' && section.variant !== 'tiers-pricing-table' && section.variant !== 'tiers-comparison' && (
+          <DonationTiersForm data={data as DonationTiersSectionData} onChange={d => setData(d)} />
+        )}
+        {/* Phase D: team */}
+        {section.type === 'team' && section.variant === 'team-org-chart' && (
+          <TeamOrgChartForm data={data as TeamSectionData} onChange={d => setData(d)} />
+        )}
+        {section.type === 'team' && section.variant !== 'team-org-chart' && (
+          <TeamForm data={data as TeamSectionData} onChange={d => setData(d)} />
+        )}
+        {section.type === 'cta' && section.variant === 'cta-banner' && (
+          <CtaBannerForm data={data as CtaBannerData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'cta' && section.variant === 'cta-gradient' && (
+          <CtaGradientForm data={data as CtaGradientData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'cta' && section.variant === 'cta-split' && (
+          <CtaSplitForm data={data as CtaSplitData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'cta' && section.variant === 'cta-urgency' && (
+          <CtaUrgencyForm data={data as CtaUrgencyData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'cta' && section.variant === 'cta-fullscreen' && (
+          <CtaFullscreenForm data={data as CtaFullscreenData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {/* cta legacy fallback */}
+        {section.type === 'cta' && !section.variant.startsWith('cta-') && (
+          <CtaForm data={data as CtaSectionData} onChange={patch} />
+        )}
+        {/* Phase B: testimonials */}
+        {section.type === 'testimonials' && section.variant === 'testimonials-cards' && (
+          <TestimonialsCardsForm data={data as TestimonialsCardsData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'testimonials' && section.variant === 'testimonials-carousel' && (
+          <TestimonialsCarouselForm data={data as TestimonialsCarouselData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'testimonials' && section.variant === 'testimonials-wall' && (
+          <TestimonialsWallForm data={data as TestimonialsWallData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'testimonials' && section.variant === 'testimonials-quote-large' && (
+          <TestimonialsQuoteLargeForm data={data as TestimonialsQuoteLargeData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'testimonials' && section.variant === 'testimonials-video' && (
+          <TestimonialsVideoForm data={data as TestimonialsVideoData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
 
-          {section.type === 'stats' && section.variant === 'stats-big' && (
-            <StatsBigForm data={data as StatsBigData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'stats' && section.variant !== 'stats-big' && (
-            <StatsForm data={data as StatsSectionData} onChange={d => setData(d)} />
-          )}
-          {/* Phase C: impact variants */}
-          {section.type === 'impact' && section.variant === 'impact-alternating' && (
-            <ImpactAlternatingForm data={data as ImpactAlternatingData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'impact' && section.variant === 'impact-zigzag' && (
-            <ImpactZigzagForm data={data as ImpactZigzagData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'impact' && section.variant === 'impact-cards' && (
-            <ImpactCardsForm data={data as ImpactCardsData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'impact' && section.variant === 'impact-storytelling' && (
-            <ImpactStorytellingForm data={data as ImpactStorytellingData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'impact' && section.variant === 'impact-before-after' && (
-            <ImpactBeforeAfterForm data={data as ImpactBeforeAfterData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {/* impact legacy fallback */}
-          {section.type === 'impact' && !section.variant.startsWith('impact-') && (
-            <ImpactForm data={data as ImpactSectionData} onChange={d => setData(d)} />
-          )}
-          {section.type === 'campaigns' && (
-            <CampaignsForm data={data as CampaignsSectionData} onChange={patch} variant={section.variant} />
-          )}
-          {/* Phase D: donation-tiers */}
-          {section.type === 'donation-tiers' && section.variant === 'tiers-recommended' && (
-            <TiersRecommendedForm data={data as TiersRecommendedData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'donation-tiers' && section.variant === 'tiers-pricing-table' && (
-            <TiersRecommendedForm data={data as TiersPricingTableData} onChange={d => setData(d as LandingSection['data'])} showBenefits />
-          )}
-          {section.type === 'donation-tiers' && section.variant === 'tiers-comparison' && (
-            <TiersComparisonForm data={data as DonationTiersSectionData} onChange={d => setData(d)} />
-          )}
-          {section.type === 'donation-tiers' && section.variant !== 'tiers-recommended' && section.variant !== 'tiers-pricing-table' && section.variant !== 'tiers-comparison' && (
-            <DonationTiersForm data={data as DonationTiersSectionData} onChange={d => setData(d)} />
-          )}
-          {/* Phase D: team */}
-          {section.type === 'team' && section.variant === 'team-org-chart' && (
-            <TeamOrgChartForm data={data as TeamSectionData} onChange={d => setData(d)} />
-          )}
-          {section.type === 'team' && section.variant !== 'team-org-chart' && (
-            <TeamForm data={data as TeamSectionData} onChange={d => setData(d)} />
-          )}
-          {section.type === 'cta' && section.variant === 'cta-banner' && (
-            <CtaBannerForm data={data as CtaBannerData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'cta' && section.variant === 'cta-gradient' && (
-            <CtaGradientForm data={data as CtaGradientData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'cta' && section.variant === 'cta-split' && (
-            <CtaSplitForm data={data as CtaSplitData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'cta' && section.variant === 'cta-urgency' && (
-            <CtaUrgencyForm data={data as CtaUrgencyData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'cta' && section.variant === 'cta-fullscreen' && (
-            <CtaFullscreenForm data={data as CtaFullscreenData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {/* cta legacy fallback */}
-          {section.type === 'cta' && !section.variant.startsWith('cta-') && (
-            <CtaForm data={data as CtaSectionData} onChange={patch} />
-          )}
-          {/* Phase B: testimonials */}
-          {section.type === 'testimonials' && section.variant === 'testimonials-cards' && (
-            <TestimonialsCardsForm data={data as TestimonialsCardsData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'testimonials' && section.variant === 'testimonials-carousel' && (
-            <TestimonialsCarouselForm data={data as TestimonialsCarouselData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'testimonials' && section.variant === 'testimonials-wall' && (
-            <TestimonialsWallForm data={data as TestimonialsWallData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'testimonials' && section.variant === 'testimonials-quote-large' && (
-            <TestimonialsQuoteLargeForm data={data as TestimonialsQuoteLargeData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'testimonials' && section.variant === 'testimonials-video' && (
-            <TestimonialsVideoForm data={data as TestimonialsVideoData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
+        {/* Phase B: logos (모든 variant 공통 LogosForm) */}
+        {section.type === 'logos' && (
+          <LogosForm data={data as LogosBaseData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
 
-          {/* Phase B: logos (모든 variant 공통 LogosForm) */}
-          {section.type === 'logos' && (
-            <LogosForm data={data as LogosBaseData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
+        {/* Phase B: faq */}
+        {section.type === 'faq' && section.variant === 'faq-categorized' && (
+          <FaqForm data={data as FaqBaseData} onChange={d => setData(d as LandingSection['data'])} showCategory />
+        )}
+        {section.type === 'faq' && section.variant !== 'faq-categorized' && (
+          <FaqForm data={data as FaqBaseData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
 
-          {/* Phase B: faq */}
-          {section.type === 'faq' && section.variant === 'faq-categorized' && (
-            <FaqForm data={data as FaqBaseData} onChange={d => setData(d as LandingSection['data'])} showCategory />
-          )}
-          {section.type === 'faq' && section.variant !== 'faq-categorized' && (
-            <FaqForm data={data as FaqBaseData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
+        {/* Phase C: timeline (milestones만 이미지 보여줌) */}
+        {section.type === 'timeline' && section.variant === 'timeline-milestones' && (
+          <TimelineForm data={data as TimelineBaseData} onChange={d => setData(d as LandingSection['data'])} showImage />
+        )}
+        {section.type === 'timeline' && section.variant !== 'timeline-milestones' && (
+          <TimelineForm data={data as TimelineBaseData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
 
-          {/* Phase C: timeline (milestones만 이미지 보여줌) */}
-          {section.type === 'timeline' && section.variant === 'timeline-milestones' && (
-            <TimelineForm data={data as TimelineBaseData} onChange={d => setData(d as LandingSection['data'])} showImage />
-          )}
-          {section.type === 'timeline' && section.variant !== 'timeline-milestones' && (
-            <TimelineForm data={data as TimelineBaseData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
+        {/* Phase C: gallery (모든 variant 공통 GalleryForm) */}
+        {section.type === 'gallery' && (
+          <GalleryForm data={data as GalleryBaseData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
 
-          {/* Phase C: gallery (모든 variant 공통 GalleryForm) */}
-          {section.type === 'gallery' && (
-            <GalleryForm data={data as GalleryBaseData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
+        {/* Phase 2: financials */}
+        {section.type === 'financials' && section.variant === 'financials-summary' && (
+          <FinancialsSummaryForm data={data as FinancialsSummaryData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'financials' && section.variant === 'financials-breakdown' && (
+          <FinancialsBreakdownForm data={data as FinancialsBreakdownData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'financials' && section.variant === 'financials-timeline' && (
+          <FinancialsTimelineForm data={data as FinancialsTimelineData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'financials' && section.variant === 'financials-transparency' && (
+          <FinancialsTransparencyForm data={data as FinancialsTransparencyData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
 
-          {/* Phase 2: financials */}
-          {section.type === 'financials' && section.variant === 'financials-summary' && (
-            <FinancialsSummaryForm data={data as FinancialsSummaryData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'financials' && section.variant === 'financials-breakdown' && (
-            <FinancialsBreakdownForm data={data as FinancialsBreakdownData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'financials' && section.variant === 'financials-timeline' && (
-            <FinancialsTimelineForm data={data as FinancialsTimelineData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'financials' && section.variant === 'financials-transparency' && (
-            <FinancialsTransparencyForm data={data as FinancialsTransparencyData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
+        {/* Phase D: richtext-quote 전용 폼 */}
+        {section.type === 'richtext' && section.variant === 'richtext-quote' && (
+          <RichtextQuoteForm data={data as RichtextQuoteData} onChange={d => setData(d as LandingSection['data'])} />
+        )}
+        {section.type === 'richtext' && section.variant !== 'richtext-quote' && (
+          <RichtextForm data={data as RichtextSectionData} onChange={patch} />
+        )}
 
-          {/* Phase D: richtext-quote 전용 폼 */}
-          {section.type === 'richtext' && section.variant === 'richtext-quote' && (
-            <RichtextQuoteForm data={data as RichtextQuoteData} onChange={d => setData(d as LandingSection['data'])} />
-          )}
-          {section.type === 'richtext' && section.variant !== 'richtext-quote' && (
-            <RichtextForm data={data as RichtextSectionData} onChange={patch} />
-          )}
-
-          {/* 표시 설정 — 테마·여백·보이는 기간(JobYLW 포털 빌더 방식) */}
-          <fieldset className="mt-6 space-y-3 rounded-xl border border-[var(--border)] p-4">
-            <legend className="px-1 text-sm font-semibold text-[var(--text)]">표시 설정</legend>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs text-[var(--muted-foreground)]">
-                배경 테마
-                <select
-                  value={display.theme}
-                  onChange={(e) => setDisplay({ ...display, theme: e.target.value as SectionDisplay['theme'] })}
-                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
-                >
-                  {DISPLAY_OPTIONS.theme.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </label>
-              <label className="text-xs text-[var(--muted-foreground)]">
-                위아래 여백
-                <select
-                  value={display.spacing}
-                  onChange={(e) => setDisplay({ ...display, spacing: e.target.value as SectionDisplay['spacing'] })}
-                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
-                >
-                  {DISPLAY_OPTIONS.spacing.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </label>
-              <label className="text-xs text-[var(--muted-foreground)]">
-                보이기 시작
-                <input
-                  type="date"
-                  value={schedule.from ?? ''}
-                  onChange={(e) => setSchedule({ ...schedule, from: e.target.value || undefined })}
-                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
-                />
-              </label>
-              <label className="text-xs text-[var(--muted-foreground)]">
-                보이기 끝
-                <input
-                  type="date"
-                  value={schedule.until ?? ''}
-                  min={schedule.from}
-                  onChange={(e) => setSchedule({ ...schedule, until: e.target.value || undefined })}
-                  className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
-                />
-              </label>
-            </div>
-            <p className="text-[11px] text-[var(--muted-foreground)]">
-              기간을 정하면 그 날짜(한국 시간, 시작·끝 당일 포함)에만 공개 화면에 보입니다. 캠페인 마감 배너가 저절로 내려가요.
-            </p>
-          </fieldset>
-        </div>
-
-        {/* 푸터 */}
-        <div className="flex gap-2 px-5 py-4 border-t border-[var(--border)]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] py-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--text)] transition-colors"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="flex-1 rounded-md py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-            style={{ background: 'var(--accent)' }}
-          >
-            저장
-          </button>
-        </div>
+        {/* 표시 설정 — 테마·여백·보이는 기간(JobYLW 포털 빌더 방식) */}
+        <fieldset className="mt-6 space-y-3 rounded-xl border border-[var(--border)] p-4">
+          <legend className="px-1 text-sm font-semibold text-[var(--text)]">표시 설정</legend>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-xs text-[var(--muted-foreground)]">
+              배경 테마
+              <select
+                value={display.theme}
+                onChange={(e) => setDisplay({ ...display, theme: e.target.value as SectionDisplay['theme'] })}
+                className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+              >
+                {DISPLAY_OPTIONS.theme.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-[var(--muted-foreground)]">
+              위아래 여백
+              <select
+                value={display.spacing}
+                onChange={(e) => setDisplay({ ...display, spacing: e.target.value as SectionDisplay['spacing'] })}
+                className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+              >
+                {DISPLAY_OPTIONS.spacing.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-[var(--muted-foreground)]">
+              보이기 시작
+              <input
+                type="date"
+                value={schedule.from ?? ''}
+                onChange={(e) => setSchedule({ ...schedule, from: e.target.value || undefined })}
+                className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+              />
+            </label>
+            <label className="text-xs text-[var(--muted-foreground)]">
+              보이기 끝
+              <input
+                type="date"
+                value={schedule.until ?? ''}
+                min={schedule.from}
+                onChange={(e) => setSchedule({ ...schedule, until: e.target.value || undefined })}
+                className="mt-1 w-full rounded-lg border border-[var(--input)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)]"
+              />
+            </label>
+          </div>
+          <p className="text-[11px] text-[var(--muted-foreground)]">
+            기간을 정하면 그 날짜(한국 시간, 시작·끝 당일 포함)에만 공개 화면에 보입니다. 캠페인 마감 배너가 저절로 내려가요.
+          </p>
+        </fieldset>
       </div>
-    </div>
+    </Sheet>
   )
 }
 

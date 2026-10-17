@@ -140,7 +140,7 @@ export default async function AdminReceiptsPage({
       <div>
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--text)]">기부금영수증 관리</h1>
+            <h1 className="text-2xl font-bold text-[var(--text)]">기부금영수증</h1>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
               연간 기부금영수증 발급 및 국세청 간소화 자료를 관리합니다.
             </p>

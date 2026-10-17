@@ -129,7 +129,7 @@ export function OwnCheerList({ items }: { items: OwnCheerItem[] }) {
                   disabled={pending === m.id}
                   className="rounded-md border border-[rgba(239,68,68,0.4)] bg-[rgba(239,68,68,0.08)] px-3 py-1 text-xs font-medium text-[var(--negative)] transition-opacity hover:opacity-80 disabled:opacity-50"
                 >
-                  {pending === m.id ? '처리 중...' : '삭제'}
+                  {pending === m.id ? '처리 중…' : '삭제'}
                 </button>
               </div>
             )}

@@ -73,7 +73,7 @@ export default async function MembersPage({
     return (
       <div>
         <PageHeader
-          title="회원 관리"
+          title="후원자 관리"
           description="후원자 유입경로 현황입니다."
           tabs={MEMBER_TABS}
           activeTab={tab}

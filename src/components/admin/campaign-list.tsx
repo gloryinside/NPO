@@ -118,7 +118,7 @@ export function CampaignList({ campaigns: initialCampaigns }: Props) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-          캠페인 관리
+          캠페인
         </h1>
         <Button
           onClick={handleNew}

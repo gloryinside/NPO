@@ -34,7 +34,7 @@ export function PaymentCancelButton({ paymentId }: { paymentId: string }) {
         <CancelConfirmModal
           title="후원 취소"
           message="이 결제를 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-          confirmLabel="취소하기"
+          confirmLabel="결제 취소"
           onConfirm={handleCancel}
           onClose={() => setShowModal(false)}
         />

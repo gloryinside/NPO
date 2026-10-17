@@ -48,7 +48,7 @@ export default async function SettlementDiscrepanciesPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="정산 차이 감지"
+      <PageHeader title="정산 금액 차이 확인"
         description="중복결제·정산 누락·정체불명 입금 등 사고 위험을 매일 자동 감지합니다." />
 
       <div className="flex gap-2 text-sm">

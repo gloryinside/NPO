@@ -349,7 +349,7 @@ function AddPaymentDialog({
             </Button>
             <Button type="submit" disabled={saving}
               className="bg-[var(--accent)] text-white disabled:opacity-60">
-              {saving ? "등록 중..." : "등록"}
+              {saving ? "등록 중…" : "등록"}
             </Button>
           </div>
         </form>
@@ -420,6 +420,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
     {
       key: "payment_code",
       header: "결제코드",
+      sortValue: (p) => p.payment_code,
       width: "130px",
       render: (p) => (
         <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
@@ -430,11 +431,13 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
     {
       key: "member",
       header: "후원자",
+      sortValue: (p) => p.members?.name ?? null,
       render: (p) => p.members?.name ?? "-",
     },
     {
       key: "campaign",
       header: "캠페인",
+      sortValue: (p) => p.campaigns?.title ?? null,
       render: (p) => (
         <span className="text-[var(--muted-foreground)]">{p.campaigns?.title ?? "-"}</span>
       ),
@@ -442,6 +445,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
     {
       key: "amount",
       header: "금액",
+      sortValue: (p) => Number(p.amount ?? 0),
       align: "right",
       width: "120px",
       render: (p) => (
@@ -451,6 +455,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
     {
       key: "pay_date",
       header: "결제일",
+      sortValue: (p) => p.pay_date ?? null,
       width: "110px",
       render: (p) => (
         <span className="text-[var(--muted-foreground)]">{formatDate(p.pay_date)}</span>
@@ -459,12 +464,15 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
     {
       key: "pay_status",
       header: "납부상태",
+      sortValue: (p) => p.pay_status,
       width: "80px",
       render: (p) => <PayStatusBadge status={p.pay_status} />,
     },
     {
       key: "income_status",
       header: "수입상태",
+      sortValue: (p) => p.income_status ?? null,
+      hint: "결제가 기관 수입으로 확정됐는지(ERP 전표 반영 여부)",
       width: "90px",
       render: (p) => <IncomeStatusBadge status={p.income_status} />,
     },
@@ -509,7 +517,7 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
       />
 
       <PageHeader
-        title="납입 관리"
+        title="결제 내역"
         description={`총 ${total.toLocaleString("ko-KR")}건`}
         stats={
           <>
@@ -611,7 +619,9 @@ export function PaymentList({ payments, total, initialStatus, stats }: Props) {
         columns={columns}
         rows={filteredPayments}
         rowKey={(p) => p.id}
-        emptyMessage="납입 내역이 없습니다."
+        emptyMessage="아직 결제 내역이 없습니다."
+        emptyHint="후원 결제가 들어오면 자동으로 쌓입니다. 현금·계좌로 직접 받은 후원은 후원자 상세에서 ‘수기 납부 기록’으로 남기세요."
+        caption="결제 내역"
         emptyIllustration="payments"
         selectable
         selectedIds={selected}

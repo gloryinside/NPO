@@ -72,7 +72,7 @@ export default async function ChannelStatsPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="채널별 통계"
+        title="채널별 모금 통계"
         description={`${from} ~ ${to} 기간의 채널별 모금 합계`}
         stats={
           <>

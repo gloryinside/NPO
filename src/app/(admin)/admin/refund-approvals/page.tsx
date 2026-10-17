@@ -65,7 +65,7 @@ export default async function AdminRefundApprovalsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">환불 승인 요청</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">환불 요청 승인</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           요청자와 다른 관리자가 승인한 건만 실제 환불이 실행됩니다.
         </p>

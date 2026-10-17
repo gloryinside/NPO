@@ -51,7 +51,7 @@ export default async function EventsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="행사/이벤트"
+        title="행사"
         description="후원자의 밤·정기 모임·봉사 행사·갈라 등 행사 관리."
       />
 

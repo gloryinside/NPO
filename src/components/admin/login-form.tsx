@@ -97,7 +97,7 @@ export function LoginForm({ notice }: { notice?: string | null } = {}) {
             size="lg"
             className="w-full"
           >
-            {loading ? "로그인 중..." : "로그인"}
+            {loading ? "로그인 중…" : "로그인"}
           </Button>
           <p className="text-center text-xs">
             <a

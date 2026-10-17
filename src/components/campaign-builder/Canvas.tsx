@@ -127,7 +127,7 @@ function SortableBlock({
         background: selected ? 'var(--accent-soft)' : 'var(--surface)',
       }}
       onClick={onSelect}
-      className={`group relative mb-1 cursor-pointer rounded-lg border transition-all ${
+      className={`group relative mb-1 cursor-pointer rounded-lg border transition-[color,background-color,border-color,box-shadow,transform,opacity] ${
         selected
           ? 'border-[var(--accent)] shadow-[0_0_0_2px_var(--accent-soft)]'
           : 'border-[var(--border)] hover:border-[var(--accent)]'

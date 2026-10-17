@@ -47,7 +47,7 @@ export default async function SchedulesPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-            정기 스케줄
+            결제 예정일
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted-foreground)" }}>
             활성 정기 약정의 월별 결제 일정입니다.

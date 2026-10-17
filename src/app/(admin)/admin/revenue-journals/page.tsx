@@ -34,7 +34,7 @@ export default async function RevenueJournalsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="수입결의"
+        title="수입 전표"
         description="confirmed payments을 묶어 결의 1건 생성. draft → approved → posted (ERP 전송)."
       />
 

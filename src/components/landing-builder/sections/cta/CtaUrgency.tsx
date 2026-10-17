@@ -38,14 +38,14 @@ export function CtaUrgency({ data }: { data: CtaUrgencyData }) {
               <span>{pct}%</span>
             </div>
             <div className="h-2 rounded-full overflow-hidden bg-white/20">
-              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${pct}%` }} />
+              <div className="h-full rounded-full bg-white transition-[width]" style={{ width: `${pct}%` }} />
             </div>
             <div className="text-xs mt-1 text-right text-white/70">목표 {formatKRW(goalAmount)}</div>
           </div>
         </MotionFadeUp>
         <MotionFadeUp delay={0.2}>
           <a href={buttonUrl || '#campaigns'}
-            className="inline-flex items-center rounded-xl px-10 py-3.5 text-base font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-all hover:-translate-y-0.5"
+            className="inline-flex items-center rounded-xl px-10 py-3.5 text-base font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] shadow-glow transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5"
             style={{ boxShadow: 'var(--shadow-hero)' }}>
             {buttonText} →
           </a>

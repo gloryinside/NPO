@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Modal } from "@/components/ui/layer";
+import { Button } from "@/components/ui/button";
 
 /**
  * G-D47/D48: 세션 만료(401) 및 CSRF(403) 감지 + 사용자 친화 안내
@@ -79,63 +81,39 @@ export function SessionExpiredGuard() {
 
   if (state === "idle") return null;
 
+  const loginHref = "/donor/login?reason=expired";
   const content =
     state === "expired"
       ? {
           icon: "🕐",
           title: "세션이 만료되었습니다",
           body: "30분 이상 활동이 없어 자동 로그아웃됐습니다. 잠시 후 로그인 페이지로 이동합니다.",
-          cta: { label: "지금 로그인", href: "/donor/login?reason=expired" },
+          cta: { label: "지금 로그인", onClick: () => router.push(loginHref) },
         }
       : {
           icon: "⚠️",
           title: "요청이 거부되었습니다",
           body: "보안 검증에 실패했습니다. 페이지를 새로고침한 후 다시 시도해주세요.",
-          cta: null,
+          cta: { label: "새로고침", onClick: () => window.location.reload() },
         };
 
+  // 닫을 수 없는 안내 — Esc·바깥 클릭·X 모두 막는다(onClose no-op + hideClose).
+  //  - expired: 세션이 이미 끊겨 이 화면에서 할 수 있는 일이 없고, 3초 뒤 어차피 로그인으로 이동한다.
+  //  - csrf: 닫아도 새로고침 전까지 요청이 계속 거부되고, stateRef 가 idle 로 돌아가지 않아 다시 안내할 수도 없다.
+  // Esc 에 "지금 이동/새로고침"을 묶지 않은 것은, 닫으려던 사람에게 예상치 못한 이동이 되기 때문.
   return (
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      className="fixed inset-0 z-[60] flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.5)" }}
+    <Modal
+      open
+      onClose={() => {}}
+      hideClose
+      size="sm"
+      title={content.title}
+      footer={<Button onClick={content.cta.onClick}>{content.cta.label}</Button>}
     >
-      <div
-        className="mx-4 w-full max-w-sm rounded-2xl p-6 text-center"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-      >
-        <p className="text-3xl mb-3">{content.icon}</p>
-        <h3 className="text-lg font-bold" style={{ color: "var(--text)" }}>
-          {content.title}
-        </h3>
-        <p
-          className="mt-2 text-sm"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          {content.body}
-        </p>
-        <div className="mt-5 flex items-center justify-center gap-2">
-          {content.cta ? (
-            <a
-              href={content.cta.href}
-              className="inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
-              style={{ background: "var(--accent)", textDecoration: "none" }}
-            >
-              {content.cta.label}
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white"
-              style={{ background: "var(--accent)" }}
-            >
-              새로고침
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+      <p className="mb-2 text-3xl" aria-hidden>
+        {content.icon}
+      </p>
+      <p className="text-[var(--muted-foreground)]">{content.body}</p>
+    </Modal>
   );
 }

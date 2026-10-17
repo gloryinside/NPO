@@ -67,7 +67,7 @@ export default async function CrmPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="CRM"
+        title="잠재 후원자·봉사자"
         description="잠재 후원자와 자원봉사자를 관리합니다."
       />
 

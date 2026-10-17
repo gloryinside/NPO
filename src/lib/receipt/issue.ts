@@ -12,6 +12,7 @@
 import { randomBytes } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateReceiptCode } from '@/lib/codes'
+import { queueErpReceiptEvent } from '@/lib/erp/outbound-queue'
 import { generateReceiptPdf, type ReceiptData } from './pdf'
 import { checkOrgForReceipt, type FieldIssue, type OrgReceiptFields } from './validation'
 
@@ -222,6 +223,8 @@ export async function issueReceipt(
       .eq('id', current.id)
       .eq('org_id', org.id)
   }
+
+  await queueErpReceiptEvent(supabase, org.id, { receiptCode, memberId, year, totalAmount: donations.total, issuedAt })
 
   return { kind: 'issued', receiptId: inserted.id, receiptCode, pdf, pdfUrl, total: donations.total }
 }

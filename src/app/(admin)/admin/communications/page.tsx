@@ -108,7 +108,7 @@ export default function CommunicationsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="수동 메시지 발송"
+        title="문자·이메일 보내기"
         description="선택한 후원자에게 SMS 또는 알림톡을 직접 발송합니다."
       />
 

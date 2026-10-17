@@ -12,6 +12,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { chargeBillingKey, toTossOrderId } from './toss-billing'
 import { openBillingKey } from './billing-key-store'
+import { queueErpPaymentEvent } from '@/lib/erp/outbound-queue'
 
 /** 실패 n번째(1부터) 후 다음 재시도까지 — 1일, 3일, 7일 */
 export const RETRY_DELAYS_MS = [1, 3, 7].map((d) => d * 86_400_000)
@@ -119,7 +120,7 @@ export async function chargePayment(
   // 4) 결과 기록(조건부)
   if (result.success) {
     const approvedAt = result.approvedAt ?? now.toISOString()
-    await supabase
+    const { data: updated } = await supabase
       .from('payments')
       .update({
         pay_status: 'paid',
@@ -134,6 +135,9 @@ export async function chargePayment(
       .eq('id', row.id)
       .eq('org_id', row.org_id)
       .in('pay_status', ['unpaid', 'failed'])
+      .select('id')
+    // 이 실행이 실제로 완료 처리한 경우에만 ERP 전표 이벤트(중복 전송 방지)
+    if (updated?.length) await queueErpPaymentEvent(supabase, row.org_id, row.id, 'payment.paid')
     return { kind: 'paid', paymentKey: result.paymentKey, approvedAt }
   }
 

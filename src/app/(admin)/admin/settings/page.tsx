@@ -106,7 +106,21 @@ export default async function SettingsPage() {
         결제 연동, 기관 프로필 등 기관 전용 설정을 관리합니다.
       </p>
 
-      <section className="mb-10">
+      {/* 긴 설정 화면 — 바로가기 */}
+      <nav aria-label="설정 바로가기" className="sticky top-0 z-[2] -mx-1 mb-6 flex gap-1 overflow-x-auto bg-[var(--bg)]/90 px-1 py-2 backdrop-blur">
+        {[
+          ["#org", "기관 정보·영수증"],
+          ["#toss", "결제 연결"],
+          ["#erp", "회계(ERP) 연결"],
+          ["#theme", "디자인"],
+        ].map(([href, label]) => (
+          <a key={href} href={href} className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text)] no-underline hover:bg-[var(--surface-2)]">
+            {label}
+          </a>
+        ))}
+      </nav>
+
+      <section id="org" className="mb-10 scroll-mt-6">
         <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
           기관 프로필
         </h2>
@@ -115,7 +129,7 @@ export default async function SettingsPage() {
 
       <hr className="border-[var(--border)] mb-10" />
 
-      <section className="mb-10">
+      <section id="toss" className="mb-10 scroll-mt-6">
         <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
           Toss Payments 결제 설정
         </h2>
@@ -128,7 +142,7 @@ export default async function SettingsPage() {
 
       <hr className="border-[var(--border)] mb-10" />
 
-      <section className="mb-10">
+      <section id="erp" className="mb-10 scroll-mt-6">
         <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
           ERP 연동 설정
         </h2>
@@ -144,7 +158,7 @@ export default async function SettingsPage() {
 
       <hr className="border-[var(--border)] mb-10" />
 
-      <section className="mb-10">
+      <section id="theme" className="mb-10 scroll-mt-6">
         <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
           공개 페이지 테마
         </h2>

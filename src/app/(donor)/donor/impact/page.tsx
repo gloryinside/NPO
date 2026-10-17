@@ -350,7 +350,7 @@ export default async function DonorImpactPage() {
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <a
-                href="/donor/invite"
+                href="/#campaigns"
                 className="inline-flex items-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: 'var(--accent)' }}
               >

@@ -27,7 +27,7 @@ export default async function LandingBuilderPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[var(--text)] mb-1">랜딩페이지 편집</h1>
+      <h1 className="text-2xl font-bold text-[var(--text)] mb-1">홈페이지 편집</h1>
       <p className="text-sm text-[var(--muted-foreground)] mb-8">
         기관 홈페이지에 노출될 섹션을 구성하고 게시하세요.
       </p>

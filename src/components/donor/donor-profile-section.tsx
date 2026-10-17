@@ -214,7 +214,7 @@ export function DonorProfileSection({ member }: Props) {
                 disabled={loading}
                 style={{ background: "var(--accent)", color: "#fff" }}
               >
-                {loading ? "저장 중..." : "저장"}
+                {loading ? "저장 중…" : "저장"}
               </Button>
             </div>
           </form>

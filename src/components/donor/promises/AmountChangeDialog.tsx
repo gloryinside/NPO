@@ -246,7 +246,7 @@ export function AmountChangeDialog({
                 style={{ background: 'var(--accent)', color: '#fff' }}
               >
                 {submitting
-                  ? '변경 중...'
+                  ? '변경 중…'
                   : direction === 'up'
                     ? '업그레이드'
                     : direction === 'down'

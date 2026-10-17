@@ -38,7 +38,7 @@ export default async function GiftRulesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="기념품 룰"
+        title="감사 선물 기준"
         description="후원자가 누적 N원/N년 등 조건 달성 시 자동으로 발송 큐에 추가되는 트리거 정의."
       />
 

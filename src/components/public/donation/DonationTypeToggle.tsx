@@ -25,7 +25,7 @@ export default function DonationTypeToggle({ value, available, onChange }: Donat
             key={type}
             onClick={() => onChange(type)}
             className={[
-              'flex-1 flex flex-col items-center justify-center gap-1 rounded-xl py-4 px-3 min-h-[44px] transition-all text-[var(--text)]',
+              'flex-1 flex flex-col items-center justify-center gap-1 rounded-xl py-4 px-3 min-h-[44px] transition-[color,background-color,border-color,box-shadow,transform,opacity] text-[var(--text)]',
               selected
                 ? 'border-2 border-[var(--accent)] bg-[var(--accent-soft)]'
                 : 'border border-[var(--border)] bg-[var(--surface-2)]',

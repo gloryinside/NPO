@@ -212,7 +212,7 @@ export function RefundDialog({ payment, onClose, onRefunded }: RefundDialogProps
                 disabled={loading}
                 className="bg-[var(--negative)] text-white disabled:opacity-60"
               >
-                {loading ? '처리 중...' : '환불 처리 →'}
+                {loading ? '환불 처리 중…' : '환불 처리'}
               </Button>
             </div>
           </form>

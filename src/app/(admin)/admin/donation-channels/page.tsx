@@ -44,7 +44,7 @@ export default async function DonationChannelsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="모금 채널"
+        title="외부 모금 채널"
         description="모금함·거리모금·부스·파트너 등 채널을 정의하고 정산을 추적합니다."
       />
 

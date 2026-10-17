@@ -86,7 +86,7 @@ export function CmsErrorList({ payments, total }: Props) {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-            CMS 출금 오류
+            자동이체(CMS) 실패
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted-foreground)" }}>
             CMS 자동이체 실패·미납 건을 관리합니다. 재출금 또는 수기 납부 처리할 수 있습니다.

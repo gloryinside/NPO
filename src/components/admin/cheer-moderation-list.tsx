@@ -155,7 +155,7 @@ export function CheerModerationList({ rows }: Props) {
                 }`}
               >
                 {pending === r.id
-                  ? '처리 중...'
+                  ? '처리 중…'
                   : r.featuredAt
                     ? '⭐ 대표 해제'
                     : '☆ 대표 응원 선정'}
@@ -168,7 +168,7 @@ export function CheerModerationList({ rows }: Props) {
                 disabled={pending === r.id}
                 className="rounded-md border border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
               >
-                {pending === r.id ? '처리 중...' : '승인하여 공개'}
+                {pending === r.id ? '처리 중…' : '승인하여 공개'}
               </button>
             )}
             <button
@@ -182,7 +182,7 @@ export function CheerModerationList({ rows }: Props) {
               }`}
             >
               {pending === r.id
-                ? '처리 중...'
+                ? '처리 중…'
                 : r.hidden
                   ? '숨김 해제'
                   : '숨김 처리'}

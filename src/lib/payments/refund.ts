@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getOrgTossKeys } from '@/lib/toss/keys'
+import { queueErpPaymentEvent } from '@/lib/erp/outbound-queue'
 
 /**
  * Phase 7-D-2-b: 관리자 환불 핵심 로직.
@@ -133,6 +134,9 @@ export async function refundPayment(params: RefundParams): Promise<RefundResult>
       message: (dbErr as { message?: string }).message,
     }
   }
+
+  // ERP: 환불 전표(수입 취소) — 실패해도 환불 결과는 그대로
+  await queueErpPaymentEvent(supabase, orgId, paymentId, 'payment.refunded')
 
   return { ok: true, refundAmount: refundAmount ?? null }
 }

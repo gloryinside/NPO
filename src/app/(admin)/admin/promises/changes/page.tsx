@@ -59,7 +59,7 @@ export default async function PromiseChangesPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[var(--text)]">
-          약정 금액 변경 추이
+          정기후원 금액 변경
         </h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           최근 {days}일간 후원자/관리자가 진행한 약정 금액 변경 현황입니다.

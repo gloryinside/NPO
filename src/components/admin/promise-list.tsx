@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Menu } from "@base-ui/react/menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -169,7 +170,7 @@ function AmountDialog({
         </Button>
         <Button type="submit" disabled={loading}
           className="bg-[var(--accent)] text-white disabled:opacity-60">
-          {loading ? "저장 중..." : "변경"}
+          {loading ? "저장 중…" : "변경"}
         </Button>
       </div>
     </form>
@@ -239,7 +240,7 @@ function SuspendDialog({
         </Button>
         <Button type="submit" disabled={loading}
           style={{ background: "var(--warning)", color: "#fff" }}>
-          {loading ? "처리 중..." : "일시정지"}
+          {loading ? "처리 중…" : "일시정지"}
         </Button>
       </div>
     </form>
@@ -329,7 +330,7 @@ function CancelDialog({
         </Button>
         <Button type="submit" disabled={loading}
           style={{ background: "var(--negative)", color: "#fff" }}>
-          {loading ? "처리 중..." : "해지 확인"}
+          {loading ? "처리 중…" : "해지 확인"}
         </Button>
       </div>
     </form>
@@ -391,7 +392,7 @@ function ConfirmActionDialog({
         </Button>
         <Button type="submit" disabled={loading}
           className="bg-[var(--accent)] text-white disabled:opacity-60">
-          {loading ? "처리 중..." : label}
+          {loading ? "처리 중…" : label}
         </Button>
       </div>
     </form>
@@ -407,7 +408,6 @@ function ActionMenu({
   promise: PromiseWithRelations;
   onAction: (p: PromiseWithRelations, a: ActionType) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const status = promise.status;
 
   const actions: Array<{ key: ActionType; label: string; color?: string }> = [];
@@ -426,11 +426,11 @@ function ActionMenu({
 
   if (actions.length === 0) return null;
 
+  // 행 클릭(상세 열기)으로 번지는 것은 DataTable 의 rowActions 칸이 막아 준다(포털 안 클릭도 React 트리로 올라감).
   return (
-    <div className="relative" style={{ display: "inline-block" }}>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+    <Menu.Root>
+      <Menu.Trigger
+        aria-label="약정 작업"
         className="rounded px-2 py-1 text-xs border transition-colors"
         style={{
           background: "var(--surface-2)",
@@ -439,15 +439,11 @@ function ActionMenu({
         }}
       >
         ···
-      </button>
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setOpen(false)}
-          />
-          <ul
-            className="absolute right-0 z-20 mt-1 rounded-lg border shadow-lg py-1"
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner side="bottom" align="end" sideOffset={4} className="isolate z-50">
+          <Menu.Popup
+            className="rounded-lg border shadow-lg py-1 outline-none"
             style={{
               background: "var(--surface)",
               borderColor: "var(--border)",
@@ -455,25 +451,19 @@ function ActionMenu({
             }}
           >
             {actions.map((a) => (
-              <li key={a.key}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpen(false);
-                    onAction(promise, a.key);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--surface-2)]"
-                  style={{ color: a.color ?? "var(--text)" }}
-                >
-                  {a.label}
-                </button>
-              </li>
+              <Menu.Item
+                key={a.key}
+                onClick={() => onAction(promise, a.key)}
+                className="w-full cursor-default text-left px-3 py-1.5 text-sm outline-none data-highlighted:bg-[var(--surface-2)]"
+                style={{ color: a.color ?? "var(--text)" }}
+              >
+                {a.label}
+              </Menu.Item>
             ))}
-          </ul>
-        </>
-      )}
-    </div>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }
 
@@ -712,7 +702,7 @@ function AddPromiseDialog({
               className="border-[var(--border)] text-[var(--text)] bg-[var(--surface-2)]">취소</Button>
             <Button type="submit" disabled={saving}
               className="bg-[var(--accent)] text-white disabled:opacity-60">
-              {saving ? "생성 중..." : "생성"}
+              {saving ? "생성 중…" : "생성"}
             </Button>
           </div>
         </form>
@@ -785,6 +775,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     {
       key: "promise_code",
       header: "약정코드",
+      sortValue: (p) => p.promise_code,
       width: "140px",
       render: (p) => (
         <span className="font-mono text-[12px] text-[var(--muted-foreground)]">
@@ -795,6 +786,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     {
       key: "member",
       header: "후원자",
+      sortValue: (p) => p.members?.name ?? null,
       render: (p) => (
         <span className="text-[var(--text)]">{p.members?.name ?? "-"}</span>
       ),
@@ -802,6 +794,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     {
       key: "campaign",
       header: "캠페인",
+      sortValue: (p) => p.campaigns?.title ?? null,
       render: (p) => (
         <span className="text-[var(--muted-foreground)]">
           {p.campaigns?.title ?? "-"}
@@ -811,12 +804,14 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     {
       key: "type",
       header: "유형",
+      sortValue: (p) => p.type,
       width: "70px",
       render: (p) => <PromiseTypeBadge type={p.type} />,
     },
     {
       key: "amount",
       header: "금액",
+      sortValue: (p) => Number(p.amount ?? 0),
       align: "right",
       width: "120px",
       render: (p) => (
@@ -828,6 +823,8 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     {
       key: "pay_day",
       header: "납입일",
+      sortValue: (p) => p.pay_day ?? null,
+      hint: "매달 자동결제가 되는 날짜",
       width: "100px",
       render: (p) => (
         <span className="text-[var(--muted-foreground)]">
@@ -838,6 +835,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     {
       key: "started_at",
       header: "시작일",
+      sortValue: (p) => p.started_at ?? null,
       width: "110px",
       render: (p) => (
         <span className="text-[var(--muted-foreground)]">
@@ -848,6 +846,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     {
       key: "status",
       header: "상태",
+      sortValue: (p) => p.status,
       width: "100px",
       render: (p) => <PromiseStatusBadge status={p.status} />,
     },
@@ -903,7 +902,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
       </Dialog>
 
       <PageHeader
-        title="약정 관리"
+        title="정기후원 관리"
         description={`정기/일시 후원 약정을 확인하고 관리합니다. 총 ${total.toLocaleString(
           "ko-KR"
         )}건`}
@@ -960,7 +959,9 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
         columns={columns}
         rows={filteredPromises}
         rowKey={(p) => p.id}
-        emptyMessage="약정 내역이 없습니다."
+        emptyMessage="아직 정기후원 약정이 없습니다."
+        emptyHint="후원자가 정기후원을 신청하면 여기에 생깁니다. 전화·서면으로 받은 약정은 오른쪽 위에서 직접 등록할 수 있어요."
+        caption="정기후원 약정 목록"
         emptyIllustration="promises"
         onRowClick={(p) => setDetailTarget(p)}
         rowActions={(p) => <ActionMenu promise={p} onAction={openAction} />}

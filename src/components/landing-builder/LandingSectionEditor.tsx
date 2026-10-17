@@ -31,6 +31,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { toast } from 'sonner'
 import { createSection } from '@/lib/landing-defaults'
 import { SECTION_CATALOG, SHARED_FIELDS } from '@/types/landing'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import type { LandingSection, LandingSectionType, LandingPageContent } from '@/types/landing'
 import { LandingSectionSettingsSheet } from './LandingSectionSettingsSheet'
 import { VariantGalleryModal } from './VariantGalleryModal'
@@ -197,7 +198,7 @@ export function LandingSectionEditor({ initialPageContent, initialHasPublished =
   const [variantChangeFor, setVariantChangeFor] = useState<string | null>(null)
   // G-52: confirm() → 커스텀 다이얼로그로
   const [pendingVariantChange, setPendingVariantChange] = useState<{ sectionId: string; newVariantId: string } | null>(null)
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const confirm = useConfirm()
   // G-75: Live preview iframe
   const [showPreview, setShowPreview] = useState(false)
   const [hasPublished, setHasPublished] = useState(initialHasPublished)
@@ -302,8 +303,17 @@ export function LandingSectionEditor({ initialPageContent, initialHasPublished =
   }
 
   // ── 섹션 삭제 ────────────────────────────────────────────────────────────
-  // 확인은 커스텀 다이얼로그(pendingDeleteId)에서 — 브라우저 confirm()은 쓰지 않는다(G-52)
-  function handleDelete(id: string) {
+  // 공용 확인창(useConfirm) — 브라우저 confirm()은 쓰지 않는다(G-52)
+  async function handleDelete(id: string) {
+    const target = sections.find((s) => s.id === id)
+    const label = SECTION_CATALOG.find((c) => c.type === target?.type)?.label ?? '이'
+    const ok = await confirm({
+      title: `'${label}' 섹션을 지울까요?`,
+      description: '편집 중인 초안에서만 지워져요. 다시 게시하기 전까지 공개 페이지에는 그대로 보입니다.',
+      confirmText: '섹션 지우기',
+      tone: 'danger',
+    })
+    if (!ok) return
     const updated = sections.filter(s => s.id !== id).map((s, i) => ({ ...s, sortOrder: i }))
     setSections(updated)
     scheduleSave(updated)
@@ -436,7 +446,7 @@ export function LandingSectionEditor({ initialPageContent, initialHasPublished =
             className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] hover:opacity-80 transition-opacity"
             title="편집 중인 콘텐츠 미리보기 (관리자만)"
           >
-            {showPreview ? '미리보기 닫기' : '미리보기 →'}
+            {showPreview ? '미리보기 닫기' : '미리보기'}
           </button>
           <a
             href="/?draft=1"
@@ -513,7 +523,7 @@ export function LandingSectionEditor({ initialPageContent, initialHasPublished =
                   onEdit={setEditingId}
                   onToggleVisible={handleToggleVisible}
                   onDuplicate={handleDuplicate}
-                  onDelete={setPendingDeleteId}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -653,51 +663,6 @@ export function LandingSectionEditor({ initialPageContent, initialHasPublished =
         )
       })()}
 
-      {/* ── 섹션 삭제 확인 ── */}
-      {pendingDeleteId && (() => {
-        const target = sections.find((s) => s.id === pendingDeleteId)
-        if (!target) return null
-        const label = SECTION_CATALOG.find((c) => c.type === target.type)?.label ?? target.type
-        return (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
-            onClick={() => setPendingDeleteId(null)}
-            onKeyDown={(e) => { if (e.key === 'Escape') setPendingDeleteId(null) }}
-          >
-            <div
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="section-delete-title"
-              className="animate-rise w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-hero)]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 id="section-delete-title" className="text-base font-semibold text-[var(--text)]">
-                '{label}' 섹션을 삭제할까요?
-              </h3>
-              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                초안에서만 지워져요. 다시 게시하기 전까지 공개 페이지에는 그대로 보입니다.
-              </p>
-              <div className="mt-5 flex justify-end gap-2">
-                <button
-                  type="button"
-                  autoFocus
-                  onClick={() => setPendingDeleteId(null)}
-                  className="rounded-xl border border-[var(--input)] px-4 py-2 text-sm font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { handleDelete(target.id); setPendingDeleteId(null) }}
-                  className="rounded-xl bg-[var(--negative)] px-4 py-2 text-sm font-semibold text-white"
-                >
-                  삭제
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
 
       {/* ── G-75: Live preview iframe 패널 ── */}
       {showPreview && (

@@ -1,6 +1,7 @@
 import { requireAdminUser } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { Toaster } from "sonner";
+import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
 
 export default async function AdminLayout({
   children,
@@ -9,10 +10,19 @@ export default async function AdminLayout({
 }) {
   const user = await requireAdminUser();
   return (
-    <div className="app-canvas flex h-screen">
+    <div className="app-canvas flex h-screen flex-col md:flex-row">
+      <a
+        href="#main"
+        className="sr-only z-[60] rounded-lg bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--text)] shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        본문으로 건너뛰기
+      </a>
       <AdminSidebar user={user} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1280px] px-6 py-8 lg:px-10">{children}</div>
+      <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
+        <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+          <AdminBreadcrumb />
+          {children}
+        </div>
       </main>
       <Toaster position="bottom-right" />
     </div>

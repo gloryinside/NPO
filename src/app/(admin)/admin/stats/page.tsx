@@ -381,7 +381,7 @@ export default async function StatsPage({
 
     return (
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)] mb-1">통계 / 보고서</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)] mb-1">모금 통계</h1>
         <p className="text-sm text-[var(--muted-foreground)] mb-6">최근 12개월 후원 현황</p>
         {tabLinks}
 

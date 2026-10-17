@@ -66,7 +66,7 @@ export function LiveProgressBar({
             현재 모금액
           </div>
           <div
-            className="text-2xl font-bold text-[var(--text)] transition-all duration-700"
+            className="text-2xl font-bold text-[var(--text)] transition-[color] duration-700"
             key={raised}
           >
             {formatKRW(raised)}
@@ -94,7 +94,7 @@ export function LiveProgressBar({
       {goal != null && (
         <div className="h-3 rounded-full bg-[var(--surface-2)] overflow-hidden">
           <div
-            className="h-full rounded-full bg-[var(--accent)] transition-all duration-1000 ease-out"
+            className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-1000 ease-out"
             style={{ width: `${percent ?? 0}%` }}
             aria-valuenow={percent ?? 0}
             aria-valuemin={0}

@@ -129,7 +129,7 @@ export function ErpSettingsForm({ erpApiKeyMasked, erpWebhookUrl: initialWebhook
           disabled={loading}
           className="w-full bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90"
         >
-          {loading ? "저장 중..." : "저장"}
+          {loading ? "저장 중…" : "저장"}
         </Button>
 
         {success && <p className="text-sm" style={{ color: "var(--positive)" }}>{success}</p>}

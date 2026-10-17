@@ -52,7 +52,7 @@ export default async function GiftShipmentsPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="기념품 발송"
+        title="감사 선물 발송"
         description="자동 큐에 들어온 발송 건을 처리합니다. 룰은 '기념품 룰 설정'에서 관리하세요."
       />
 

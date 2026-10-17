@@ -266,6 +266,9 @@ export function Step2({
         customerEmail: info.email.trim() || undefined,
         successUrl: `${window.location.origin}/donate/success`,
         failUrl: `${window.location.origin}/donate/fail`,
+        // 기부금은 현금영수증 대상이 아니다(재화·용역 대가가 아님) — 연말정산 증빙은 기부금영수증.
+        // 가상계좌·계좌이체에서 현금영수증까지 나가면 같은 기부를 이중 공제받을 수 있어 발행하지 않는다.
+        ...(tossMethod === '가상계좌' ? { cashReceipt: { type: '미발행' as const }, useEscrow: false } : {}),
       });
       // requestPayment는 페이지 리디렉션을 유발하므로 여기 이후 코드는 일반적으로 실행되지 않음.
       // 사용자가 취소한 경우 Toss SDK가 promise reject하며 catch 블록으로 진입.

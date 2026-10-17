@@ -176,7 +176,7 @@ export function NtsExportPanel({ year, summary, logs }: Props) {
           disabled={loading || summary.eligibleCount === 0}
           className="flex-1 rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white shadow-glow transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
-          {loading ? "생성 중..." : "국세청 제출용 엑셀 내려받기"}
+          {loading ? "생성 중…" : "국세청 제출용 엑셀 내려받기"}
         </button>
       </div>
 

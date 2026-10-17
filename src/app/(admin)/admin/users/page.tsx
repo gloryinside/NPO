@@ -95,7 +95,7 @@ export default function UsersPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text)]">사용자 관리</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">관리자 계정</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             관리자 계정을 초대하고 관리합니다.
           </p>
@@ -159,7 +159,7 @@ export default function UsersPage() {
                 disabled={inviting}
                 className="bg-[var(--accent)] text-white disabled:opacity-60"
               >
-                {inviting ? "발송 중..." : "초대 발송"}
+                {inviting ? "발송 중…" : "초대 발송"}
               </Button>
             </div>
           </form>

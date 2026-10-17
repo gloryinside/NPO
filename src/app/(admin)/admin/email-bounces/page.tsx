@@ -62,7 +62,7 @@ export default async function AdminEmailBouncesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">이메일 반송</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">반송된 이메일</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Resend 에서 수신된 bounce/complaint 이벤트. hard/complaint 는 자동으로 이메일 수신이 중단됩니다.
         </p>

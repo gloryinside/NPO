@@ -38,7 +38,6 @@ const ITEMS: NavItem[] = [
       { href: "/donor/support/inquiries/new", label: "문의하기" },
     ],
   },
-  { href: "/donor/invite", label: "초대" },
   { href: "/donor/profile", label: "내 정보" },
   { href: "/donor/settings", label: "설정" },
 ];

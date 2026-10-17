@@ -29,7 +29,7 @@ export default async function VirtualAccountMappingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="가상계좌 매핑"
+        title="가상계좌 연결"
         description="결제 시 자동으로 어느 자체 계좌에 입금됐는지 매핑. 회계 분개 차변 자동 계산에 사용."
       />
 

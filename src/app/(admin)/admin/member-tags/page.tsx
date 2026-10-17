@@ -48,7 +48,7 @@ export default async function MemberTagsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="회원 태그"
+        title="후원자 분류(태그)"
         description="회원에게 부여할 자유 태그(VIP, 임원, 만난적 있음 등)를 정의합니다."
       />
 

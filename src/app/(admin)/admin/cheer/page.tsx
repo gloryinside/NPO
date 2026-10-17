@@ -53,7 +53,7 @@ export default async function AdminCheerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">응원 메시지 검수</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">응원 메시지 관리</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           부적절한 메시지는 숨김 처리할 수 있습니다. 최근 200건을 표시합니다.
         </p>

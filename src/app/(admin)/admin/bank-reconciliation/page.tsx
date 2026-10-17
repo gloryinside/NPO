@@ -31,7 +31,7 @@ export default async function AdminBankPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">은행 입금 대사</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">통장 입금 확인</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           은행 CSV 를 업로드하면 자동 매칭되며, 미매칭 건은 아래에서 수동 확인합니다.
         </p>

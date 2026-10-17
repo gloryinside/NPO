@@ -35,7 +35,7 @@ export default async function BankAccountsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="은행계좌"
+        title="은행 계좌"
         description="단체 보유 계좌. 가상계좌 정산 / CMS 정산 / 주거래로 분리해 회계 분개에 사용."
       />
 
