@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/api-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { checkCsrf } from "@/lib/security/csrf";
-import { buildEftClaimFile } from "@/lib/erp/eft-builder";
+import { hasAnyRole } from "@/lib/auth/admin-rbac";
+import { logAudit } from "@/lib/audit";
+import { csvHeaders } from "@/lib/csv";
+import { createClaim } from "@/lib/cms/claim";
 
 export async function GET() {
   const guard = await requireAdminApi();
@@ -11,43 +14,67 @@ export async function GET() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("cms_claim_files")
-    .select("id, filename, file_format, claim_date, payment_count, total_amount, status, submitted_at, success_count, fail_count, created_at")
+    .select("id, filename, claim_date, payment_count, total_amount, status, submitted_at, success_count, fail_count, created_at")
     .eq("org_id", tenant.id)
-    .order("claim_date", { ascending: false }).limit(100);
+    .order("claim_date", { ascending: false })
+    .limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ items: data ?? [] });
 }
 
 /**
  * POST /api/admin/cms-claim-files
- *   body: { claimDate, bankAccountId, paymentIds? }
- *   EFT 청구 파일 생성 + 텍스트 본문 응답.
+ *   body: { claimDate: 'YYYY-MM-DD', paymentIds: string[], bankAccountId? }
+ *   청구 명단을 기록하고 CMS 대행사에 올릴 CSV를 바로 내려준다.
  */
 export async function POST(req: NextRequest) {
   const csrf = checkCsrf(req);
   if (csrf) return csrf;
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
-  const { tenant } = guard.ctx;
+  const { tenant, user } = guard.ctx;
+  if (!(await hasAnyRole(user.id, tenant.id, ["finance"]))) {
+    return NextResponse.json({ error: "회계 담당자 권한이 필요합니다." }, { status: 403 });
+  }
 
   let body: Record<string, unknown>;
-  try { body = await req.json(); }
-  catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
-
-  const claimDate = typeof body.claimDate === "string"
-    ? body.claimDate : new Date().toISOString().slice(0, 10);
-  const bankAccountId = typeof body.bankAccountId === "string" ? body.bankAccountId : "";
-  if (!bankAccountId) return NextResponse.json({ error: "bankAccountId 필수" }, { status: 400 });
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const claimDate = typeof body.claimDate === "string" ? body.claimDate : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(claimDate)) {
+    return NextResponse.json({ error: "출금일을 골라 주세요." }, { status: 400 });
+  }
+  const paymentIds = Array.isArray(body.paymentIds)
+    ? body.paymentIds.filter((v): v is string => typeof v === "string").slice(0, 2000)
+    : [];
+  const bankAccountId = typeof body.bankAccountId === "string" && body.bankAccountId ? body.bankAccountId : null;
 
   const supabase = createSupabaseAdminClient();
-  const result = await buildEftClaimFile(supabase, {
+  const result = await createClaim(supabase, {
     orgId: tenant.id,
     claimDate,
+    paymentIds,
     bankAccountId,
-    paymentIds: Array.isArray(body.paymentIds) ? (body.paymentIds as string[]) : undefined,
+    createdBy: user.id,
   });
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
-  }
-  return NextResponse.json(result);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+
+  await logAudit({
+    orgId: tenant.id,
+    actorId: user.id,
+    actorEmail: user.email ?? null,
+    action: "cms.claim_create",
+    resourceType: "cms_claim_file",
+    resourceId: result.claimFileId,
+    summary: `자동이체 청구 명단 ${result.paymentCount}건 ${result.totalAmount.toLocaleString("ko-KR")}원 (${claimDate})`,
+    metadata: { claimDate, paymentCount: result.paymentCount, totalAmount: result.totalAmount },
+  }).catch(() => {});
+
+  return new NextResponse(result.csv, {
+    status: 201,
+    headers: { ...csvHeaders(result.filename), "X-Claim-File-Id": result.claimFileId },
+  });
 }

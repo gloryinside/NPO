@@ -3,12 +3,15 @@ import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { checkCsrf } from "@/lib/security/csrf";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 const ALLOWED_PAY_STATUS = ["paid", "unpaid", "failed", "cancelled", "refunded", "pending"] as const;
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
+  const csrf = checkCsrf(req);
+  if (csrf) return csrf;
   const user = await requireAdminUser();
 
   const { id } = await params;

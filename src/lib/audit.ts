@@ -27,6 +27,12 @@ export type AuditAction =
   | "payment.retry_cms"
   | "payment.refund"
   | "payment.confirm_income"
+  // 카드 결제 이의 제기
+  | "chargeback.create"
+  | "chargeback.update"
+  // 자동이체(CMS) 청구
+  | "cms.claim_create"
+  | "cms.claim_result"
   // 캠페인
   | "campaign.create"
   | "campaign.update"

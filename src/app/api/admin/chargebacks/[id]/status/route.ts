@@ -32,7 +32,7 @@ export async function PATCH(
   const { tenant, user } = guard.ctx;
   if (!(await hasAnyRole(user.id, tenant.id, ["finance"]))) {
     return NextResponse.json(
-      { error: "finance 또는 super 권한 필요" },
+      { error: "회계 담당자 권한이 필요합니다." },
       { status: 403 }
     );
   }
@@ -47,7 +47,7 @@ export async function PATCH(
   const status = typeof body.status === "string" ? body.status : "";
   if (!ALLOWED.has(status)) {
     return NextResponse.json(
-      { error: `유효하지 않은 status: ${status}` },
+      { error: "알 수 없는 상태입니다." },
       { status: 400 }
     );
   }
@@ -101,7 +101,7 @@ export async function PATCH(
     orgId: tenant.id,
     actorId: user.id,
     actorEmail: user.email ?? null,
-    action: "payment.refund",
+    action: "chargeback.update",
     resourceType: "chargeback",
     resourceId: id,
     summary: `chargeback 상태 → ${status}`,
