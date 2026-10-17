@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getTenant } from "@/lib/tenant/context";
 import { getOtpSessionFromCookies } from "@/lib/auth/otp-session";
 import { adminClaims, isAdminOfTenant } from "@/lib/auth/tenant-binding";
+import { adminMfaState } from "@/lib/auth/admin-mfa";
 import {
   MFA_BYPASS_COOKIE,
   verifyMfaBypassToken,
@@ -26,9 +27,9 @@ export async function getAdminUser(): Promise<User | null> {
 }
 
 /**
- * Throws redirect to /admin/login if not authenticated or not admin role.
+ * 2단계 인증 화면용 — 로그인·기관 소속까지만 확인한다(2단계 인증 확인 전 단계라 그것은 보지 않는다).
  */
-export async function requireAdminUser(): Promise<User> {
+export async function requireAdminUserBeforeMfa(): Promise<{ user: User; orgId: string }> {
   const user = await getAdminUser();
   if (!adminClaims(user)) {
     redirect("/admin/login");
@@ -38,7 +39,18 @@ export async function requireAdminUser(): Promise<User> {
   if (!isAdminOfTenant(user, tenant?.id)) {
     redirect("/admin/login?reason=wrong_org");
   }
-  return user!;
+  return { user: user!, orgId: tenant!.id };
+}
+
+/**
+ * 관리자 화면 가드 — 로그인·기관 소속·2단계 인증(lib/auth/admin-mfa)까지 확인한다.
+ */
+export async function requireAdminUser(): Promise<User> {
+  const { user, orgId } = await requireAdminUserBeforeMfa();
+  const state = await adminMfaState(await createSupabaseServerClient(), orgId);
+  if (state === "challenge") redirect("/admin/mfa");
+  if (state === "enroll") redirect("/admin/mfa/setup");
+  return user;
 }
 
 export type DonorSession = {

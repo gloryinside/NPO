@@ -14,6 +14,8 @@ import { getTenant } from '@/lib/tenant/context'
 import type { Tenant } from '@/lib/tenant/types'
 import type { User } from '@supabase/supabase-js'
 import { adminClaims, isAdminOfTenant } from './tenant-binding'
+import { adminMfaState, mfaRequiredBody } from './admin-mfa'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 export type ApiAdminContext = { user: User; tenant: Tenant }
 
@@ -53,6 +55,12 @@ export async function requireAdminApi(): Promise<
       ok: false,
       response: NextResponse.json({ error: 'forbidden: org mismatch' }, { status: 403 }),
     }
+  }
+
+  // 2단계 인증 — 등록한 관리자는 코드 입력 후(aal2), 기관이 필수로 켰으면 등록 후에만
+  const mfa = await adminMfaState(await createSupabaseServerClient(), tenant.id)
+  if (mfa !== 'ok') {
+    return { ok: false, response: NextResponse.json(mfaRequiredBody(mfa), { status: 403 }) }
   }
 
   return { ok: true, ctx: { user, tenant } }

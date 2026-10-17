@@ -25,7 +25,7 @@ import type { Member, MemberStatus } from "@/types/member";
 import type { PromiseStatus, PromiseType } from "@/types/promise";
 import type { PayStatus, IncomeStatus } from "@/types/payment";
 import { formatDate, formatKRW as formatAmount } from "@/lib/format";
-import { PAY_STATUS_LABEL, INCOME_STATUS_LABEL, PROMISE_STATUS_LABEL, PROMISE_TYPE_LABEL, payMethodLabel } from "@/lib/labels";
+import { PAY_STATUS_LABEL, INCOME_STATUS_LABEL, PROMISE_TYPE_LABEL, payMethodLabel, promiseStatusLabel } from "@/lib/labels";
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -99,7 +99,7 @@ function MemberStatusBadge({ status }: { status: MemberStatus }) {
   );
 }
 
-function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
+function PromiseStatusBadge({ status, payMethod }: { status: PromiseStatus; payMethod?: string | null }) {
   const styles: Record<PromiseStatus, React.CSSProperties> = {
     active: { background: "var(--positive-soft)", color: "var(--positive)" },
     suspended: { background: "var(--warning-soft)", color: "var(--warning)" },
@@ -109,7 +109,7 @@ function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">
-      {PROMISE_STATUS_LABEL[status]}
+      {promiseStatusLabel(status, payMethod)}
     </Badge>
   );
 }
@@ -408,7 +408,7 @@ export default async function MemberDetailPage({
                         {payMethodLabel(p.pay_method)}
                         {p.toss_billing_key ? " · 자동결제" : ""}
                       </TableCell>
-                      <TableCell><PromiseStatusBadge status={p.status} /></TableCell>
+                      <TableCell><PromiseStatusBadge status={p.status} payMethod={p.pay_method} /></TableCell>
                       <TableCell className="text-sm text-[var(--muted-foreground)]">
                         {p.started_at ? formatDate(p.started_at) : "-"}
                         {p.ended_at ? ` ~ ${formatDate(p.ended_at)}` : " ~"}

@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { toCsv } from "@/lib/csv";
 import { queueErpPaymentEvent } from "@/lib/erp/outbound-queue";
+import { promisesWithConsent } from "@/lib/cms/withdrawal-consent";
+import { promotePendingIdNumber } from "@/lib/receipt/pending-id";
 
 /**
  * 자동이체(CMS) 청구.
@@ -20,6 +22,8 @@ export type ClaimablePayment = {
   payDate: string | null;
   memberName: string;
   memberCode: string | null;
+  /** 정기 약정인데 유효한 출금동의 기록이 없다 — 일시 자동이체(약정 없음)는 false */
+  consentMissing: boolean;
 };
 
 type PaymentJoin = {
@@ -27,6 +31,7 @@ type PaymentJoin = {
   payment_code: string;
   amount: number;
   pay_date: string | null;
+  promise_id: string | null;
   members: { name: string | null; member_code: string | null } | { name: string | null; member_code: string | null }[] | null;
 };
 
@@ -42,7 +47,7 @@ export async function listClaimablePayments(
 ): Promise<ClaimablePayment[]> {
   const { data } = await supabase
     .from("payments")
-    .select("id, payment_code, amount, pay_date, members(name, member_code)")
+    .select("id, payment_code, amount, pay_date, promise_id, members(name, member_code)")
     .eq("org_id", orgId)
     .eq("pay_method", "cms")
     .in("pay_status", ["pending", "unpaid"])
@@ -65,6 +70,9 @@ export async function listClaimablePayments(
     for (const l of lines ?? []) if (l.payment_id) inFlight.add(l.payment_id as string);
   }
 
+  const promiseIds = [...new Set(rows.map((r) => r.promise_id).filter((v): v is string => !!v))];
+  const consented = promiseIds.length ? await promisesWithConsent(supabase, orgId, promiseIds) : new Set<string>();
+
   return rows
     .filter((r) => !inFlight.has(r.id))
     .map((r) => {
@@ -76,6 +84,7 @@ export async function listClaimablePayments(
         payDate: r.pay_date,
         memberName: m?.name ?? "",
         memberCode: m?.member_code ?? null,
+        consentMissing: !!r.promise_id && !consented.has(r.promise_id),
       };
     });
 }
@@ -175,6 +184,7 @@ export async function claimCsvFor(supabase: SupabaseClient, orgId: string, fileI
     payDate: null,
     memberName: l.memberName,
     memberCode: l.memberCode,
+    consentMissing: false,
   }));
   return { filename: file.filename as string, csv: buildClaimCsv(items, file.claim_date as string) };
 }
@@ -276,6 +286,7 @@ export async function applyClaimResult(
     if (isFail) failed++;
     else paid++;
     await queueErpPaymentEvent(supabase, orgId, l.paymentId, isFail ? "payment.failed" : "payment.paid");
+    if (!isFail) await promotePendingIdNumber(supabase, orgId, l.paymentId);
   }
 
   const { data: all } = await supabase

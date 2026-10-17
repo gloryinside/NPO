@@ -43,6 +43,7 @@ export const ADMIN_NAV: AdminNavHub[] = [
       { label: '후원자 관리', href: '/admin/members', desc: '후원자 명단 보기·등록·엑셀로 가져오기', primary: true, keywords: ['후원자 등록하기', '엑셀로 후원자 올리기', '회원', 'member', '기부자'] },
       { label: '문의 관리', href: '/admin/inquiries', desc: '후원자가 남긴 문의에 답하기', primary: true, keywords: ['1:1', '고객'] },
       { label: '중복 후원자 합치기', href: '/admin/members/duplicates', desc: '같은 사람이 두 번 등록된 경우 하나로 합치기', keywords: ['병합', 'merge'] },
+      { label: '후원자 명단(조건)', href: '/admin/segments', desc: '미납 2회 이상·1년 이상 후원자처럼 조건을 저장해 두고 다시 보기', keywords: ['세그먼트', '조건 검색', '명단 추출', '휴면', '미납자'] },
       { label: '후원자 분류(태그)', href: '/admin/member-tags', desc: '후원자를 묶음으로 나눠 관리', keywords: ['tag', '분류'] },
       { label: '잠재 후원자·봉사자', href: '/admin/crm', desc: '아직 후원 전인 관심 고객과 봉사자 명단', keywords: ['리드', 'lead'] },
       { label: '자원봉사 활동', href: '/admin/volunteer-activities', desc: '봉사 일정과 참여 기록', keywords: ['봉사'] },
@@ -82,6 +83,7 @@ export const ADMIN_NAV: AdminNavHub[] = [
       { label: '문자·이메일 보내기', href: '/admin/communications', desc: '후원자에게 직접 안내 보내기', primary: true, keywords: ['문자', '이메일', 'SMS'] },
       { label: '응원 메시지 관리', href: '/admin/cheer', desc: '캠페인에 달린 응원 글 공개·숨김', keywords: ['댓글', '검수'] },
       { label: '공지·자주 묻는 질문', href: '/admin/board', desc: '후원자 화면에 보이는 공지와 FAQ', keywords: ['공지사항', 'FAQ'] },
+      { label: '후원자 여정 메시지', href: '/admin/journeys', desc: '시작 다음 날·한 달 감사·기념일·생일에 자동으로 나가는 안내', keywords: ['자동 메시지', '환영', '생일', '1주년', '마케팅 자동화'] },
       { label: '이메일 문구', href: '/admin/email-templates', desc: '자동으로 나가는 이메일의 내용', keywords: ['메일 양식'] },
       { label: '반송된 이메일', href: '/admin/email-bounces', desc: '주소 오류로 전달되지 않은 이메일', keywords: ['bounce'] },
       { label: '외부 모금 채널', href: '/admin/donation-channels', desc: '해피빈 등 다른 곳에서 받은 모금', keywords: ['채널'] },
@@ -119,6 +121,7 @@ export const ADMIN_NAV: AdminNavHub[] = [
     items: [
       { label: '기관 설정', href: '/admin/settings', desc: '기관 정보·영수증 기재사항·결제 연결', primary: true, keywords: ['대표자 입력', '사업자번호 입력', '토스 연결', '대표자', '사업자번호', '테마'] },
       { label: '관리자 계정', href: '/admin/users', desc: '함께 일할 직원 초대·삭제', primary: true, keywords: ['직원 초대하기', '관리자 초대', '계정'] },
+      { label: '2단계 인증', href: '/admin/mfa/setup', desc: '내 관리자 계정에 OTP 앱 등록, 기관 전체 필수 설정', keywords: ['OTP', 'MFA', '보안', '이중 인증', 'OTP 등록하기'] },
       { label: '작업 기록', href: '/admin/audit-logs', desc: '누가 언제 무엇을 바꿨는지', keywords: ['audit', '이력'] },
       { label: '개인정보 보호', href: '/admin/compliance', desc: '개인정보 보관·파기 관리', keywords: ['개인정보'] },
     ],

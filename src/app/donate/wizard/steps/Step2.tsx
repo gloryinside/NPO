@@ -5,6 +5,11 @@ import { toast } from 'sonner';
 import { sanitizeHtml } from '@/lib/campaign-builder/sanitize-html';
 import PayMethodSelector from '@/components/public/donation/PayMethodSelector';
 import AgreementSection from '@/components/public/donation/AgreementSection';
+import { getAddressSearch } from '@/lib/address/search';
+import { requestAccountBillingAuth } from '@/lib/billing/account-billing-client';
+import { REGULAR_PAY_METHODS } from '@/lib/billing/regular-flow';
+import { JOIN_PATHS, type DonorType } from '@/lib/donations/donor-profile';
+import { estimateDonationCredit } from '@/lib/tax/donation-credit';
 import type { WizardState } from '../WizardClient';
 import type { FormSettings } from '@/lib/campaign-builder/form-settings/schema';
 
@@ -116,9 +121,25 @@ export function Step2({
   onBack: () => void;
   onDone: () => void;
 }) {
-  const [info, setInfo] = useState({ name: '', dob: '', mobile: '', email: '', address: '' });
+  const [info, setInfo] = useState({ name: '', dob: '', mobile: '', email: '', postalCode: '', address1: '', address2: '' });
+  const [donorType, setDonorType] = useState<DonorType>('individual');
+  const [businessNo, setBusinessNo] = useState('');
+  const [joinPath, setJoinPath] = useState('');
+  const credit = donorType === 'individual' ? estimateDonationCredit(state.amount, state.type) : null;
+  // 외부 주소 검색이 등록돼 있을 때만 버튼을 보인다(없으면 직접 입력)
+  const addressSearch = getAddressSearch();
   const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
-  const [method, setMethod] = useState<string>(settings.paymentMethods[0] ?? 'card');
+  // 일시: 토스 결제창이 있는 수단 + 계좌이체·자동이체 / 정기: 카드·자동이체·계좌이체·직접 받음
+  const disabledMethods: string[] =
+    state.type === 'onetime'
+      ? settings.paymentMethods.filter((m) => {
+          const s = m as string;
+          return !(s in TOSS_METHOD_MAP) && s !== 'transfer' && s !== 'cms';
+        })
+      : settings.paymentMethods.filter((m) => !(REGULAR_PAY_METHODS as readonly string[]).includes(m as string));
+  const [method, setMethod] = useState<string>(
+    settings.paymentMethods.find((m) => !disabledMethods.includes(m)) ?? settings.paymentMethods[0] ?? 'card',
+  );
   const [receipt, setReceipt] = useState(settings.requireReceipt);
   const [identityVerified, setIdentityVerified] = useState(false);
   const [identityName, setIdentityName] = useState('');
@@ -159,7 +180,10 @@ export function Step2({
   async function submit() {
     if (!ag.terms || !ag.privacy) return void toast.error('필수 약관에 동의해 주세요.');
     const rrnDigits = rrn.replace(/\D/g, '');
-    if (receipt && rrnDigits) {
+    if (receipt && donorType === 'corporate' && businessNo.replace(/\D/g, '').length !== 10) {
+      return void toast.error('영수증을 받으려면 사업자등록번호 10자리를 입력해 주세요.');
+    }
+    if (receipt && donorType === 'individual' && rrnDigits) {
       if (rrnDigits.length !== 13) return void toast.error('주민등록번호 13자리를 확인해 주세요.');
       if (!rrnConsent) return void toast.error('주민등록번호 수집·이용(고유식별정보 처리)에 동의해 주세요.');
     }
@@ -177,11 +201,18 @@ export function Step2({
         memberName: info.name,
         memberPhone: info.mobile,
         memberEmail: info.email,
+        donorType,
+        businessNo: donorType === 'corporate' ? businessNo || undefined : undefined,
+        joinPath: joinPath || undefined,
+        birthDate: donorType === 'individual' ? info.dob || undefined : undefined,
+        postalCode: info.postalCode || undefined,
+        addressLine1: info.address1 || undefined,
+        addressLine2: info.address2 || undefined,
         customFields,
         payMethod: method,
         receiptOptIn: receipt,
         identityVerified: receipt ? identityVerified : undefined,
-        ...(receipt && rrnDigits ? { residentNo: rrnDigits, rrnConsent } : {}),
+        ...(receipt && donorType === 'individual' && rrnDigits ? { residentNo: rrnDigits, rrnConsent } : {}),
         idempotencyKey: state.idempotencyKey,
         // 카드 정기후원은 카드번호를 보내지 않는다 — 토스 결제창(requestBillingAuth)에서 등록
       }),
@@ -201,7 +232,7 @@ export function Step2({
       orderName?: string;
       tossClientKey?: string;
       billingKeyFailed?: boolean;
-      billingAuth?: { customerKey: string; promiseId: string };
+      billingAuth?: { customerKey: string; promiseId: string; method?: 'card' | 'account' };
     };
 
     // 오프라인 결제(transfer/cms/manual) — 계좌 안내 후 Step3로 이동
@@ -214,10 +245,26 @@ export function Step2({
     // 카드 정기후원 — 토스 결제창에서 카드 등록(본인인증 포함). 완료되면 /donate/billing/success로 돌아와
     // 서버가 authKey로 빌링키를 발급한다. 카드 정보는 우리 서버를 거치지 않는다.
     if (state.type === 'regular' && data.billingAuth && data.tossClientKey) {
+      const back = new URL('/donate/billing/success', window.location.origin);
+      back.searchParams.set('promiseId', data.billingAuth.promiseId);
+      // 자동이체 — 토스 계좌 자동결제 등록 창(연동 자리: lib/billing/account-billing-client)
+      if (data.billingAuth.method === 'account') {
+        try {
+          await requestAccountBillingAuth({
+            clientKey: data.tossClientKey,
+            customerKey: data.billingAuth.customerKey,
+            customerName: info.name.trim(),
+            customerEmail: info.email.trim() || undefined,
+            successUrl: back.toString(),
+            failUrl: `${window.location.origin}/donate/billing/fail`,
+          });
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : '자동이체 등록 중 오류가 발생했습니다.');
+        }
+        return;
+      }
       try {
         const tossPayments = await loadTossPayments(data.tossClientKey);
-        const back = new URL('/donate/billing/success', window.location.origin);
-        back.searchParams.set('promiseId', data.billingAuth.promiseId);
         await tossPayments.requestBillingAuth('카드', {
           customerKey: data.billingAuth.customerKey,
           customerName: info.name.trim(),
@@ -283,11 +330,76 @@ export function Step2({
 
   return (
     <div className="space-y-4">
-      <Input label="이름 *" value={info.name} onChange={(v) => setInfo({ ...info, name: v })} />
-      <Input label="생년월일" type="date" value={info.dob} onChange={(v) => setInfo({ ...info, dob: v })} />
-      <Input label="휴대폰 *" value={info.mobile} onChange={(v) => setInfo({ ...info, mobile: v })} />
+      <div role="radiogroup" aria-label="후원자 구분" className="grid grid-cols-2 gap-2">
+        {([
+          ['individual', '개인'],
+          ['corporate', '기업·단체'],
+        ] as const).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={donorType === v}
+            onClick={() => setDonorType(v)}
+            className={`rounded-lg border py-2 text-sm font-medium ${
+              donorType === v
+                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <Input
+        label={donorType === 'corporate' ? '기업·단체 이름 *' : '이름 *'}
+        value={info.name}
+        onChange={(v) => setInfo({ ...info, name: v })}
+      />
+      {donorType === 'individual' && (
+        <Input label="생년월일" type="date" value={info.dob} onChange={(v) => setInfo({ ...info, dob: v })} />
+      )}
+      <Input label={donorType === 'corporate' ? '담당자 휴대폰 *' : '휴대폰 *'} value={info.mobile} onChange={(v) => setInfo({ ...info, mobile: v })} />
       <Input label="이메일" type="email" value={info.email} onChange={(v) => setInfo({ ...info, email: v })} />
-      <Input label="주소" value={info.address} onChange={(v) => setInfo({ ...info, address: v })} />
+      <fieldset className="space-y-2">
+        <legend className="mb-1 block text-xs text-[var(--text)]">주소 (기부금영수증에 들어갑니다)</legend>
+        <div className="flex items-end gap-2">
+          <div className="w-32">
+            <Input label="우편번호" value={info.postalCode} onChange={(v) => setInfo({ ...info, postalCode: v.replace(/[^0-9]/g, '').slice(0, 6) })} />
+          </div>
+          {addressSearch && (
+            <button
+              type="button"
+              onClick={async () => {
+                const r = await addressSearch.open();
+                if (r) setInfo((prev) => ({ ...prev, postalCode: r.postalCode, address1: r.address }));
+              }}
+              className="rounded px-3 py-1.5 text-sm border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]"
+            >
+              주소 검색
+            </button>
+          )}
+        </div>
+        <Input label="기본 주소" value={info.address1} onChange={(v) => setInfo({ ...info, address1: v })} />
+        <Input label="상세 주소" value={info.address2} onChange={(v) => setInfo({ ...info, address2: v })} />
+      </fieldset>
+
+      <label className="block">
+        <span className="mb-1 block text-xs text-[var(--text)]">어떻게 알게 되셨나요? (선택)</span>
+        <select
+          id="join-path"
+          className="w-full rounded px-2 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)]"
+          value={joinPath}
+          onChange={(e) => setJoinPath(e.target.value)}
+        >
+          <option value="">선택 안 함</option>
+          {JOIN_PATHS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {settings.customFields.map((f) => (
         <CustomFieldInput
@@ -302,14 +414,7 @@ export function Step2({
         methods={settings.paymentMethods}
         value={method}
         onChange={setMethod}
-        disabledMethods={
-          state.type === 'onetime'
-            ? settings.paymentMethods.filter((m) => {
-                const s = m as string
-                return !(s in TOSS_METHOD_MAP) && s !== 'transfer' && s !== 'cms'
-              })
-            : []
-        }
+        disabledMethods={disabledMethods}
       />
 
       {state.type === 'regular' && method === 'card' && (
@@ -326,10 +431,17 @@ export function Step2({
           🧾 기부금 영수증 안내
         </p>
         <ul className="space-y-0.5 list-disc pl-4">
-          <li>연말정산 시 <b>기부금 세액공제</b> 대상 (공제율은 기관 인증에 따름)</li>
+          {credit ? (
+            <li>
+              {state.type === 'regular' ? '1년' : '이번'} 후원 {credit.annual.toLocaleString('ko-KR')}원이면 연말정산에서{' '}
+              <b>약 {credit.total.toLocaleString('ko-KR')}원</b>을 돌려받을 수 있어요 (세액공제 15%와 지방소득세 포함, 소득에 따라 달라요)
+            </li>
+          ) : (
+            <li>연말정산 시 <b>기부금 공제</b> 대상 (기업은 손금으로 처리)</li>
+          )}
           <li>발급 시점: 매년 1월 국세청 연말정산 간소화 자료 일괄 제출</li>
           <li>등록한 이메일로도 PDF 사본 발송</li>
-          <li>영수증 발급을 원하시면 <b>본인인증</b>이 필요합니다</li>
+          {donorType === 'individual' && <li>영수증 발급을 원하시면 <b>본인인증</b>이 필요합니다</li>}
         </ul>
       </div>
 
@@ -343,7 +455,16 @@ export function Step2({
         />
         기부금 영수증 신청
       </label>
-      {receipt && !identityVerified && (
+      {receipt && donorType === 'corporate' && (
+        <div className="space-y-1 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+          <Input
+            label="사업자등록번호 * (영수증에 들어갑니다)"
+            value={businessNo}
+            onChange={(v) => setBusinessNo(v.replace(/[^0-9-]/g, '').slice(0, 12))}
+          />
+        </div>
+      )}
+      {receipt && donorType === 'individual' && !identityVerified && (
         <button
           type="button"
           onClick={async () => {
@@ -365,12 +486,12 @@ export function Step2({
           본인인증
         </button>
       )}
-      {receipt && identityVerified && (
+      {receipt && donorType === 'individual' && identityVerified && (
         <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-[var(--accent-soft)] text-[var(--accent)]">
           <span>✓</span> 본인인증 완료 ({identityName})
         </div>
       )}
-      {receipt && (
+      {receipt && donorType === 'individual' && (
         <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
           <Input
             label="주민등록번호 (연말정산 간소화 반영용, 선택)"

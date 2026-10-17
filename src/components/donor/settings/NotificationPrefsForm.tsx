@@ -37,6 +37,11 @@ const PREF_ITEMS: {
     label: '캠페인 소식',
     desc: '후원하신 캠페인의 진행 소식과 후기를 받습니다.',
   },
+  {
+    key: 'journey',
+    label: '감사·기념일 안내',
+    desc: '후원 시작 환영, 첫 후원 한 달 감사, 후원 기념일과 생일 축하 이메일을 받습니다.',
+  },
 ]
 
 export function NotificationPrefsForm({ initial }: Props) {

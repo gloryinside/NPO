@@ -27,7 +27,8 @@ import type {
   PromiseWithRelations,
 } from "@/types/promise";
 import { formatDate, formatKRW as formatAmount } from "@/lib/format";
-import { PROMISE_STATUS_LABEL, PROMISE_TYPE_LABEL } from "@/lib/labels";
+import { PROMISE_TYPE_LABEL, promiseStatusLabel } from "@/lib/labels";
+import { ConsentDialog } from "./promise-consent-dialog";
 import { ActionMenu, AmountDialog, CancelDialog, ConfirmActionDialog, SuspendDialog, type ActionType, type ActiveAction } from "./promise-actions";
 import { AddPromiseDialog } from "./promise-add-dialog";
 
@@ -51,7 +52,7 @@ const STATUS_TABS: Array<{ value: string; label: string }> = [
   { value: "all", label: "전체" },
 ];
 
-function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
+function PromiseStatusBadge({ status, payMethod }: { status: PromiseStatus; payMethod?: string | null }) {
   const styles: Record<PromiseStatus, React.CSSProperties> = {
     active: { background: "var(--positive-soft)", color: "var(--positive)" },
     suspended: { background: "var(--warning-soft)", color: "var(--warning)" },
@@ -61,7 +62,7 @@ function PromiseStatusBadge({ status }: { status: PromiseStatus }) {
   };
   return (
     <Badge style={styles[status]} className="border-0 font-medium">
-      {PROMISE_STATUS_LABEL[status]}
+      {promiseStatusLabel(status, payMethod)}
     </Badge>
   );
 }
@@ -136,6 +137,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
     cancel: "정기후원 해지",
     resume: "정기후원 다시 시작",
     complete: "정기후원 완료 처리",
+    consent: "자동이체 출금동의",
   };
 
   const columns: DataTableColumn<PromiseWithRelations>[] = [
@@ -215,7 +217,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
       header: "상태",
       sortValue: (p) => p.status,
       width: "100px",
-      render: (p) => <PromiseStatusBadge status={p.status} />,
+      render: (p) => <PromiseStatusBadge status={p.status} payMethod={p.pay_method} />,
     },
   ];
 
@@ -249,6 +251,9 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
             </DialogHeader>
             {active.action === "amount" && (
               <AmountDialog promise={active.promise} onClose={closeAction} onDone={doneAction} />
+            )}
+            {active.action === "consent" && (
+              <ConsentDialog promise={active.promise} onClose={closeAction} onDone={doneAction} />
             )}
             {active.action === "suspend" && (
               <SuspendDialog promise={active.promise} onClose={closeAction} onDone={doneAction} />
@@ -405,7 +410,7 @@ export function PromiseList({ promises, total, initialStatus, stats }: Props) {
                 </dd>
                 <dt className="text-[var(--muted-foreground)]">상태</dt>
                 <dd>
-                  <PromiseStatusBadge status={detailTarget.status} />
+                  <PromiseStatusBadge status={detailTarget.status} payMethod={detailTarget.pay_method} />
                 </dd>
                 {detailTarget.started_at && (
                   <>

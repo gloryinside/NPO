@@ -56,5 +56,9 @@ function lookup(map: Record<string, string>, value: string | null | undefined): 
 
 export const payStatusLabel = (v: string | null | undefined) => lookup(PAY_STATUS_LABEL, v);
 export const incomeStatusLabel = (v: string | null | undefined) => lookup(INCOME_STATUS_LABEL, v);
-export const promiseStatusLabel = (v: string | null | undefined) => lookup(PROMISE_STATUS_LABEL, v);
+/** 등록 대기는 결제수단에 따라 다르게 부른다 — 카드는 카드 등록, 자동이체는 출금동의 */
+export function promiseStatusLabel(v: string | null | undefined, payMethod?: string | null): string {
+  if (v === "pending_billing" && payMethod === "cms") return "출금동의 대기";
+  return lookup(PROMISE_STATUS_LABEL, v);
+}
 export const payMethodLabel = (v: string | null | undefined) => lookup(PAY_METHOD_LABEL, v);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { promotePendingIdNumber } from "@/lib/receipt/pending-id";
 import { logAudit } from "@/lib/audit";
 import { readJsonObject } from "@/lib/http/body";
 import { requireAdminApi } from "@/lib/auth/api-guard";
@@ -85,6 +86,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   // 감사 로그 — 상태 전환만 기록
   if (pay_status === "paid") {
+    await promotePendingIdNumber(supabase, tenant.id, id);
     await logAudit({
       orgId: tenant.id,
       actorId: user.id,

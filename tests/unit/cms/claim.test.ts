@@ -94,9 +94,28 @@ describe('자동이체(CMS) 청구', () => {
     expect(list.map((p) => p.id).sort()).toEqual(['p1', 'p2'])
   })
 
+  it('정기 약정에 출금동의 기록이 없으면 표시한다(철회된 동의는 없는 것으로 본다)', async () => {
+    const { client, tables } = seed()
+    tables.payments[0].promise_id = 'pr1'
+    tables.payments[1].promise_id = 'pr2'
+    tables.withdrawal_consents = [
+      { promise_id: 'pr1', org_id: 'o1', revoked_at: null },
+      { promise_id: 'pr2', org_id: 'o1', revoked_at: '2026-10-01T00:00:00Z' },
+    ]
+    const list = await listClaimablePayments(client, 'o1', '2026-10-17')
+    const byId = Object.fromEntries(list.map((p) => [p.id, p.consentMissing]))
+    expect(byId).toEqual({ p1: false, p2: true })
+  })
+
+  it('일시 자동이체(약정 없음)는 출금동의 표시 대상이 아니다', async () => {
+    const { client } = seed()
+    const list = await listClaimablePayments(client, 'o1', '2026-10-17')
+    expect(list.every((p) => p.consentMissing === false)).toBe(true)
+  })
+
   it('CSV는 BOM·한글 머리줄이 있고, 수식처럼 시작하는 이름은 무력화한다', () => {
     const csv = buildClaimCsv(
-      [{ id: 'p2', paymentCode: 'PAY-2', amount: 20000, payDate: null, memberName: '=HYPERLINK("x")', memberCode: 'M-002' }],
+      [{ id: 'p2', paymentCode: 'PAY-2', amount: 20000, payDate: null, memberName: '=HYPERLINK("x")', memberCode: 'M-002', consentMissing: false }],
       '2026-10-17',
     )
     expect(csv.startsWith('﻿순번,후원자번호,이름,출금금액,출금일,결제번호')).toBe(true)

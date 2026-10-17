@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { promotePendingIdNumber } from "@/lib/receipt/pending-id";
 
 /**
  * G-D130: 수기결제 ↔ 은행 입금 자동 매칭.
@@ -87,6 +88,7 @@ export async function reconcileBankBatch(
         })
         .eq("id", pick.id)
         .neq("income_status", "excluded");
+      await promotePendingIdNumber(supabase, orgId, pick.id);
       matched++;
     } else if (narrowed.length === 0) {
       unmatched++;

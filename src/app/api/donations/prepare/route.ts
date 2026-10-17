@@ -12,13 +12,16 @@ import { sendOfflineDonationReceived, sendBillingKeyFailedEmail } from "@/lib/em
 import { deleteBillingKey, issueBillingKey } from "@/lib/billing/toss-billing";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { readJsonObject } from "@/lib/http/body";
+import { needsBillingRegistration, resolveRegularFlow } from "@/lib/billing/regular-flow";
+import { parseDonorProfile, profileColumns } from "@/lib/donations/donor-profile";
 
 /**
  * POST /api/donations/prepare
  *
  * 공개(비로그인) 엔드포인트. Toss 결제 위젯 호출 직전에 호출된다.
  * - 캠페인을 검증하고 (org_id 일치 + status='active')
- * - 후원자를 members 테이블에 upsert 하며
+ * - 후원자를 찾거나 새로 만든다. 이미 있는 후원자의 정보는 바꾸지 않는다 — 로그인 없는 요청이라서.
+ *   새 후원자에게만 생년월일·주소·가입 경로를 넣는다(lib/donations/donor-profile).
  * - idempotency_key 와 payment_code 를 발급해 pending payments 행을 생성한다.
  *
  * member_code / payment_code 는 DB 카운터(next_code_seq)로 원자 발번한다.
@@ -89,9 +92,6 @@ export async function POST(req: NextRequest) {
     customerIdentityNumber?: string;
   };
 
-  // 오프라인 결제 수단 (계좌이체·CMS는 Toss PG 불필요)
-  const isOfflineMethod = payMethod === "transfer" || payMethod === "cms" || payMethod === "manual";
-
   if (!campaignId || typeof campaignId !== "string") {
     return NextResponse.json(
       { error: "campaignId는 필수입니다." },
@@ -120,6 +120,12 @@ export async function POST(req: NextRequest) {
       ? memberEmail.trim()
       : null;
 
+  const profileParsed = parseDonorProfile(body);
+  if (!profileParsed.ok) {
+    return NextResponse.json({ error: profileParsed.error }, { status: 400 });
+  }
+  const profile = profileParsed.value;
+
   const supabase = createSupabaseAdminClient();
 
   // 1. 캠페인 검증 (테넌트 + active 필수) + 기관 계좌 정보 병렬 조회
@@ -136,7 +142,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle(),
     supabase
       .from("orgs")
-      .select("name, bank_name, bank_account, account_holder")
+      .select("name, bank_name, bank_account, account_holder, account_billing_enabled")
       .eq("id", tenant.id)
       .maybeSingle(),
   ]);
@@ -161,6 +167,27 @@ export async function POST(req: NextRequest) {
       { status: 404 }
     );
   }
+
+  // 1a. 처리 경로 — 정기후원은 lib/billing/regular-flow 가 정한다.
+  //     자동이체(cms)는 기관이 토스 계좌 자동결제를 켰을 때만 결제창 등록, 아니면 지금처럼 접수 후 외부 CMS 청구.
+  const isRegular = donationType === 'regular';
+  const regularFlow = isRegular
+    ? resolveRegularFlow({
+        payMethod,
+        accountBillingEnabled: (orgData as { account_billing_enabled?: boolean } | null)?.account_billing_enabled === true,
+        hasCardNumber: !!cardNumber,
+      })
+    : null;
+  if (regularFlow === "unsupported") {
+    return NextResponse.json(
+      { error: "정기후원은 카드나 자동이체로 신청해 주세요." },
+      { status: 400 }
+    );
+  }
+  // 오프라인 결제 수단 (계좌이체·외부 CMS·직접 받음은 Toss PG 불필요)
+  const isOfflineMethod = regularFlow
+    ? regularFlow === "offline"
+    : payMethod === "transfer" || payMethod === "cms" || payMethod === "manual";
 
   // 1b. 결제수단 서버 사이드 검증 — form_settings.paymentMethods 에 포함돼야 함
   if (payMethod) {
@@ -189,36 +216,43 @@ export async function POST(req: NextRequest) {
 
   // 2. 기존 member 검색 — phone 우선, 없으면 email 로 매칭
   let memberId: string | null = null;
+  type ExistingMember = {
+    id: string;
+    email: string | null;
+    birth_date: string | null;
+    postal_code: string | null;
+    address_line1: string | null;
+    address_line2: string | null;
+    join_path: string | null;
+  };
+  const memberCols = "id, email, birth_date, postal_code, address_line1, address_line2, join_path";
+  let existing: ExistingMember | null = null;
 
   if (phone) {
     const { data: byPhone } = await supabase
       .from("members")
-      .select("id, email")
+      .select(memberCols)
       .eq("org_id", tenant.id)
       .eq("phone", phone)
       .maybeSingle();
-    if (byPhone?.id) {
-      memberId = byPhone.id as string;
-      // phone 매칭 성공 시 email이 새로 제공됐고 기존과 다르면 갱신
-      if (email && byPhone.email !== email) {
-        await supabase
-          .from("members")
-          .update({ email, updated_at: new Date().toISOString() })
-          .eq("id", memberId);
-      }
-    }
+    existing = (byPhone as ExistingMember | null) ?? null;
   }
 
-  if (!memberId && email) {
+  if (!existing && email) {
     const { data: byEmail } = await supabase
       .from("members")
-      .select("id")
+      .select(memberCols)
       .eq("org_id", tenant.id)
       .eq("email", email)
       .maybeSingle();
-    if (byEmail?.id) {
-      memberId = byEmail.id as string;
-    }
+    existing = (byEmail as ExistingMember | null) ?? null;
+  }
+
+  if (existing) {
+    // 로그인 없는 신청서로는 이미 있는 후원자 정보를 바꾸지 않는다(빈칸 채우기도 하지 않는다).
+    // 휴대폰·이메일만 알면 남의 기록에 이메일·주소를 심을 수 있기 때문 — 변경은 마이페이지·관리자 화면에서.
+    // (예전엔 휴대폰만 맞으면 이메일을 덮어써 영수증이 남에게 갈 수 있었다)
+    memberId = existing.id;
   }
 
   // 3. 없으면 새 member 생성
@@ -243,6 +277,7 @@ export async function POST(req: NextRequest) {
         name: memberName.trim(),
         phone,
         email,
+        ...profileColumns(profile),
       })
       .select("id")
       .single();
@@ -284,7 +319,20 @@ export async function POST(req: NextRequest) {
   let rrnPendingEncrypted: string | null = null; // base64 or null
   const wantsReceipt = receiptOptIn === true;
   const rawRrn = typeof residentNo === "string" ? residentNo.replace(/-/g, "").trim() : "";
-  if (wantsReceipt && rawRrn) {
+  const encKeyForId = process.env.RECEIPTS_ENCRYPTION_KEY;
+  if (wantsReceipt && profile.donorType === "corporate") {
+    // 기업 후원자 — 영수증 기부자 번호는 사업자등록번호(고유식별정보가 아니라 별도 동의 불필요).
+    // 같은 칸(주민등록번호 자리)에 같은 방식으로 암호화해 두면 국세청 자료(nts-dataset)가 10자리를 법인으로 처리한다.
+    if (!profile.businessNo) {
+      return NextResponse.json({ error: "영수증을 받으려면 사업자등록번호를 입력해 주세요." }, { status: 400 });
+    }
+    if (!encKeyForId) {
+      return NextResponse.json({ error: "영수증 암호화 설정이 누락되었습니다. 관리자에게 문의하세요." }, { status: 500 });
+    }
+    const { data: encBiz, error: encBizErr } = await supabase.rpc("encrypt_rrn_pending", { plaintext: profile.businessNo, passphrase: encKeyForId });
+    if (encBizErr) return NextResponse.json({ error: "사업자등록번호 암호화 실패" }, { status: 500 });
+    rrnPendingEncrypted = encBiz as string | null;
+  } else if (wantsReceipt && rawRrn) {
     // 별도 동의 없이는 받지 않는다(고유식별정보 처리 동의는 다른 동의와 분리해야 한다)
     if (rrnConsent !== true) {
       return NextResponse.json(
@@ -335,6 +383,7 @@ export async function POST(req: NextRequest) {
       idempotency_key: idempotencyKey,
       requested_at: nowIso,
       receipt_opt_in: wantsReceipt,
+      // 주민번호(기업은 사업자번호)는 결제 행에만 둔다 — 돈이 들어온 게 확인되면 후원자에게 옮긴다(lib/receipt/pending-id)
       ...(rrnPendingEncrypted ? { rrn_pending_encrypted: rrnPendingEncrypted, rrn_consent_at: new Date().toISOString() } : {}),
       ...(payMethod ? { pay_method: payMethod } : {}),
       ...(customFields ? { custom_fields: customFields } : {}),
@@ -359,17 +408,16 @@ export async function POST(req: NextRequest) {
   }
 
   // 6. 정기후원: 빌링키 발급 + promise 생성
-  const isRegular = donationType === 'regular';
   let regularBillingKeyFailed = false;
   // [표준] 결제창 카드 등록 — 카드번호가 오지 않은 카드 정기후원은 토스 결제창(requestBillingAuth)으로
   // 카드를 등록한다. 카드 정보가 우리 서버를 거치지 않는다. 키인(카드번호 직접 전송)은 하위 호환으로만.
-  let billingAuth: { customerKey: string; promiseId: string } | null = null;
+  let billingAuth: { customerKey: string; promiseId: string; method: 'card' | 'account' } | null = null;
 
   if (isRegular && memberId) {
     const todayDay = kstParts().day; // KST 기준(서버 UTC와 무관)
     const customerKey = randomUUID();
     let billingKey: string | null = null;
-    const sdkBilling = (payMethod ?? 'card') === 'card' && !cardNumber;
+    const sdkBilling = regularFlow !== null && needsBillingRegistration(regularFlow);
 
     // 카드 정보가 있으면 빌링키 발급 시도
     if (cardNumber && cardExpirationYear && cardExpirationMonth && cardPassword && customerIdentityNumber) {
@@ -426,7 +474,21 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ error: '정기후원 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.' }, { status: 500 });
     }
-    if (sdkBilling) billingAuth = { customerKey, promiseId: created.id };
+    if (sdkBilling) {
+      billingAuth = { customerKey, promiseId: created.id, method: regularFlow === 'account_billing' ? 'account' : 'card' };
+    }
+    // 자동이체(외부 CMS) 정기 — 신청 때 만든 결제를 이 약정의 첫 달 결제로 만든다.
+    //  - 약정에 연결해 청구 화면에서 출금동의 여부가 보이게 하고, 30분 뒤 미완료 정리 작업에서도 빠지게 한다
+    //  - 매월 결제 생성 작업과 같은 중복 방지 키를 써서 같은 달 결제가 두 번 생기지 않게 한다
+    if (regularFlow === 'offline' && payMethod === 'cms') {
+      const { year: y, month: m } = kstParts();
+      const { error: linkErr } = await supabase
+        .from('payments')
+        .update({ promise_id: created.id, idempotency_key: `cron-${created.id}-${y}-${String(m).padStart(2, '0')}` })
+        .eq('id', payment.id)
+        .eq('org_id', tenant.id);
+      if (linkErr) console.error('[donations/prepare] cms first payment link:', linkErr.message);
+    }
   }
 
   // 오프라인 결제: Toss 리디렉션 없이 계좌 안내 정보 반환

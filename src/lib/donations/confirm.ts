@@ -5,6 +5,7 @@ import { getOrgTossKeys } from "@/lib/toss/keys";
 import { notifyDonationThanks } from '@/lib/notifications/send';
 import { pushErpWebhook, toWebhookIncomeStatus } from "@/lib/erp/webhook";
 import { dispatchTrigger } from "@/lib/automation/dispatcher";
+import { promotePendingIdNumber } from "@/lib/receipt/pending-id";
 import { autoAllocateToPrograms } from "@/lib/erp/journal-builder";
 import { dispatchExternalWebhooks } from "@/lib/notifications/external-webhook";
 import { enqueueErpEvent } from "@/lib/erp/outbound-queue";
@@ -175,7 +176,7 @@ export async function confirmDonation(
     member_id?: string;
   };
   if (updatedRow.receipt_opt_in && updatedRow.rrn_pending_encrypted) {
-    void moveRrnToMember(supabase, confirmedPayment, updatedRow.member_id ?? null, updatedRow.rrn_pending_encrypted);
+    void promotePendingIdNumber(supabase, confirmedPayment.org_id, confirmedPayment.id);
   }
 
   return confirmedPayment;
@@ -350,35 +351,6 @@ async function notifyExternalChannels(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-
-async function moveRrnToMember(
-  supabase: SupabaseClient,
-  payment: ConfirmedPayment,
-  memberId: string | null,
-  rrnEncrypted: string,
-): Promise<void> {
-  try {
-    if (!memberId) return;
-    // 같은 키(RECEIPTS_ENCRYPTION_KEY)·같은 알고리즘이라 암호문을 그대로 옮긴다 — 평문을 만들지 않는다
-    const nowIso = new Date().toISOString();
-    const { error } = await supabase
-      .from("members")
-      .update({ id_number_encrypted: rrnEncrypted, rrn_consent_at: nowIso, updated_at: nowIso })
-      .eq("id", memberId)
-      .eq("org_id", payment.org_id);
-    if (error) {
-      console.error("[receipt] moveRrnToMember failed:", error.message);
-      return;
-    }
-    await supabase
-      .from("payments")
-      .update({ rrn_pending_encrypted: null, updated_at: nowIso })
-      .eq("id", payment.id)
-      .eq("org_id", payment.org_id);
-  } catch (err) {
-    console.error("[receipt] moveRrnToMember failed:", err);
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 

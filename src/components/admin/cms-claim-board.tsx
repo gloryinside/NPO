@@ -63,7 +63,9 @@ export function CmsClaimBoard({
   files: ClaimFileRow[];
 }) {
   const router = useRouter();
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(claimable.map((p) => p.id)));
+  // 출금동의 기록이 없는 정기 약정은 처음에 빼 둔다(동의 없이 출금하지 않도록) — 확인 후 직접 체크할 수 있다
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(claimable.filter((p) => !p.consentMissing).map((p) => p.id)));
+  const noConsent = claimable.filter((p) => p.consentMissing).length;
   const [busy, setBusy] = useState(false);
   const [resultFor, setResultFor] = useState<ClaimFileRow | null>(null);
 
@@ -116,6 +118,17 @@ export function CmsClaimBoard({
     { key: "amount", header: "출금금액", align: "right", render: (p) => won(p.amount), sortValue: (p) => p.amount },
     { key: "payDate", header: "출금 예정일", render: (p) => dot(p.payDate), sortValue: (p) => p.payDate },
     { key: "code", header: "결제번호", render: (p) => <span className="font-mono text-xs">{p.paymentCode}</span> },
+    {
+      key: "consent",
+      header: "출금동의",
+      render: (p) =>
+        p.consentMissing ? (
+          <span className="whitespace-nowrap rounded-full bg-[var(--warning-soft)] px-2 py-0.5 text-xs font-medium text-[var(--warning)]">기록 없음</span>
+        ) : (
+          <span className="text-xs text-[var(--muted-foreground)]">확인</span>
+        ),
+      sortValue: (p) => (p.consentMissing ? 0 : 1),
+    },
   ];
 
   const fileColumns: DataTableColumn<ClaimFileRow>[] = [
@@ -169,6 +182,13 @@ export function CmsClaimBoard({
       {waiting.length > 0 && (
         <p role="status" className="rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--text)]">
           결과를 기다리는 명단이 {waiting.length}개 있어요. 대행사 결과가 나오면 아래 ‘지난 청구 명단’에서 ‘결과 반영’을 눌러 주세요.
+        </p>
+      )}
+
+      {noConsent > 0 && (
+        <p role="status" className="rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--text)]">
+          출금동의 기록이 없는 자동이체가 {noConsent}건 있어 명단에서 빼 두었어요. 동의를 받았다면 ‘정기후원’ 목록의 ··· 메뉴에서
+          ‘출금동의 기록’을 남긴 뒤 다시 열거나, 확인 후 직접 체크해 주세요.
         </p>
       )}
 

@@ -61,12 +61,15 @@ export const TENANT_TABLES = [
   'in_kind_donations',
   'inquiries',
   'inquiry_replies',
+  'journey_sends',
+  'journey_steps',
   'mail_campaigns',
   'mail_dispatches',
   'matching_programs',
   'matching_requests',
   'member_audit_log',
   'member_badges',
+  'member_segments',
   'member_tag_assignments',
   'member_tags',
   'members',
@@ -108,6 +111,7 @@ export const TENANT_TABLES = [
   'transparency_disclosures',
   'virtual_account_mappings',
   'volunteer_activities',
+  'withdrawal_consents',
 ] as const
 
 export type TenantTable = (typeof TENANT_TABLES)[number]

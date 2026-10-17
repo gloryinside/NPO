@@ -49,7 +49,7 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/thank-you-letter",
+      "path": "/api/cron/donor-journey",
       "schedule": "0 2 * * *"
     },
     {

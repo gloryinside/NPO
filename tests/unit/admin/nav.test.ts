@@ -6,7 +6,8 @@ import { ADMIN_NAV, ALL_NAV_ITEMS, activeNavHref, hubOfHref, searchNav } from '@
 describe('관리자 메뉴 구조', () => {
   it('모든 메뉴는 실제 페이지가 있다(죽은 링크 없음)', () => {
     const missing = ALL_NAV_ITEMS.filter(
-      (it) => !fs.existsSync(path.join(process.cwd(), 'src/app/(admin)', it.href, 'page.tsx')),
+      // 2단계 인증 화면처럼 관리자 틀 밖(admin-auth)에 있는 페이지도 있다
+      (it) => !['(admin)', '(admin-auth)'].some((g) => fs.existsSync(path.join(process.cwd(), 'src/app', g, it.href, 'page.tsx'))),
     ).map((it) => it.href)
     expect(missing).toEqual([])
   })

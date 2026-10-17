@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminClaims } from "@/lib/auth/tenant-binding";
+import { adminMfaState, mfaRequiredBody } from "@/lib/auth/admin-mfa";
 import { createRequestClient } from "@/lib/supabase/request-client";
 
 /**
@@ -50,6 +51,11 @@ export async function requireAdminOrgForBuilder(
         { status: 403 }
       ),
     };
+  }
+
+  const mfa = await adminMfaState(sb, orgId);
+  if (mfa !== "ok") {
+    return { ok: false, response: NextResponse.json(mfaRequiredBody(mfa), { status: 403 }) };
   }
 
   if (options?.campaignId) {

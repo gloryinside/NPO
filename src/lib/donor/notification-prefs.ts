@@ -22,6 +22,8 @@ export interface NotificationPrefs {
   promise_status: boolean
   /** 캠페인 진행 소식/후기 알림 수신 여부. 기본 true */
   campaign_update: boolean
+  /** 후원자 여정 메시지(시작 환영·한 달 감사·기념일·생일) 수신 여부. 기본 true — lib/journey */
+  journey: boolean
 }
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
@@ -30,6 +32,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   receipt_issued: true,
   promise_status: true,
   campaign_update: true,
+  journey: true,
 }
 
 /**
@@ -47,6 +50,7 @@ export function parseNotificationPrefs(raw: unknown): NotificationPrefs {
     receipt_issued: getBool('receipt_issued'),
     promise_status: getBool('promise_status'),
     campaign_update: getBool('campaign_update'),
+    journey: getBool('journey'),
   }
 }
 
@@ -81,6 +85,7 @@ export async function updateNotificationPrefs(
     'receipt_issued',
     'promise_status',
     'campaign_update',
+    'journey',
   ]
   for (const key of keys) {
     if (typeof patch[key] === 'boolean') {

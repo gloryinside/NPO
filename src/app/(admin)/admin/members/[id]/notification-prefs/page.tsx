@@ -11,6 +11,7 @@ const LABELS: Record<string, string> = {
   receipt_issued: "영수증 발급",
   promise_status: "약정 상태 변경",
   campaign_update: "캠페인 소식",
+  journey: "감사·기념일 안내",
 };
 
 type RouteCtx = { params: Promise<{ id: string }> };

@@ -33,6 +33,10 @@ export type AuditAction =
   // 자동이체(CMS) 청구
   | "cms.claim_create"
   | "cms.claim_result"
+  | "cms.consent_record"
+  | "cms.consent_revoke"
+  | "journey.update"
+  | "settings.admin_mfa"
   // 캠페인
   | "campaign.create"
   | "campaign.update"

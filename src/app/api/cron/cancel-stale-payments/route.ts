@@ -22,11 +22,13 @@ export async function GET(req: NextRequest) {
     .from('payments')
     // 컬럼은 pay_status(예전 코드는 없는 status·order_id를 써서 매번 실패했다).
     // 토스에 넘어간 건(toss_payment_key 있음)과 입금 대기 중인 가상계좌는 건드리지 않는다.
+    // 계좌이체·자동이체(CMS)·직접 받음은 결제창이 없는 접수 건이라 시간이 지나도 버려진 것이 아니다
+    // (예전엔 CMS·직접 받음 일시후원이 30분 뒤 취소돼 청구 명단에서 사라졌다).
     .update({ pay_status: 'cancelled', updated_at: new Date().toISOString() })
     .eq('pay_status', 'pending')
     .is('toss_payment_key', null)
     .is('promise_id', null)
-    .not('pay_method', 'in', '(virtual_account,vbank,transfer)')
+    .not('pay_method', 'in', '(virtual_account,vbank,transfer,cms,manual)')
     .lt('created_at', cutoff)
     .select('id, payment_code');
 

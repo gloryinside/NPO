@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
  * 전역 fetch 를 감싸서 apiPrefix 로 시작하는 요청의 응답이:
  *   - 401, 또는 로그인 화면으로 리다이렉트됨 → 로그인 만료 안내
  *   - 403 CSRF_FORBIDDEN → 새로고침 안내
+ *   - 403 MFA_REQUIRED → 관리자 2단계 인증 화면으로 이동
  * 한 번 감지되면 다른 요청으로 다시 열리지 않게 한다.
  *
  * 관리자 API 일부는 페이지용 가드(requireAdminUser)를 써서 만료 시 401 대신 로그인 페이지로
@@ -67,8 +68,13 @@ export function SessionExpiredGuard({ apiPrefix, loginHref, ignore = [], autoRed
         return res;
       }
       if (res.status === 403) {
-        const data = (await res.clone().json().catch(() => null)) as { code?: string } | null;
+        const data = (await res.clone().json().catch(() => null)) as { code?: string; next?: string } | null;
         if (data?.code === "CSRF_FORBIDDEN") set("csrf");
+        // 관리자 2단계 인증이 필요해짐 — 코드 입력·등록 화면으로(정해진 주소로만)
+        if (data?.code === "MFA_REQUIRED" && (data.next === "/admin/mfa" || data.next === "/admin/mfa/setup")) {
+          stateRef.current = "expired";
+          window.location.assign(data.next);
+        }
       }
       return res;
     }

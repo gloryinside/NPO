@@ -11,7 +11,7 @@ import { formatKRW as formatAmount } from "@/lib/format";
 
 // ── Action dialog types ──────────────────────────────────────────────────────
 
-export type ActionType = "amount" | "suspend" | "cancel" | "resume" | "complete";
+export type ActionType = "amount" | "suspend" | "cancel" | "resume" | "complete" | "consent";
 
 export type ActiveAction = {
   promise: PromiseWithRelations;
@@ -333,6 +333,10 @@ export function ActionMenu({
   if (status === "suspended") {
     actions.push({ key: "resume", label: "재개", color: "var(--positive)" });
     actions.push({ key: "cancel", label: "해지", color: "var(--negative)" });
+  }
+  // 자동이체 — 출금동의 기록(등록 대기 약정은 기록하면 진행 중이 된다)
+  if (promise.pay_method === "cms" && (status === "pending_billing" || status === "active" || status === "suspended")) {
+    actions.unshift({ key: "consent", label: status === "pending_billing" ? "출금동의 기록 후 시작" : "출금동의 기록" });
   }
 
   if (actions.length === 0) return null;
