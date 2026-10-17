@@ -144,8 +144,15 @@ export async function createClaim(
     })),
   );
   if (lErr) {
+    // 줄 저장이 실패하면 빈 명단을 남기지 않는다. 23505 = 동시에 만든 다른 명단이 같은 결제를 먼저 담음(이중 출금 방지 인덱스)
     await supabase.from("cms_claim_files").delete().eq("id", file.id).eq("org_id", orgId);
-    return { ok: false, error: "청구 명단을 저장하지 못했습니다." };
+    return {
+      ok: false,
+      error:
+        lErr.code === "23505"
+          ? "그사이 다른 명단에 들어간 결제가 있습니다. 화면을 새로고침한 뒤 다시 만들어 주세요."
+          : "청구 명단을 저장하지 못했습니다.",
+    };
   }
 
   return { ok: true, claimFileId: file.id, filename, paymentCount: items.length, totalAmount, csv: buildClaimCsv(items, claimDate) };
