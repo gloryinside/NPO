@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { reportError, reportEvent } from "@/lib/observability/report";
 
@@ -16,6 +17,24 @@ import { reportError, reportEvent } from "@/lib/observability/report";
  *     })
  *   }
  */
+/**
+ * 크론 요청 인증 — Vercel Cron은 CRON_SECRET이 설정되면 `Authorization: Bearer <secret>`을 보낸다.
+ * 수동 실행 호환으로 `x-cron-secret` 헤더와 `?token=`도 받는다. 길이 차이·타이밍 누출 없는 비교.
+ */
+export function cronSecretMatches(req: Request, secret: string): boolean {
+  const auth = req.headers.get("authorization") ?? "";
+  const candidates = [
+    auth.startsWith("Bearer ") ? auth.slice(7) : "",
+    req.headers.get("x-cron-secret") ?? "",
+    new URL(req.url).searchParams.get("token") ?? "",
+  ];
+  const expected = Buffer.from(secret);
+  return candidates.some((c) => {
+    const got = Buffer.from(c);
+    return got.length === expected.length && timingSafeEqual(got, expected);
+  });
+}
+
 export type CronResult = Record<string, number | string | boolean>;
 
 export async function runCron(
@@ -32,11 +51,7 @@ export async function runCron(
     );
   }
 
-  const auth = req.headers.get("authorization") ?? "";
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token");
-  const provided = auth.startsWith("Bearer ") ? auth.slice(7) : token ?? "";
-  if (provided !== secret) {
+  if (!cronSecretMatches(req, secret)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 

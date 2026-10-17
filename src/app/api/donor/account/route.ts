@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revokePromiseBilling } from "@/lib/billing/revoke";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -145,9 +146,16 @@ export async function DELETE(req: NextRequest) {
   }
 
   // 2) 활성 약정 전체 해지 + billing key 폐기
-  //    여신전문금융업법상 카드 자동결제 정보는 즉시 삭제 — toss_billing_key를 NULL로
-  //    (PG사 측 키 폐기는 향후 웹훅 연동 시 보완 가능하나, 현재 DB에서 제거하면
-  //     이후 어떤 코드도 이 키로 결제를 시도할 수 없음)
+  //    여신전문금융업법상 카드 자동결제 정보는 즉시 삭제 — 토스에서 빌링키를 삭제하고 DB에서도 제거
+  {
+    const { data: keyed } = await admin
+      .from("promises")
+      .select("id")
+      .eq("org_id", session.member.org_id)
+      .eq("member_id", session.member.id)
+      .not("toss_billing_key", "is", null);
+    await revokePromiseBilling(admin, session.member.org_id, (keyed ?? []).map((p) => p.id as string));
+  }
   await admin
     .from("promises")
     .update({

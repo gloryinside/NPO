@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { generatePromiseCode } from "@/lib/codes";
+import { nextCode } from "@/lib/codes-seq";
 
 /**
  * POST /api/admin/promises
@@ -77,13 +77,12 @@ export async function POST(req: NextRequest) {
     );
 
   const year = new Date().getFullYear();
-  const { count: promiseCount } = await supabase
-    .from("promises")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", tenant.id);
-
-  const seq = (promiseCount ?? 0) + 1;
-  const promiseCode = generatePromiseCode(year, seq);
+  let promiseCode: string;
+  try {
+    promiseCode = await nextCode(supabase, tenant.id, "promise", year);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
   const nowIso = new Date().toISOString();
   const startDate = startedAt ?? nowIso.slice(0, 10);
 

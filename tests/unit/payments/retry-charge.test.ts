@@ -1,19 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-// chargeBillingKey / getOrgTossKeys mock — import 전에 정의
-vi.mock('@/lib/billing/toss-billing', () => ({
-  chargeBillingKey: vi.fn(),
+// chargePayment(공통 결제 처리) / getOrgTossKeys mock — import 전에 정의
+// DB 선점·조건부 기록은 charge-one 테스트에서 검증하고, 여기선 사전 검증·한도·결과 매핑만 본다
+vi.mock('@/lib/billing/charge-one', () => ({
+  chargePayment: vi.fn(),
 }))
 vi.mock('@/lib/toss/keys', () => ({
   getOrgTossKeys: vi.fn(),
 }))
 
 import { retryChargePayment } from '@/lib/payments/retry-charge'
-import { chargeBillingKey } from '@/lib/billing/toss-billing'
+import { chargePayment } from '@/lib/billing/charge-one'
 import { getOrgTossKeys } from '@/lib/toss/keys'
 
-const mockedCharge = chargeBillingKey as unknown as ReturnType<typeof vi.fn>
+const mockedCharge = chargePayment as unknown as ReturnType<typeof vi.fn>
 const mockedKeys = getOrgTossKeys as unknown as ReturnType<typeof vi.fn>
 
 /**
@@ -149,7 +150,7 @@ describe('retryChargePayment 사전 검증', () => {
 
 describe('retryChargePayment Toss 호출 결과', () => {
   it('성공 시 payments.update({pay_status:paid}) 호출 + success:true', async () => {
-    mockedCharge.mockResolvedValue({ success: true, paymentKey: 'tpk-123' })
+    mockedCharge.mockResolvedValue({ kind: 'paid', paymentKey: 'tpk-123', approvedAt: '2026-10-16T09:00:00+09:00' })
     const updateSpy: ReturnType<typeof vi.fn> = vi.fn(
       (_arg: Record<string, unknown>) => ({
         eq: () => Promise.resolve({ error: null }),
@@ -177,19 +178,11 @@ describe('retryChargePayment Toss 호출 결과', () => {
       expect(r.success).toBe(true)
       expect(r.tossPaymentKey).toBe('tpk-123')
     }
-    expect(updateSpy).toHaveBeenCalledTimes(1)
-    const updateArg = updateSpy.mock.calls[0]?.[0] as unknown as {
-      pay_status: string
-    }
-    expect(updateArg.pay_status).toBe('paid')
+    expect(mockedCharge).toHaveBeenCalledWith(expect.anything(), 'secret-abc', { paymentId: 'pay-ok-1', orgId: 'o1' }, 'manual')
   })
 
   it('실패 시 payments.update({pay_status:failed, fail_reason}) + success:false', async () => {
-    mockedCharge.mockResolvedValue({
-      success: false,
-      failureCode: 'INSUFFICIENT_FUNDS',
-      failureMessage: '카드 한도 초과',
-    })
+    mockedCharge.mockResolvedValue({ kind: 'failed', attempt: 1, nextRetryAt: null, message: '카드 한도 초과' })
     const updateSpy: ReturnType<typeof vi.fn> = vi.fn(
       (_arg: Record<string, unknown>) => ({
         eq: () => Promise.resolve({ error: null }),
@@ -217,19 +210,12 @@ describe('retryChargePayment Toss 호출 결과', () => {
       expect(r.success).toBe(false)
       expect(r.message).toBe('카드 한도 초과')
     }
-    expect(updateSpy).toHaveBeenCalledTimes(1)
-    const updateArg = updateSpy.mock.calls[0]?.[0] as unknown as {
-      pay_status: string
-      fail_reason: string
-    }
-    expect(updateArg.pay_status).toBe('failed')
-    expect(updateArg.fail_reason).toBe('카드 한도 초과')
   })
 })
 
 describe('retryChargePayment rate limit', () => {
   it('payment 기준 5회 초과 시 6번째는 RATE_LIMITED', async () => {
-    mockedCharge.mockResolvedValue({ success: true, paymentKey: 'tpk' })
+    mockedCharge.mockResolvedValue({ kind: 'paid', paymentKey: 'tpk', approvedAt: '2026-10-16T09:00:00+09:00' })
 
     // 각 호출마다 member_id는 unique — member 한도를 건드리지 않고 payment 한도만 검증
     for (let i = 0; i < 5; i++) {
@@ -271,7 +257,7 @@ describe('retryChargePayment rate limit', () => {
   })
 
   it('member 기준 3회 초과 시 4번째는 RATE_LIMITED (paymentId는 달라도)', async () => {
-    mockedCharge.mockResolvedValue({ success: true, paymentKey: 'tpk' })
+    mockedCharge.mockResolvedValue({ kind: 'paid', paymentKey: 'tpk', approvedAt: '2026-10-16T09:00:00+09:00' })
 
     // 같은 member, 다른 payment 3회 → 허용
     for (let i = 0; i < 3; i++) {

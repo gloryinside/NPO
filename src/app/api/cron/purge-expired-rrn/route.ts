@@ -1,3 +1,4 @@
+import { cronSecretMatches } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
@@ -7,14 +8,13 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
  * Nightly cron: nulls out resident_no_encrypted / business_no_encrypted on
  * receipts whose rrn_retention_expires_at has passed.
  *
- * Secured by CRON_SECRET env var (x-cron-secret header) so only Vercel's
+ * Secured by CRON_SECRET env var (Authorization: Bearer, via cronSecretMatches) so only Vercel's
  * cron infrastructure can call it. Consistent with /api/cron/process-payments.
  */
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
-    const header = req.headers.get('x-cron-secret') ?? '';
-    if (header !== cronSecret) {
+        if (!cronSecretMatches(req, cronSecret)) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
   } else {

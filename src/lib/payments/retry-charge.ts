@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { chargeBillingKey } from '@/lib/billing/toss-billing'
+import { chargePayment } from '@/lib/billing/charge-one'
 import { getOrgTossKeys } from '@/lib/toss/keys'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -122,50 +122,22 @@ export async function retryChargePayment(
     return { ok: false, error: 'TOSS_UNAVAILABLE' }
   }
 
-  // 6. 재청구
-  const result = await chargeBillingKey(keys.tossSecretKey, billingKey, {
-    customerKey,
-    amount: row.amount,
-    orderId: row.payment_code,
-    orderName: '정기후원 재시도',
-  })
+  // 6. 재청구 — 공통 처리(선점·멱등키·금액 검증·조건부 기록)를 거친다
+  const outcome = await chargePayment(supabase, keys.tossSecretKey, { paymentId, orgId }, 'manual')
 
-  // 7. 결과 반영
-  const nowIso = new Date().toISOString()
-  if (result.success) {
-    await supabase
-      .from('payments')
-      .update({
-        pay_status: 'paid',
-        toss_payment_key: result.paymentKey,
-        approved_at: nowIso,
-        deposit_date: nowIso.slice(0, 10),
-        fail_reason: null,
-        updated_at: nowIso,
-      })
-      .eq('id', paymentId)
-
-    return {
-      ok: true,
-      success: true,
-      message: '재청구 성공',
-      tossPaymentKey: result.paymentKey,
-    }
-  }
-
-  // 실패: 기록만 업데이트, 상태는 failed로 고정
-  await supabase
-    .from('payments')
-    .update({
-      pay_status: 'failed',
-      fail_reason: result.failureMessage,
-      updated_at: nowIso,
-    })
-    .eq('id', paymentId)
-
-  return {
-    ok: true,
-    success: false,
-    message: result.failureMessage,
+  switch (outcome.kind) {
+    case 'paid':
+      return { ok: true, success: true, message: '재청구 성공', tossPaymentKey: outcome.paymentKey }
+    case 'failed':
+    case 'suspended':
+    case 'needs_review':
+      return { ok: true, success: false, message: outcome.message }
+    case 'unknown':
+      return { ok: true, success: false, message: '결제 결과를 확인하지 못했습니다. 잠시 후 자동으로 다시 확인합니다.' }
+    case 'skipped':
+      // 다른 곳에서 처리 중이거나 이미 처리됨
+      return outcome.reason === 'already_processing_or_done'
+        ? { ok: false, error: 'INVALID_STATUS' }
+        : { ok: false, error: 'BILLING_KEY_MISSING' }
   }
 }

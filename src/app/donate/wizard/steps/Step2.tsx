@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { loadTossPayments } from '@tosspayments/payment-sdk';
+import { toast } from 'sonner';
 import { sanitizeHtml } from '@/lib/campaign-builder/sanitize-html';
 import PayMethodSelector from '@/components/public/donation/PayMethodSelector';
 import AgreementSection from '@/components/public/donation/AgreementSection';
@@ -122,11 +123,10 @@ export function Step2({
   const [identityVerified, setIdentityVerified] = useState(false);
   const [identityName, setIdentityName] = useState('');
   const [ag, setAg] = useState({ terms: false, privacy: false, receipt: false, marketing: false });
+  // 연말정산 간소화 반영용 주민등록번호 — 영수증 신청 시에만, 별도 동의 필수
+  const [rrn, setRrn] = useState('');
+  const [rrnConsent, setRrnConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardPassword, setCardPassword] = useState('');
-  const [cardBirth, setCardBirth] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -157,7 +157,12 @@ export function Step2({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit() {
-    if (!ag.terms || !ag.privacy) return alert('필수 약관에 동의해 주세요.');
+    if (!ag.terms || !ag.privacy) return void toast.error('필수 약관에 동의해 주세요.');
+    const rrnDigits = rrn.replace(/\D/g, '');
+    if (receipt && rrnDigits) {
+      if (rrnDigits.length !== 13) return void toast.error('주민등록번호 13자리를 확인해 주세요.');
+      if (!rrnConsent) return void toast.error('주민등록번호 수집·이용(고유식별정보 처리)에 동의해 주세요.');
+    }
     setSubmitting(true);
     window.gtag?.('event', 'add_payment_info', { value: state.amount, currency: 'KRW' });
 
@@ -176,21 +181,16 @@ export function Step2({
         payMethod: method,
         receiptOptIn: receipt,
         identityVerified: receipt ? identityVerified : undefined,
+        ...(receipt && rrnDigits ? { residentNo: rrnDigits, rrnConsent } : {}),
         idempotencyKey: state.idempotencyKey,
-        ...(state.type === 'regular' && method === 'card' ? {
-          cardNumber,
-          cardExpirationMonth: cardExpiry.split('/')[0],
-          cardExpirationYear: cardExpiry.split('/')[1],
-          cardPassword,
-          customerIdentityNumber: cardBirth,
-        } : {}),
+        // 카드 정기후원은 카드번호를 보내지 않는다 — 토스 결제창(requestBillingAuth)에서 등록
       }),
     });
     setSubmitting(false);
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return alert((err as Record<string, string>)?.error ?? '후원 준비 중 오류가 발생했습니다.');
+      return void toast.error((err as Record<string, string>)?.error ?? '후원 준비 중 오류가 발생했습니다.');
     }
 
     const data = (await res.json()) as {
@@ -201,6 +201,7 @@ export function Step2({
       orderName?: string;
       tossClientKey?: string;
       billingKeyFailed?: boolean;
+      billingAuth?: { customerKey: string; promiseId: string };
     };
 
     // 오프라인 결제(transfer/cms/manual) — 계좌 안내 후 Step3로 이동
@@ -210,10 +211,32 @@ export function Step2({
       return;
     }
 
-    // 정기 후원은 prepare 내부에서 billingKey 발급으로 완료 — 즉시 Toss 결제 없음
+    // 카드 정기후원 — 토스 결제창에서 카드 등록(본인인증 포함). 완료되면 /donate/billing/success로 돌아와
+    // 서버가 authKey로 빌링키를 발급한다. 카드 정보는 우리 서버를 거치지 않는다.
+    if (state.type === 'regular' && data.billingAuth && data.tossClientKey) {
+      try {
+        const tossPayments = await loadTossPayments(data.tossClientKey);
+        const back = new URL('/donate/billing/success', window.location.origin);
+        back.searchParams.set('promiseId', data.billingAuth.promiseId);
+        await tossPayments.requestBillingAuth('카드', {
+          customerKey: data.billingAuth.customerKey,
+          customerName: info.name.trim(),
+          customerEmail: info.email.trim() || undefined,
+          successUrl: back.toString(),
+          failUrl: `${window.location.origin}/donate/billing/fail`,
+        });
+      } catch (err) {
+        // 사용자가 결제창을 닫으면 여기로 — 약정은 카드 등록 대기로 남아 나중에 등록 가능
+        const msg = err instanceof Error ? err.message : '카드 등록 중 오류가 발생했습니다.';
+        toast.error(msg);
+      }
+      return;
+    }
+
+    // 정기 후원(오프라인·키인 하위 호환) — 즉시 Toss 결제 없음
     if (state.type === 'regular') {
       if (data.billingKeyFailed) {
-        alert('카드 등록에 실패했습니다. 카드 정보를 확인한 뒤 다시 시도해 주세요.');
+        toast.error('카드 등록에 실패했습니다.', { description: '카드 정보를 확인한 뒤 다시 시도해 주세요.' });
         return;
       }
       setState({ ...state, donorInfo: info, paymentMethod: method, customFields, receiptOptIn: receipt, paymentCode: data.paymentCode });
@@ -223,12 +246,12 @@ export function Step2({
 
     // 일시 후원 + 온라인 결제수단 — Toss SDK 호출
     if (!data.tossClientKey || !data.orderId || !data.amount) {
-      alert('결제 준비 응답이 올바르지 않습니다.');
+      toast.error('결제 준비 응답이 올바르지 않습니다.');
       return;
     }
 
     if (!(method in TOSS_METHOD_MAP)) {
-      alert('지원하지 않는 결제수단입니다.');
+      toast.error('지원하지 않는 결제수단입니다.');
       return;
     }
     const tossMethod = TOSS_METHOD_MAP[method as TossMethodKey];
@@ -248,7 +271,7 @@ export function Step2({
       // 사용자가 취소한 경우 Toss SDK가 promise reject하며 catch 블록으로 진입.
     } catch (err) {
       const msg = err instanceof Error ? err.message : '결제 진행 중 오류가 발생했습니다.';
-      alert(msg);
+      toast.error(msg);
     }
   }
 
@@ -287,17 +310,10 @@ export function Step2({
       />
 
       {state.type === 'regular' && method === 'card' && (
-        <div className="space-y-3 rounded-lg p-4 bg-[var(--surface-2)] border border-[var(--border)]">
-          <p className="text-xs font-medium text-[var(--text)]">정기결제 카드 정보</p>
-          <Input label="카드번호 (16자리)" value={cardNumber} onChange={(v) => setCardNumber(v.replace(/\D/g, '').slice(0, 16))} />
-          <div className="grid grid-cols-2 gap-2">
-            <Input label="유효기간 (MM/YY)" value={cardExpiry} onChange={(v) => setCardExpiry(v)} />
-            <Input label="비밀번호 앞 2자리" value={cardPassword} type="password" onChange={(v) => setCardPassword(v.replace(/\D/g, '').slice(0, 2))} />
-          </div>
-          <Input label="생년월일 (6자리)" value={cardBirth} onChange={(v) => setCardBirth(v.replace(/\D/g, '').slice(0, 6))} />
-          <p className="text-xs text-[var(--muted-foreground)]">
-            매월 자동결제를 위해 카드 정보가 필요합니다. 카드 정보는 저장되지 않으며 빌링키 발급에만 사용됩니다.
-          </p>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4 text-xs text-[var(--muted-foreground)]">
+          <p className="mb-1 font-semibold text-[var(--text)]">정기결제 카드 등록</p>
+          다음 단계에서 <b>토스페이먼츠 결제창</b>이 열립니다. 카드 정보와 본인인증은 결제창에서 입력하며,
+          우리 기관 서버에는 카드번호가 저장되지 않습니다.
         </div>
       )}
 
@@ -336,7 +352,7 @@ export function Step2({
                 failUrl: `${window.location.origin}/donate/wizard?identity=fail`,
               }),
             });
-            if (!res.ok) return alert('본인인증 요청 실패');
+            if (!res.ok) return void toast.error('본인인증 요청 실패');
             const { txId, authUrl } = await res.json();
             sessionStorage.setItem('identity_txId', txId);
             window.open(authUrl, '_blank', 'width=500,height=700');
@@ -349,6 +365,31 @@ export function Step2({
       {receipt && identityVerified && (
         <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-[var(--accent-soft)] text-[var(--accent)]">
           <span>✓</span> 본인인증 완료 ({identityName})
+        </div>
+      )}
+      {receipt && (
+        <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+          <Input
+            label="주민등록번호 (연말정산 간소화 반영용, 선택)"
+            value={rrn}
+            type="password"
+            onChange={(v) => setRrn(v.replace(/[^0-9-]/g, '').slice(0, 14))}
+          />
+          <label className="flex items-start gap-2 text-xs text-[var(--text)]">
+            <input
+              type="checkbox"
+              checked={rrnConsent}
+              onChange={(e) => setRrnConsent(e.target.checked)}
+              className="mt-0.5 accent-[var(--accent)]"
+            />
+            <span>
+              <b>[필수·주민등록번호 입력 시] 고유식별정보 수집·이용 동의</b>
+              <br />
+              목적: 기부금영수증 발급 및 국세청 연말정산 간소화 자료 제출 · 항목: 주민등록번호 ·
+              보유기간: 기부금영수증 발급일로부터 5년(세법상 보관 의무) · 동의하지 않으실 수 있으며,
+              이 경우 영수증은 발급되지만 연말정산 간소화에는 자동 반영되지 않습니다.
+            </span>
+          </label>
         </div>
       )}
 

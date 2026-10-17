@@ -1,3 +1,4 @@
+import { cronSecretMatches } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { notifyBillingUpcoming } from '@/lib/notifications/send';
@@ -5,8 +6,7 @@ import { notifyBillingUpcoming } from '@/lib/notifications/send';
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
-    const header = req.headers.get('x-cron-secret') ?? '';
-    if (header !== cronSecret) {
+        if (!cronSecretMatches(req, cronSecret)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   } else if (process.env.NODE_ENV === 'production') {

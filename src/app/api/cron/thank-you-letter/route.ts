@@ -54,7 +54,7 @@ export async function GET(req: Request) {
           <p>한 달 전 보내주신 <b>${Number(r.amount ?? 0).toLocaleString()}원</b>이 지금도 소중하게 사용되고 있습니다.</p>
           <p>후원자님의 온기가 만든 변화를 임팩트 페이지에서 확인해보세요.</p>
           <p style="margin-top:24px">
-            <a href="/donor/impact" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">나의 임팩트 →</a>
+            <a href="/donor/impact" style="background:#009944;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">나의 임팩트 →</a>
           </p>
           <p style="font-size:13px;color:#6b7280;margin-top:16px">감사합니다.</p>
         </div>

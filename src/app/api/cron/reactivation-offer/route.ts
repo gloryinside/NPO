@@ -59,7 +59,7 @@ export async function GET(req: Request) {
               <p>${m.name ?? "후원자"}님, 후원을 중단하신 지 ${days}일이 되었습니다.</p>
               <p>이전 약정 정보를 가볍게 복원할 수 있도록 준비해두었어요.</p>
               <p style="margin-top:24px">
-                <a href="/donor" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">마이페이지로 이동 →</a>
+                <a href="/donor" style="background:#009944;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">마이페이지로 이동 →</a>
               </p>
             </div>
           `,

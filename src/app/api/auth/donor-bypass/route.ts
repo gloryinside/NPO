@@ -7,7 +7,7 @@ import {
   classifyIdentifier,
   isDonorAuthBypassEnabled,
 } from '@/lib/auth/donor-bypass'
-import { generateMemberCode } from '@/lib/codes'
+import { nextCode } from '@/lib/codes-seq'
 
 /**
  * POST /api/auth/donor-bypass
@@ -68,23 +68,8 @@ export async function POST(req: NextRequest) {
     memberId = existing.id as string
   } else {
     // 2) 없으면 최소 정보로 신규 생성 (dev 전용)
-    const { data: lastMember } = await supabase
-      .from('members')
-      .select('member_code')
-      .eq('org_id', tenant.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
     const year = new Date().getFullYear()
-    // 다음 seq는 (마지막 code의 뒤 5자리 + 1) 또는 1
-    let nextSeq = 1
-    const lastCode = lastMember?.member_code as string | undefined
-    const parsed = lastCode?.match(/^M-(\d{4})(\d{5})$/)
-    if (parsed && Number(parsed[1]) === year) {
-      nextSeq = Number(parsed[2]) + 1
-    }
-    const memberCode = generateMemberCode(year, nextSeq)
+    const memberCode = await nextCode(supabase, tenant.id, 'member', year)
 
     const insertRow: Record<string, unknown> = {
       org_id: tenant.id,

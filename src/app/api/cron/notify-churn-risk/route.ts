@@ -1,3 +1,4 @@
+import { cronSecretMatches } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { fetchChurnRiskMembers } from '@/lib/stats/churn-risk'
@@ -17,8 +18,8 @@ import { getOrgSettings } from '@/lib/org/settings'
  * 재발송 방지는 이메일 발신 로그 테이블 없이 단순히 주 1회 cron 스케줄로 대체.
  */
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || !cronSecretMatches(req, cronSecret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest) {
           상세 내역 및 개별 상담은 관리자 통계 페이지에서 확인하실 수 있습니다.
         </p>
         <p style="margin-top:8px;">
-          <a href="${baseUrl()}/admin/stats" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+          <a href="${baseUrl()}/admin/stats" style="display:inline-block;background:#009944;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
             통계 대시보드 열기 →
           </a>
         </p>

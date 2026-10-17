@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { generatePaymentCode } from "@/lib/codes";
+import { nextCode } from "@/lib/codes-seq";
 
 /**
  * POST /api/admin/payments
@@ -68,17 +68,12 @@ export async function POST(req: NextRequest) {
 
   // payment_code 생성
   const year = new Date().getFullYear();
-  const yearStart = `${year}-01-01`;
-  const yearEnd = `${year + 1}-01-01`;
-  const { count } = await supabase
-    .from("payments")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", tenant.id)
-    .gte("created_at", yearStart)
-    .lt("created_at", yearEnd);
-
-  const seq = (count ?? 0) + 1;
-  const paymentCode = generatePaymentCode(year, seq);
+  let paymentCode: string;
+  try {
+    paymentCode = await nextCode(supabase, tenant.id, "payment", year);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
   const nowIso = new Date().toISOString();
 
   const { data: payment, error } = await supabase

@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto'
 import { getDonorSession } from '@/lib/auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getOrgTossKeys } from '@/lib/toss/keys'
-import { issueBillingKey } from '@/lib/billing/toss-billing'
+import { deleteBillingKey, issueBillingKey } from '@/lib/billing/toss-billing'
+import { openBillingKey, sealBillingKey } from '@/lib/billing/billing-key-store'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
 import { checkCsrf } from '@/lib/security/csrf'
 
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const { data: promise } = await supabase
     .from('promises')
-    .select('id, org_id, member_id, type, status')
+    .select('id, org_id, member_id, type, status, toss_billing_key, suspended_until')
     .eq('id', promiseId)
     .eq('member_id', session.member.id)
     .eq('org_id', session.member.org_id)
@@ -89,6 +90,11 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       { error: '정기후원 약정에서만 결제수단을 변경할 수 있습니다.' },
       { status: 400 },
     )
+  }
+
+  // 끝난 약정에는 새 카드를 묶지 않는다
+  if (promise.status === 'cancelled' || promise.status === 'completed') {
+    return NextResponse.json({ error: '종료된 약정은 결제수단을 변경할 수 없습니다.' }, { status: 409 })
   }
 
   const keys = await getOrgTossKeys(promise.org_id)
@@ -115,25 +121,37 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     )
   }
 
+  // 결제 실패로 정지된 약정(후원자가 직접 멈춘 suspended_until 없음)은 새 카드 등록 시 재개
+  const reactivate =
+    promise.status === 'pending_billing' || (promise.status === 'suspended' && !promise.suspended_until)
   const { error: updateError } = await supabase
     .from('promises')
     .update({
-      toss_billing_key: result.billingKey,
+      toss_billing_key: await sealBillingKey(result.billingKey),
       customer_key: customerKey,
-      // pending_billing 상태였다면 active로 복원
-      status: promise.status === 'pending_billing' ? 'active' : promise.status,
+      status: reactivate ? 'active' : promise.status,
       // G-D50: 카드 만료일 저장 (사전 알림용)
       card_expiry_year: normalizeExpiryYear(cardExpirationYear),
       card_expiry_month: Number(cardExpirationMonth),
     })
     .eq('id', promiseId)
     .eq('member_id', session.member.id)
+    .eq('org_id', session.member.org_id)
 
   if (updateError) {
+    // 저장 실패 — 방금 발급한 새 키를 토스에서 지워 고아 키를 남기지 않는다
+    await deleteBillingKey(keys.tossSecretKey, result.billingKey)
     return NextResponse.json(
       { error: 'DB 업데이트 실패. 관리자에게 문의해주세요.' },
       { status: 500 },
     )
+  }
+
+  // 예전 키 폐기 — 토스 규격: 쓰지 않는 빌링키는 삭제. 실패해도 새 카드는 이미 적용됨(로그만)
+  const oldKey = await openBillingKey(promise.toss_billing_key)
+  if (oldKey && oldKey !== result.billingKey) {
+    const del = await deleteBillingKey(keys.tossSecretKey, oldKey)
+    if (!del.ok) console.error(`[billing-key] promise ${promiseId}: 이전 빌링키 삭제 실패`, del.error)
   }
 
   return NextResponse.json({ ok: true })

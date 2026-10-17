@@ -1,3 +1,4 @@
+import { cronSecretMatches } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send-email'
@@ -16,8 +17,8 @@ import { logNotification } from '@/lib/email/notification-log'
  * 현재는 campaign_closed_thanks만 재시도 대상 (church_risk_weekly는 주간 cron이 알아서 처리).
  */
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || !cronSecretMatches(req, cronSecret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -105,7 +106,7 @@ export async function GET(req: NextRequest) {
           <h1 style="color:#1a3a5c;">감사합니다, ${escapeHtml(name)}님</h1>
           <p>지난번 발송이 실패하여 다시 보내드립니다.</p>
           <p><strong>${escapeHtml(campaign.title as string)}</strong> 캠페인이 목표를 달성했습니다.</p>
-          <p>귀하의 누적 후원: <strong style="color:#7c3aed;">${totalAmount.toLocaleString('ko-KR')}원</strong></p>
+          <p>귀하의 누적 후원: <strong style="color:#009944;">${totalAmount.toLocaleString('ko-KR')}원</strong></p>
         </div>
       `,
     })

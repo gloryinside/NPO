@@ -1,3 +1,4 @@
+import { cronSecretMatches } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send-email'
@@ -18,8 +19,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * 모두 status = 'closed'로 전환. 후원자/관리자 알림은 별도(다음 스프린트).
  */
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || !cronSecretMatches(req, cronSecret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -208,9 +209,9 @@ function renderThanksEmail(params: {
         여러분의 따뜻한 후원 덕분에 <strong>${escapeHtml(params.campaignTitle)}</strong> 캠페인이
         목표 금액 <strong>${params.goal.toLocaleString('ko-KR')}원</strong>을 달성하여 성공적으로 마감되었습니다.
       </p>
-      <div style="background:#f8fafc;border-left:4px solid #7c3aed;padding:16px 20px;margin:24px 0;border-radius:4px;">
+      <div style="background:#f8fafc;border-left:4px solid #009944;padding:16px 20px;margin:24px 0;border-radius:4px;">
         <p style="margin:0 0 8px;font-size:13px;color:#64748b;">당신의 후원</p>
-        <p style="margin:0;font-size:22px;font-weight:700;color:#7c3aed;">
+        <p style="margin:0;font-size:22px;font-weight:700;color:#009944;">
           ${params.totalAmount.toLocaleString('ko-KR')}원
         </p>
       </div>

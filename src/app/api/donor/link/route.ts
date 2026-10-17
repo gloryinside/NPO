@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getTenant } from "@/lib/tenant/context";
 import { findReferrerByCode } from "@/lib/donor/referral";
 import { isDonorAuthBypassEnabled } from "@/lib/auth/donor-bypass";
-import { generateMemberCode } from "@/lib/codes";
+import { nextCode } from "@/lib/codes-seq";
 import { checkCsrf } from "@/lib/security/csrf";
 
 /**
@@ -109,20 +109,8 @@ export async function POST(req: NextRequest) {
   if (!member) {
     // 개발용 우회 모드: member 없어도 자동 생성 후 연결
     if (isDonorAuthBypassEnabled()) {
-      const { data: lastMember } = await admin
-        .from("members")
-        .select("member_code")
-        .eq("org_id", tenant.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
       const year = new Date().getFullYear();
-      let nextSeq = 1;
-      const lastCode = lastMember?.member_code as string | undefined;
-      const parsed = lastCode?.match(/^M-(\d{4})(\d{5})$/);
-      if (parsed && Number(parsed[1]) === year) nextSeq = Number(parsed[2]) + 1;
-      const memberCode = generateMemberCode(year, nextSeq);
+      const memberCode = await nextCode(admin, tenant.id, "member", year);
 
       const { data: created, error: createErr } = await admin
         .from("members")

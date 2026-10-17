@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { generatePromiseCode, generatePaymentCode } from '@/lib/codes'
+import { nextCode } from '@/lib/codes-seq'
 
 /**
  * Phase 7-D-2-a: 관리자 수기 납부 생성.
@@ -78,14 +78,15 @@ export async function createManualPayment(
 
   const year = new Date().getFullYear()
 
-  // 2. promises seq 계산 + INSERT (type=onetime, status=completed)
-  const { count: promiseCount } = await supabase
-    .from('promises')
-    .select('*', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-
-  const promiseSeq = (promiseCount ?? 0) + 1
-  const promiseCode = generatePromiseCode(year, promiseSeq)
+  // 2. 번호 원자 발번(기관·연도 카운터) + INSERT (type=onetime, status=completed)
+  let promiseCode: string
+  let paymentCode: string
+  try {
+    promiseCode = await nextCode(supabase, orgId, 'promise', year)
+    paymentCode = await nextCode(supabase, orgId, 'payment', year)
+  } catch {
+    return { ok: false, error: 'INSERT_FAILED' }
+  }
 
   const { data: promiseInsert, error: promiseErr } = await supabase
     .from('promises')
@@ -110,14 +111,7 @@ export async function createManualPayment(
 
   const promiseId = promiseInsert.id as string
 
-  // 3. payments seq 계산 + INSERT
-  const { count: paymentCount } = await supabase
-    .from('payments')
-    .select('*', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-
-  const paymentSeq = (paymentCount ?? 0) + 1
-  const paymentCode = generatePaymentCode(year, paymentSeq)
+  // 3. payments INSERT
 
   const { data: paymentInsert, error: paymentErr } = await supabase
     .from('payments')

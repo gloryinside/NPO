@@ -8,10 +8,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * createManualPayment는 순차적으로 다음 호출을 한다:
- *   1. promises.select({count, head}).eq(org_id)          → count
+ *   1. rpc('next_code_seq', promise / payment)            → 마지막 번호(현재 개수 + 1로 흉내)
  *   2. promises.insert(...).select(id).single()            → {id}
- *   3. payments.select({count, head}).eq(org_id)           → count
- *   4. payments.insert(...).select(id).single()            → {id}
+ *   3. payments.insert(...).select(id).single()            → {id}
  * 실패 시:
  *   5. promises.delete().eq(id)                            → rollback
  */
@@ -76,6 +75,12 @@ function createStub(opts: {
 
   const sb = {
     from: vi.fn((t: 'promises' | 'payments') => tableSpies[t]),
+    rpc: vi.fn((_fn: string, args: { p_kind: string; p_count?: number }) =>
+      Promise.resolve({
+        data: (args.p_kind === 'promise' ? (opts.promiseCount ?? 0) : (opts.paymentCount ?? 0)) + (args.p_count ?? 1),
+        error: null,
+      }),
+    ),
   } as unknown as SupabaseClient
 
   return { sb, deleteSpy, tableSpies }

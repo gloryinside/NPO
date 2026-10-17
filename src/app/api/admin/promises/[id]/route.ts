@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revokePromiseBilling } from "@/lib/billing/revoke";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -118,6 +119,11 @@ export async function PATCH(
       { error: "약정을 찾을 수 없습니다." },
       { status: 404 }
     );
+
+  // 해지·종료 → 토스 빌링키 삭제 + 남은 미결제 청구 취소
+  if (status === "cancelled" || status === "completed") {
+    await revokePromiseBilling(supabase, tenant.id, [id]);
+  }
 
   // 감사 로그 — 상태 변경만 기록 (amount 단일 변경은 noise)
   if (status) {

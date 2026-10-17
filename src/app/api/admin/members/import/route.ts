@@ -3,7 +3,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseCsv } from "@/lib/csv";
-import { generateMemberCode } from "@/lib/codes";
+import { reserveCodes } from "@/lib/codes-seq";
 import { logAudit } from "@/lib/audit";
 
 /**
@@ -18,7 +18,7 @@ import { logAudit } from "@/lib/audit";
  * 동작:
  *   - phone 또는 email 이 기존 후원자와 일치하면 skip (중복 방지)
  *   - 이름 누락된 행은 skip (error 로 집계)
- *   - member_code 는 현재 org 의 해당연도 개수 + 1 부터 순차 할당
+ *   - member_code 는 기관·연도 카운터에서 필요한 개수만큼 한 번에 예약해 순차 할당
  *
  * 반환: { created, skipped, errors: [{row, reason}] }
  */
@@ -132,24 +132,12 @@ export async function POST(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
   const year = new Date().getFullYear();
-  const yearStart = `${year}-01-01`;
-  const yearEnd = `${year + 1}-01-01`;
+  // 기존 phone/email 셋 로드
+  const { data: existingContacts } = await supabase
+    .from("members")
+    .select("phone, email")
+    .eq("org_id", tenant.id);
 
-  // 현재 org 의 해당연도 member 개수 + 기존 phone/email 셋 로드
-  const [{ count: seqBase }, { data: existingContacts }] = await Promise.all([
-    supabase
-      .from("members")
-      .select("*", { count: "exact", head: true })
-      .eq("org_id", tenant.id)
-      .gte("created_at", yearStart)
-      .lt("created_at", yearEnd),
-    supabase
-      .from("members")
-      .select("phone, email")
-      .eq("org_id", tenant.id),
-  ]);
-
-  let nextSeq = (seqBase ?? 0) + 1;
   const phones = new Set(
     (existingContacts ?? [])
       .map((m: { phone: string | null }) => m.phone?.trim())
@@ -195,10 +183,8 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    const memberCode = generateMemberCode(year, nextSeq++);
     toInsert.push({
       org_id: tenant.id,
-      member_code: memberCode,
       name: rec.name.trim(),
       phone: rec.phone ?? null,
       email: rec.email ?? null,
@@ -211,6 +197,17 @@ export async function POST(req: NextRequest) {
 
     if (rec.phone) phones.add(rec.phone);
     if (rec.email) emails.add(rec.email);
+  }
+
+  // 번호를 한 번에 예약해 붙인다
+  if (toInsert.length > 0) {
+    let codes: string[];
+    try {
+      codes = await reserveCodes(supabase, tenant.id, "member", year, toInsert.length);
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message, created, skipped, errors }, { status: 500 });
+    }
+    toInsert.forEach((row, i) => { row.member_code = codes[i]; });
   }
 
   // 배치 insert (200건 단위로 분할)

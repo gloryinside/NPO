@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { checkCsrf } from "@/lib/security/csrf";
 import { hasAnyRole } from "@/lib/auth/admin-rbac";
 import { logAudit } from "@/lib/audit";
-import { generateMemberCode } from "@/lib/codes";
+import { nextCode } from "@/lib/codes-seq";
 
 /**
  * G-D184: 회원 일괄 초대.
@@ -60,21 +60,8 @@ export async function POST(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
-  // 기존 member_code 의 최대 seq 기준
+  // member_code 는 기관·연도 카운터로 원자 발번(동시 가입·다른 형식 번호와 겹치지 않음)
   const year = new Date().getFullYear();
-  const { data: lastRows } = await supabase
-    .from("members")
-    .select("member_code")
-    .eq("org_id", tenant.id)
-    .like("member_code", `M-${year}%`)
-    .order("member_code", { ascending: false })
-    .limit(1);
-  let nextSeq = 1;
-  const lastCode = (lastRows?.[0]?.member_code ?? null) as string | null;
-  const parsed = lastCode?.match(/^M-(\d{4})(\d{5})$/);
-  if (parsed && Number(parsed[1]) === year) {
-    nextSeq = Number(parsed[2]) + 1;
-  }
 
   let created = 0;
   let updated = 0;
@@ -111,7 +98,13 @@ export async function POST(req: NextRequest) {
       if (error) failed++;
       else updated++;
     } else {
-      const code = generateMemberCode(year, nextSeq++);
+      let code: string;
+      try {
+        code = await nextCode(supabase, tenant.id, "member", year);
+      } catch {
+        failed++;
+        continue;
+      }
       const { error } = await supabase.from("members").insert({
         org_id: tenant.id,
         member_code: code,

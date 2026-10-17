@@ -88,7 +88,7 @@ export async function GET(req: Request) {
             <tr><td style="padding:8px 0">결제 금액</td><td style="text-align:right;font-weight:600">${paidAmount.toLocaleString()}원</td></tr>
             <tr><td style="padding:8px 0">환불 건수</td><td style="text-align:right;color:#b91c1c">${refundCount.toLocaleString()}건</td></tr>
             <tr><td style="padding:8px 0">환불 금액</td><td style="text-align:right;color:#b91c1c">${refundAmount.toLocaleString()}원</td></tr>
-            <tr style="border-top:1px solid #e5e7eb"><td style="padding:8px 0;font-weight:700">순 수입</td><td style="text-align:right;font-weight:700;color:#7c3aed">${net.toLocaleString()}원</td></tr>
+            <tr style="border-top:1px solid #e5e7eb"><td style="padding:8px 0;font-weight:700">순 수입</td><td style="text-align:right;font-weight:700;color:#009944">${net.toLocaleString()}원</td></tr>
           </table>
           <p style="font-size:13px;color:#6b7280;margin-top:16px">
             자세한 리포트는 /admin/reports/monthly 에서 CSV 다운로드하실 수 있습니다.

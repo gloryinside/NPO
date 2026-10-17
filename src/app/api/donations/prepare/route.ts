@@ -1,11 +1,15 @@
+import { insertPromise } from "@/lib/billing/promise-create";
+import { sealBillingKey } from "@/lib/billing/billing-key-store";
+import { kstParts, kstToday } from "@/lib/billing/kst";
+import { checkRrn } from "@/lib/receipt/validation";
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { getTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { generatePaymentCode, generateMemberCode } from "@/lib/codes";
+import { nextCode } from "@/lib/codes-seq";
 import { getOrgTossKeys } from "@/lib/toss/keys";
 import { sendOfflineDonationReceived, sendBillingKeyFailedEmail } from "@/lib/email";
-import { issueBillingKey } from "@/lib/billing/toss-billing";
+import { deleteBillingKey, issueBillingKey } from "@/lib/billing/toss-billing";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 /**
@@ -16,8 +20,7 @@ import { getClientIp, rateLimit } from "@/lib/rate-limit";
  * - 후원자를 members 테이블에 upsert 하며
  * - idempotency_key 와 payment_code 를 발급해 pending payments 행을 생성한다.
  *
- * Note: member_code / payment_code 의 seq 생성은 단순 count 기반이라
- * 동시 요청에서 경쟁 조건이 있을 수 있다. Phase 1 용 수준으로 허용.
+ * member_code / payment_code 는 DB 카운터(next_code_seq)로 원자 발번한다.
  */
 export async function POST(req: NextRequest) {
   // Rate limit: IP 당 분당 10회
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
     donationType,
     receiptOptIn,
     residentNo,
+    rrnConsent,
     customFields,
     designation,
     idempotencyKey: clientIdempotencyKey,
@@ -75,6 +79,8 @@ export async function POST(req: NextRequest) {
     donationType?: string;
     receiptOptIn?: boolean;
     residentNo?: string;
+    /** 고유식별정보(주민등록번호) 처리 별도 동의 — 개인정보보호법 제24조 */
+    rrnConsent?: boolean;
     customFields?: Record<string, unknown>;
     designation?: string;
     idempotencyKey?: string;
@@ -220,21 +226,16 @@ export async function POST(req: NextRequest) {
   // 3. 없으면 새 member 생성
   if (!memberId) {
     const year = new Date().getFullYear();
-    const { count: memberCount, error: memberCountError } = await supabase
-      .from("members")
-      .select("*", { count: "exact", head: true })
-      .eq("org_id", tenant.id);
-
-    if (memberCountError) {
-      console.error("[donations/prepare] member count:", memberCountError.message);
+    let memberCode: string;
+    try {
+      memberCode = await nextCode(supabase, tenant.id, "member", year);
+    } catch (e) {
+      console.error("[donations/prepare] member code:", (e as Error).message);
       return NextResponse.json(
         { error: "후원자 정보 조회 실패" },
         { status: 500 }
       );
     }
-
-    const memberSeq = (memberCount ?? 0) + 1;
-    const memberCode = generateMemberCode(year, memberSeq);
 
     const { data: newMember, error: memberInsertError } = await supabase
       .from("members")
@@ -258,34 +259,26 @@ export async function POST(req: NextRequest) {
     memberId = newMember.id as string;
   }
 
-  // 4. payment_code 생성 (당해년도 payments count 기준)
+  // 4. payment_code 생성 (기관·연도 카운터 — 동시 요청에도 중복 없음)
   const year = new Date().getFullYear();
-  const yearStart = `${year}-01-01`;
-  const yearEnd = `${year + 1}-01-01`;
-  const { count: paymentCount, error: paymentCountError } = await supabase
-    .from("payments")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", tenant.id)
-    .gte("created_at", yearStart)
-    .lt("created_at", yearEnd);
-
-  if (paymentCountError) {
-    console.error("[donations/prepare] payment count:", paymentCountError.message);
+  let paymentCode: string;
+  try {
+    paymentCode = await nextCode(supabase, tenant.id, "payment", year);
+  } catch (e) {
+    console.error("[donations/prepare] payment code:", (e as Error).message);
     return NextResponse.json(
       { error: "결제 정보 조회 실패" },
       { status: 500 }
     );
   }
-
-  const paymentSeq = (paymentCount ?? 0) + 1;
-  const paymentCode = generatePaymentCode(year, paymentSeq);
   // Use client-supplied idempotency key if provided (wizard sends one), otherwise generate
   const idempotencyKey =
     typeof clientIdempotencyKey === "string" && clientIdempotencyKey.trim()
       ? clientIdempotencyKey.trim()
       : randomUUID();
   const nowIso = new Date().toISOString();
-  const payDate = nowIso.slice(0, 10);
+  // KST 날짜 — UTC로 자르면 1/1 00~09시 후원이 전년도 영수증으로 넘어간다
+  const payDate = kstToday();
 
   // 5a. RRN 암호화 (기부금 영수증 신청 시)
   // pgp_sym_encrypt를 DB RPC로 호출해 BYTEA 값을 미리 계산한다.
@@ -294,10 +287,18 @@ export async function POST(req: NextRequest) {
   const wantsReceipt = receiptOptIn === true;
   const rawRrn = typeof residentNo === "string" ? residentNo.replace(/-/g, "").trim() : "";
   if (wantsReceipt && rawRrn) {
-    // 주민등록번호 형식 검증: 정확히 13자리 숫자
-    if (!/^\d{13}$/.test(rawRrn)) {
+    // 별도 동의 없이는 받지 않는다(고유식별정보 처리 동의는 다른 동의와 분리해야 한다)
+    if (rrnConsent !== true) {
       return NextResponse.json(
-        { error: "주민등록번호는 13자리 숫자여야 합니다." },
+        { error: "주민등록번호 수집·이용(고유식별정보 처리)에 동의해 주세요." },
+        { status: 400 }
+      );
+    }
+    // 형식·생년월일·성별 자리 검증(2020-10 이후 번호는 체크섬이 없어 체크섬은 보지 않는다)
+    const rrnCheck = checkRrn(rawRrn);
+    if (!rrnCheck.ok) {
+      return NextResponse.json(
+        { error: rrnCheck.reason === "format" ? "주민등록번호는 13자리 숫자여야 합니다." : "주민등록번호를 다시 확인해 주세요." },
         { status: 400 }
       );
     }
@@ -336,7 +337,7 @@ export async function POST(req: NextRequest) {
       idempotency_key: idempotencyKey,
       requested_at: nowIso,
       receipt_opt_in: wantsReceipt,
-      ...(rrnPendingEncrypted ? { rrn_pending_encrypted: rrnPendingEncrypted } : {}),
+      ...(rrnPendingEncrypted ? { rrn_pending_encrypted: rrnPendingEncrypted, rrn_consent_at: new Date().toISOString() } : {}),
       ...(payMethod ? { pay_method: payMethod } : {}),
       ...(customFields ? { custom_fields: customFields } : {}),
       ...(designation ? { designation } : {}),
@@ -362,11 +363,15 @@ export async function POST(req: NextRequest) {
   // 6. 정기후원: 빌링키 발급 + promise 생성
   const isRegular = donationType === 'regular';
   let regularBillingKeyFailed = false;
+  // [표준] 결제창 카드 등록 — 카드번호가 오지 않은 카드 정기후원은 토스 결제창(requestBillingAuth)으로
+  // 카드를 등록한다. 카드 정보가 우리 서버를 거치지 않는다. 키인(카드번호 직접 전송)은 하위 호환으로만.
+  let billingAuth: { customerKey: string; promiseId: string } | null = null;
 
   if (isRegular && memberId) {
-    const todayDay = new Date().getDate();
+    const todayDay = kstParts().day; // KST 기준(서버 UTC와 무관)
     const customerKey = randomUUID();
     let billingKey: string | null = null;
+    const sdkBilling = (payMethod ?? 'card') === 'card' && !cardNumber;
 
     // 카드 정보가 있으면 빌링키 발급 시도
     if (cardNumber && cardExpirationYear && cardExpirationMonth && cardPassword && customerIdentityNumber) {
@@ -401,8 +406,8 @@ export async function POST(req: NextRequest) {
     // billingKey 발급 실패 시 promise는 pending_billing 상태로 생성 —
     // active로 두면 processMonthlyCharges가 null billingKey로 청구를 시도해 매월 실패함.
     // pending_billing 상태는 관리자가 카드 재등록 후 active로 전환.
-    await supabase.from('promises').insert({
-      org_id: tenant.id,
+    // 빌링키는 암호화해 저장(DB 유출 = 즉시 결제 가능 방지)
+    const created = await insertPromise(supabase, tenant.id, {
       member_id: memberId,
       campaign_id: campaign.id,
       type: 'regular',
@@ -410,9 +415,20 @@ export async function POST(req: NextRequest) {
       pay_day: Math.min(todayDay, 28),
       pay_method: payMethod ?? 'card',
       status: billingKey ? 'active' : 'pending_billing',
-      toss_billing_key: billingKey,
-      customer_key: billingKey ? customerKey : null,
+      toss_billing_key: billingKey ? await sealBillingKey(billingKey) : null,
+      // 결제창 방식은 등록 완료 콜백에서 같은 customerKey로 빌링키를 발급하므로 미리 저장
+      customer_key: billingKey || sdkBilling ? customerKey : null,
     });
+    if ('error' in created) {
+      // 약정 저장 실패 — 방금 발급한 빌링키를 토스에서 지워 고아 키를 남기지 않는다
+      console.error('[donations/prepare] promise insert:', created.error);
+      if (billingKey) {
+        const keys = await getOrgTossKeys(tenant.id);
+        if (keys.tossSecretKey) await deleteBillingKey(keys.tossSecretKey, billingKey);
+      }
+      return NextResponse.json({ error: '정기후원 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.' }, { status: 500 });
+    }
+    if (sdkBilling) billingAuth = { customerKey, promiseId: created.id };
   }
 
   // 오프라인 결제: Toss 리디렉션 없이 계좌 안내 정보 반환
@@ -472,5 +488,6 @@ export async function POST(req: NextRequest) {
     orderName: campaign.title,
     tossClientKey,
     ...(regularBillingKeyFailed ? { billingKeyFailed: true } : {}),
+    ...(billingAuth ? { billingAuth } : {}),
   });
 }

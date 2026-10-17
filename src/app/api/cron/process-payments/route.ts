@@ -1,6 +1,8 @@
+import { cronSecretMatches } from "@/lib/cron/runner";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { generatePaymentCode } from "@/lib/codes";
+import { nextCode } from "@/lib/codes-seq";
+import { kstParts, kstToday } from "@/lib/billing/kst";
 
 /**
  * GET /api/cron/process-payments
@@ -9,9 +11,9 @@ import { generatePaymentCode } from "@/lib/codes";
  * vercel.json:
  *   { "crons": [{ "path": "/api/cron/process-payments", "schedule": "0 0 * * *" }] }
  *
- * For every active regular promise whose pay_day matches today (KST),
+ * For every active regular promise whose pay_day is today or earlier this month (KST),
  * creates an `unpaid` payment row if one does not already exist for
- * this promise + month.
+ * this promise + month (catch-up), then charges billing-key rows via charge-service.
  *
  * Security: requires X-Cron-Secret header matching CRON_SECRET env var.
  * Vercel sets this automatically when configured via vercel.json `headers`.
@@ -20,8 +22,7 @@ import { generatePaymentCode } from "@/lib/codes";
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
-    const header = req.headers.get("x-cron-secret") ?? "";
-    if (header !== cronSecret) {
+        if (!cronSecretMatches(req, cronSecret)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   } else {
@@ -36,94 +37,92 @@ export async function GET(req: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
-  // KST = UTC+9
-  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const todayDay = nowKst.getUTCDate(); // day-of-month in KST
-  const yearKst = nowKst.getUTCFullYear();
-  const monthKst = nowKst.getUTCMonth() + 1; // 1-12
-
-  // Month prefix for idempotency key (e.g. "2026-04")
+  // KST 기준 — 서버 시간대와 무관
+  const { year: yearKst, month: monthKst, day: todayDay } = kstParts();
   const monthPrefix = `${yearKst}-${String(monthKst).padStart(2, "0")}`;
+  const today = kstToday();
 
-  // Fetch all active regular promises due today
+  // 이번 달 결제일이 오늘이거나 이미 지난 약정 — 크론이 하루 실패해도 같은 달 안에서 따라잡는다.
+  // (예전: pay_day === 오늘 만 → 그날 실패하면 그 달 청구가 영영 빠졌다)
   const { data: promises, error: fetchErr } = await supabase
     .from("promises")
-    .select("id, org_id, member_id, campaign_id, amount, pay_method")
+    .select("id, org_id, member_id, campaign_id, amount, pay_method, pay_day, started_at")
     .eq("status", "active")
     .eq("type", "regular")
-    .eq("pay_day", todayDay);
+    .lte("pay_day", todayDay);
 
   if (fetchErr) {
     console.error("[cron] fetch promises failed:", fetchErr.message);
     return NextResponse.json({ error: fetchErr.message }, { status: 500 });
   }
 
-  if (!promises || promises.length === 0) {
-    return NextResponse.json({ processed: 0, skipped: 0, errors: 0 });
-  }
-
   let processed = 0;
   let skipped = 0;
   let errors = 0;
 
-  for (const promise of promises) {
-    // Idempotency key: cron-{promiseId}-{YYYY-MM}
-    // Prevents duplicate rows if cron runs more than once in a day.
-    const idempotencyKey = `cron-${promise.id}-${monthPrefix}`;
+  for (const promise of promises ?? []) {
+    // 이번 달 결제일 이후에 시작한 약정은 이번 달 청구 대상이 아니다(가입 직후 즉시 청구 방지)
+    const payDate = `${monthPrefix}-${String(promise.pay_day).padStart(2, "0")}`;
+    if (promise.started_at && String(promise.started_at).slice(0, 10) > payDate) {
+      skipped++;
+      continue;
+    }
 
-    // Check if already created this month
+    // Idempotency key: cron-{promiseId}-{YYYY-MM} — 약정·월당 1행 (org_id, idempotency_key UNIQUE)
+    const idempotencyKey = `cron-${promise.id}-${monthPrefix}`;
     const { data: existing } = await supabase
       .from("payments")
       .select("id")
+      .eq("org_id", promise.org_id)
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
-
     if (existing) {
       skipped++;
       continue;
     }
 
-    // Generate payment code: count existing payments for this org this year + 1
-    const { count: existingCount } = await supabase
-      .from("payments")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", promise.org_id)
-      .gte("created_at", `${yearKst}-01-01`)
-      .lt("created_at", `${yearKst + 1}-01-01`);
+    // 결제 코드는 DB 카운터로 원자 발번 — 그래도 겹치면(손으로 넣은 번호 등) 새 번호로 최대 5번 시도
+    let inserted = false;
+    for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+      let paymentCode: string;
+      try {
+        paymentCode = await nextCode(supabase, promise.org_id, "payment", yearKst);
+      } catch (e) {
+        console.error(`[cron] payment code failed for promise ${promise.id}:`, (e as Error).message);
+        errors++;
+        break;
+      }
+      const { error: insertErr } = await supabase.from("payments").insert({
+        org_id: promise.org_id,
+        member_id: promise.member_id,
+        campaign_id: promise.campaign_id ?? null,
+        promise_id: promise.id,
+        payment_code: paymentCode,
+        amount: promise.amount,
+        pay_status: "unpaid",
+        pay_method: promise.pay_method ?? "card",
+        idempotency_key: idempotencyKey,
+        pay_date: payDate <= today ? payDate : today,
+      });
 
-    const paymentCode = generatePaymentCode(
-      yearKst,
-      (existingCount ?? 0) + 1
-    );
-
-    // Create unpaid payment row — waiting for auto-charge or manual collection
-    const { error: insertErr } = await supabase.from("payments").insert({
-      org_id: promise.org_id,
-      member_id: promise.member_id,
-      campaign_id: promise.campaign_id ?? null,
-      promise_id: promise.id,
-      payment_code: paymentCode,
-      amount: promise.amount,
-      pay_status: "unpaid",
-      pay_method: promise.pay_method ?? "card",
-      idempotency_key: idempotencyKey,
-      pay_date: nowKst.toISOString().slice(0, 10),
-    });
-
-    if (insertErr) {
-      console.error(
-        `[cron] insert payment failed for promise ${promise.id}:`,
-        insertErr.message
-      );
-      errors++;
-    } else {
-      processed++;
+      if (!insertErr) {
+        inserted = true;
+        processed++;
+      } else if (insertErr.code === "23505" && insertErr.message.includes("idempotency")) {
+        // 다른 실행이 먼저 만들었다
+        inserted = true;
+        skipped++;
+      } else if (insertErr.code !== "23505") {
+        console.error(`[cron] insert payment failed for promise ${promise.id}:`, insertErr.message);
+        errors++;
+        break;
+      }
     }
   }
 
   // 빌링키 자동결제 실행
   const { processMonthlyCharges } = await import('@/lib/billing/charge-service');
-  const orgIds = [...new Set(promises.map(p => p.org_id as string))];
+  const orgIds = [...new Set((promises ?? []).map(p => p.org_id as string))];
   let totalCharged = 0;
   let totalFailed = 0;
 

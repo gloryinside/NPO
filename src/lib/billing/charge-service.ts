@@ -1,107 +1,78 @@
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { getOrgTossKeys } from '@/lib/toss/keys';
-import { chargeBillingKey } from './toss-billing';
-import { createBillingFailedNotification } from './notifications';
-import { notifyCmsChargeSuccess } from './notify-success';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { getOrgTossKeys } from '@/lib/toss/keys'
+import { kstToday } from './kst'
+import { chargePayment, type ChargeOutcome } from './charge-one'
+import { createBillingFailedNotification, createPledgeSuspendedNotification } from './notifications'
+import { notifyCmsChargeSuccess } from './notify-success'
 
+/**
+ * 월 정기결제 청구 — process-payments 크론이 만든 이번 달 미결제(unpaid) 행을 자동결제한다.
+ * (예전엔 pending만 찾아 크론이 만든 unpaid 행을 한 번도 청구하지 않았다)
+ */
 export async function processMonthlyCharges(orgId: string): Promise<{ charged: number; failed: number }> {
-  const keys = await getOrgTossKeys(orgId);
+  const keys = await getOrgTossKeys(orgId)
   if (!keys.tossSecretKey) {
-    console.error(`[charge] org ${orgId}: tossSecretKey 없음`);
-    return { charged: 0, failed: 0 };
+    console.error(`[charge] org ${orgId}: tossSecretKey 없음`)
+    return { charged: 0, failed: 0 }
   }
 
-  const supabase = createSupabaseAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
-
+  const supabase = createSupabaseAdminClient()
   const { data: payments, error } = await supabase
     .from('payments')
-    .select(
-      '*, promises!inner(toss_billing_key, customer_key, amount, pay_method, member_id, status)',
-    )
+    .select('id, member_id, amount, payment_code, promises!inner(id, status, toss_billing_key)')
     .eq('org_id', orgId)
-    .eq('pay_status', 'pending')
-    // pending_billing 약정(카드 미등록)은 청구 대상에서 제외 — promise.status로 2차 필터
+    .eq('pay_status', 'unpaid')
+    .eq('retry_count', 0)
     .eq('promises.status', 'active')
-    .lte('pay_date', today)
-    .is('toss_payment_key', null);
+    .not('promises.toss_billing_key', 'is', null)
+    .lte('pay_date', kstToday())
+    .is('toss_payment_key', null)
 
   if (error) {
-    console.error(`[charge] org ${orgId}: 조회 실패`, error.message);
-    return { charged: 0, failed: 0 };
+    console.error(`[charge] org ${orgId}: 조회 실패`, error.message)
+    return { charged: 0, failed: 0 }
   }
-  if (!payments?.length) return { charged: 0, failed: 0 };
 
-  let charged = 0;
-  let failed = 0;
+  let charged = 0
+  let failed = 0
+  for (const p of payments ?? []) {
+    const outcome = await chargePayment(supabase, keys.tossSecretKey, { paymentId: p.id, orgId }, 'auto')
+    const promiseId = (p.promises as unknown as { id: string }).id
+    await notifyOutcome(orgId, { id: p.id, member_id: p.member_id, amount: p.amount, payment_code: p.payment_code, promise_id: promiseId }, outcome)
+    if (outcome.kind === 'paid') charged++
+    else if (outcome.kind !== 'skipped' && outcome.kind !== 'unknown') failed++
+  }
+  return { charged, failed }
+}
 
-  for (const payment of payments) {
-    const promise = payment.promises as {
-      toss_billing_key: string | null;
-      customer_key: string | null;
-      amount: number;
-      pay_method: string;
-      member_id: string;
-      status: string;
-    };
-
-    if (!promise.toss_billing_key || !promise.customer_key) continue;
-
-    const result = await chargeBillingKey(
-      keys.tossSecretKey,
-      promise.toss_billing_key,
-      {
-        customerKey: promise.customer_key,
-        amount: payment.amount,
-        orderId: payment.code,
-        orderName: '정기후원',
-      },
-    );
-
-    if (result.success) {
-      const approvedAt = new Date().toISOString();
-      await supabase
-        .from('payments')
-        .update({
-          pay_status: 'paid',
-          toss_payment_key: result.paymentKey,
-          approved_at: approvedAt,
-        })
-        .eq('id', payment.id);
-
-      // 후원자 감사 알림 (fire-and-forget)
+/** 결과별 알림 — 월 청구·재시도 공통 */
+export async function notifyOutcome(
+  orgId: string,
+  p: { id: string; member_id: string; amount: number; payment_code: string | null; promise_id: string },
+  outcome: ChargeOutcome,
+): Promise<void> {
+  switch (outcome.kind) {
+    case 'paid':
       void notifyCmsChargeSuccess({
         orgId,
-        paymentId: payment.id,
-        memberId: promise.member_id,
-        amount: payment.amount,
-        paymentCode: payment.payment_code ?? payment.code ?? payment.id,
-        approvedAt,
-      });
-
-      charged++;
-    } else {
-      await supabase
-        .from('payments')
-        .update({
-          pay_status: 'failed',
-          retry_count: 0,
-          next_retry_at: new Date(
-            Date.now() + 1 * 86400000,
-          ).toISOString(),
-        })
-        .eq('id', payment.id);
-
-      await createBillingFailedNotification(
-        orgId,
-        payment.id,
-        promise.member_id,
-        payment.amount,
-        result.failureMessage,
-      );
-      failed++;
-    }
+        paymentId: p.id,
+        memberId: p.member_id,
+        amount: p.amount,
+        paymentCode: p.payment_code ?? p.id,
+        approvedAt: outcome.approvedAt,
+      })
+      return
+    case 'failed':
+    case 'needs_review':
+      await createBillingFailedNotification(orgId, p.id, p.member_id, p.amount, outcome.message)
+      return
+    case 'suspended':
+      await createPledgeSuspendedNotification(orgId, p.promise_id, p.member_id, p.amount)
+      return
+    case 'unknown':
+      console.warn(`[charge] payment ${p.id}: 결과 불명(네트워크) — 다음 실행에서 같은 멱등키로 회수`, outcome.message)
+      return
+    case 'skipped':
+      return
   }
-
-  return { charged, failed };
 }

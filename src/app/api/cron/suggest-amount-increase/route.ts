@@ -83,7 +83,7 @@ export async function GET(req: Request) {
             <p>${m.name ?? "후원자"}님의 월 ${r.amount.toLocaleString()}원 후원이 1년 넘게 이어졌습니다.</p>
             <p>지속되는 변화를 위해, 월 ${suggested.toLocaleString()}원으로 인상해보시는 건 어떨까요?</p>
             <p style="margin-top:24px">
-              <a href="/donor/promises" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">약정 관리 →</a>
+              <a href="/donor/promises" style="background:#009944;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">약정 관리 →</a>
             </p>
             <p style="font-size:13px;color:#6b7280;margin-top:16px">인상은 선택이며, 현재 금액을 유지하셔도 전혀 문제 없습니다.</p>
           </div>

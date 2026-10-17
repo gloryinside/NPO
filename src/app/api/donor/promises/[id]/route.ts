@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revokePromiseBilling } from "@/lib/billing/revoke";
 import { getDonorSession } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { changePromiseAmount } from "@/lib/promises/amount-change";
@@ -295,6 +296,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     .from("promises")
     .update(updates)
     .eq("id", id)
+    .eq("org_id", session.member.org_id)
+    .eq("member_id", session.member.id)
     .select("id, status, ended_at")
     .single();
 
@@ -303,6 +306,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       { error: updateErr?.message ?? "업데이트 실패" },
       { status: 500 }
     );
+  }
+
+  // 해지 → 토스 빌링키 삭제 + 남은 미결제 청구 취소
+  if (action === "cancel") {
+    await revokePromiseBilling(supabase, session.member.org_id, [id]);
   }
 
   return NextResponse.json({ promise: updated });

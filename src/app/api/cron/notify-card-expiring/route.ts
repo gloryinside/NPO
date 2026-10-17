@@ -1,4 +1,5 @@
 import { runCron } from "@/lib/cron/runner";
+import { kstParts } from "@/lib/billing/kst";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/send-email";
 import { logNotification } from "@/lib/email/notification-log";
@@ -11,7 +12,6 @@ import { logNotification } from "@/lib/email/notification-log";
 export async function GET(req: Request) {
   return runCron(req, "cron:notify-card-expiring", async () => {
     const supabase = createSupabaseAdminClient();
-    const today = new Date();
     let sent = 0; let skipped = 0;
 
     // 만료 직전 1~31일 내 카드 검색 (월말 기준)
@@ -20,10 +20,9 @@ export async function GET(req: Request) {
       { days: 7, kind: "D-7" },
     ];
 
-    for (const { days } of targets) {
-      const target = new Date(today.getTime() + days * 86400_000);
-      const targetYear = target.getFullYear();
-      const targetMonth = target.getMonth() + 1;
+    for (const { days, kind } of targets) {
+      // KST 기준(서버 UTC와 무관) — 카드는 만료 "월"의 말일까지 쓸 수 있다
+      const { year: targetYear, month: targetMonth } = kstParts(new Date(Date.now() + days * 86400_000));
 
       const { data: promises } = await supabase
         .from("promises")
@@ -47,7 +46,7 @@ export async function GET(req: Request) {
         const { count } = await supabase
           .from("email_notifications_log").select("id", { count: "exact", head: true })
           .eq("ref_id", p.id)
-          .like("kind", "card_expiring_%")
+          .eq("kind", `card_expiring_${kind}`)
           .gte("sent_at", cutoff);
         if ((count ?? 0) > 0) { skipped++; continue; }
 
@@ -73,8 +72,8 @@ export async function GET(req: Request) {
         const result = await sendEmail({ to: member.email, subject, html });
         await logNotification(supabase, {
           orgId: p.org_id,
-          // NotificationKind 확장이 필요하지만 일단 기존 'member_invite' 재사용 (정확성 < 운영성)
-          kind: "member_invite",
+          // 중복 방지 조회와 같은 kind로 기록(예전엔 member_invite로 남겨 매일 재발송됐다)
+          kind: `card_expiring_${kind}`,
           recipientEmail: member.email,
           refId: p.id,
           status: result.success ? "sent" : "failed",

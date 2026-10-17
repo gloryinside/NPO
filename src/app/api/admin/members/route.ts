@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { generateMemberCode } from "@/lib/codes";
+import { nextCode } from "@/lib/codes-seq";
 import { logAudit } from "@/lib/audit";
 
 const DEFAULT_LIMIT = 50;
@@ -122,13 +122,12 @@ export async function POST(req: NextRequest) {
   }
 
   const year = new Date().getFullYear();
-  const { count: memberCount } = await supabase
-    .from("members")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", tenant.id);
-
-  const seq = (memberCount ?? 0) + 1;
-  const memberCode = generateMemberCode(year, seq);
+  let memberCode: string;
+  try {
+    memberCode = await nextCode(supabase, tenant.id, "member", year);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
 
   const { data: member, error } = await supabase
     .from("members")

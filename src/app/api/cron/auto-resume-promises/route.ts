@@ -1,3 +1,4 @@
+import { kstToday } from "@/lib/billing/kst";
 import { runCron } from "@/lib/cron/runner";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
@@ -15,7 +16,7 @@ import { logNotification } from "@/lib/email/notification-log";
 export async function GET(req: Request) {
   return runCron(req, "cron:auto-resume-promises", async () => {
     const supabase = createSupabaseAdminClient();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = kstToday(); // 23:00 UTC 실행 = 다음 날 08:00 KST — UTC 날짜를 쓰면 하루 늦게 재개됐다
 
     const { data: rows, error } = await supabase
       .from("promises")
