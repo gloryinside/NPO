@@ -30,11 +30,10 @@ describe('결연 아동 공개 정보', () => {
     expect(isPickable({ status: 'sponsored', public_listing: true, reserved_until: null }, now)).toBe(false)
   })
 
-  it('카드는 하루, 온라인 자동이체는 2일, 현장 자동이체는 7일 잡아 둔다', () => {
+  it('온라인 신청은 1시간, 현장 모금은 7일 잡아 둔다', () => {
     const now = new Date('2026-10-18T00:00:00Z')
-    expect(reservationUntil(false, now)).toBe('2026-10-19T00:00:00.000Z')
-    expect(reservationUntil(true, now)).toBe('2026-10-20T00:00:00.000Z')
-    expect(reservationUntil(true, now, true)).toBe('2026-10-25T00:00:00.000Z')
+    expect(reservationUntil(now)).toBe('2026-10-18T01:00:00.000Z')
+    expect(reservationUntil(now, true)).toBe('2026-10-25T00:00:00.000Z')
   })
 
   it('지역은 첫 낱말만', () => {

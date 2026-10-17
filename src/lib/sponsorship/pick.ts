@@ -56,20 +56,19 @@ export function toPublicChild(row: BeneficiaryRow, thisYear: number): PublicChil
 
 /**
  * 신청이 끝날 때까지 아이를 잡아 두는 기한.
- *  - 카드: 결제창에서 바로 등록하므로 하루
- *  - 자동이체·계좌이체·직접 납부(온라인): 2일 — 돈이 오가기 전이라 길게 잡으면 아이들을 묶어 둘 수 있다(보안 검토)
- *  - 현장 모금(직원이 있는 태블릿)의 자동이체: 출금동의 정리까지 7일
- * 기한이 지나거나 약정이 취소되면(DB 트리거) 다시 다른 후원자가 고를 수 있다. 기한이 지난 뒤 약정이 시작되면 관리자에게 알린다.
+ *  - 온라인 신청(카드·자동이체·계좌이체): 1시간 — 돈이 오가기 전이라 길게 잡으면 여러 번호·IP로 아이들을 묶어 둘 수 있다.
+ *    전체 상한 대신 짧게 잡는다(공유 상한은 그 자체를 채워 다른 후원자를 막는 데 쓰일 수 있다 — 보안 검토).
+ *    카드는 결제창 등록이 몇 분이면 끝나 그 안에 결연이 시작된다.
+ *  - 현장 모금(직원이 있는 태블릿): 출금동의 정리까지 7일
+ * 기한이 지나거나 약정이 취소되면(DB 트리거) 다시 고를 수 있다. 기한이 지난 뒤 약정이 시작됐는데 다른 사람이
+ * 먼저 결연했으면 관리자에게 알린다(다른 아이 안내).
  */
-export function reservationUntil(offline: boolean, now: Date = new Date(), f2f = false): string {
-  const days = !offline ? 1 : f2f ? 7 : 2;
-  return new Date(now.getTime() + days * 86_400_000).toISOString();
+export function reservationUntil(now: Date = new Date(), f2f = false): string {
+  const ms = f2f ? 7 * 86_400_000 : 60 * 60_000;
+  return new Date(now.getTime() + ms).toISOString();
 }
 
 /** 신청 화면에 보일 수 있는 아이 — 공개·결연 가능·잡아 둔 신청이 없거나 기한이 지난 경우 */
-/** 기관 전체에서 온라인 신청이 동시에 잡아 둘 수 있는 아이 수 — 여러 번호·IP로 아이들을 묶는 것을 막는다 */
-export const MAX_ACTIVE_ONLINE_HOLDS = 20;
-
 export function isPickable(
   row: { status: string; public_listing: boolean; reserved_until: string | null },
   now: Date = new Date(),

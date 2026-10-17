@@ -14,7 +14,7 @@ import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { readJsonObject } from "@/lib/http/body";
 import { needsBillingRegistration, resolveRegularFlow } from "@/lib/billing/regular-flow";
 import { parseDonorProfile, profileColumns } from "@/lib/donations/donor-profile";
-import { isPickable, MAX_ACTIVE_ONLINE_HOLDS, reservationUntil } from "@/lib/sponsorship/pick";
+import { isPickable, reservationUntil } from "@/lib/sponsorship/pick";
 import { resolveAgent, type ActiveAgent } from "@/lib/f2f/agents";
 import { resolveAbTag } from "@/lib/ab/form-test-data";
 import { consentRows, parseDonationConsents } from "@/lib/legal/consent";
@@ -274,17 +274,6 @@ export async function POST(req: NextRequest) {
     const holdLimit = rateLimit(`donations:child-hold:${ip}`, 3, 60 * 60_000);
     if (!holdLimit.allowed) {
       return NextResponse.json({ error: "잠시 후 다시 신청해 주세요." }, { status: 429 });
-    }
-    // 기관 전체 상한 — IP·번호를 바꿔 가며 잡아 두는 것까지 막는다(현장 모금은 직원이 있어 제외)
-    if (!f2fAgent) {
-      const { count: activeHolds } = await supabase
-        .from("beneficiaries")
-        .select("id", { count: "exact", head: true })
-        .eq("org_id", tenant.id)
-        .gt("reserved_until", new Date().toISOString());
-      if ((activeHolds ?? 0) >= MAX_ACTIVE_ONLINE_HOLDS) {
-        return NextResponse.json({ error: "지금 결연 신청이 많아 잠시 후 다시 시도해 주세요. 아이를 고르지 않고 신청하시면 기관이 결연을 맺어 드려요." }, { status: 429 });
-      }
     }
   }
 
@@ -618,7 +607,7 @@ export async function POST(req: NextRequest) {
         p_org: tenant.id,
         p_beneficiary: beneficiaryId,
         p_promise: created.id,
-        p_until: reservationUntil(isOfflineMethod, new Date(), !!f2fAgent),
+        p_until: reservationUntil(new Date(), !!f2fAgent),
       });
       if (reserved !== true) {
         await supabase.from("promises").update({ status: "cancelled" }).eq("id", created.id).eq("org_id", tenant.id);
